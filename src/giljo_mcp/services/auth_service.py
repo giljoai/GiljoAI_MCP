@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 AuthService - Authentication and authorization service layer.
@@ -145,7 +145,7 @@ class AuthService:
             raise
         except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to authenticate user")
-            raise BaseGiljoError(message=f"Authentication failed: {e!s}", context={"username": username}) from e
+            raise BaseGiljoError(message=f"Authentication failed: {e!s}", context={"identifier": username}) from e
 
     async def _authenticate_user_impl(self, session: AsyncSession, username: str, password: str) -> AuthResult:
         """Implementation that uses provided session.
@@ -168,13 +168,13 @@ class AuthService:
                 f"Authentication failed for identifier: {username}",
                 extra={"identifier": username, "reason": "invalid_credentials"},
             )
-            raise AuthenticationError(message="Invalid credentials", context={"username": username})
+            raise AuthenticationError(message="Invalid credentials", context={"identifier": username})
 
         # Check if user account is active
         if not user.is_active:
             self._logger.warning(
-                f"Authentication failed for username: {username} (inactive account)",
-                extra={"username": username, "user_id": user.id, "reason": "inactive_account"},
+                f"Authentication failed for identifier: {username} (inactive account)",
+                extra={"identifier": username, "user_id": user.id, "reason": "inactive_account"},
             )
             raise AuthorizationError(
                 message="User account is inactive", context={"username": username, "user_id": user.id}

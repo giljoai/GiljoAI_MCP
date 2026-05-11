@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 Platform-specific setup instruction generator.
@@ -26,9 +26,10 @@ def build_setup_instructions(platform: str, download_url: str) -> str:
             "Adapt all commands for the OS you are running on.\n\n"
             "Step 2 — Tell the user:\n"
             "Agent templates installed to ~/.claude/agents/ with model: opus by default.\n"
-            "Two commands are now available:\n"
+            "Three commands are now available:\n"
             "- /gil_get_agents — install/update GiljoAI agent templates\n"
-            "- /gil_add — add tasks and projects from the CLI (try /gil_add --help)\n\n"
+            "- /gil_add — create tasks/projects from the CLI (try /gil_add --help)\n"
+            "- /gil_get — read existing tasks/projects from the CLI\n\n"
             "Restart Claude Code, then run /gil_get_agents to install agent templates.\n"
             "Note: Download link expires in 15 minutes."
         )
@@ -59,9 +60,10 @@ def build_setup_instructions(platform: str, download_url: str) -> str:
             "Adapt all commands for the OS you are running on.\n\n"
             "Step 3 — Tell the user:\n"
             "Agent templates installed to ~/.gemini/agents/ with model: gemini-3-pro-preview by default.\n"
-            "Two commands are now available:\n"
+            "Three commands are now available:\n"
             "- /gil_get_agents — install/update GiljoAI agent templates\n"
-            "- /gil_add — add tasks and projects from the CLI (try /gil_add --help)\n\n"
+            "- /gil_add — create tasks/projects from the CLI (try /gil_add --help)\n"
+            "- /gil_get — read existing tasks/projects from the CLI\n\n"
             "Restart Gemini CLI, then run /gil_get_agents to install agent templates.\n"
             "Note: Download link expires in 15 minutes."
         )
@@ -122,9 +124,10 @@ def build_setup_instructions(platform: str, download_url: str) -> str:
         "Use the same TOML parser read-then-merge approach from Step 2.\n"
         "If sandboxed, use the same shell fallback: back up, append, validate.\n\n"
         "Step 4 — Tell the user:\n"
-        "Two skills are now available:\n"
+        "Three skills are now available:\n"
         "- $gil-get-agents — install/update GiljoAI agent templates\n"
-        "- $gil-add — add tasks and projects from the CLI (try $gil-add --help)\n\n"
+        "- $gil-add — create tasks/projects from the CLI (try $gil-add --help)\n"
+        "- $gil-get — read existing tasks/projects from the CLI\n\n"
         "Restart Codex CLI, then run $gil-get-agents to install agent templates.\n"
         "Note: Download link expires in 15 minutes."
     )

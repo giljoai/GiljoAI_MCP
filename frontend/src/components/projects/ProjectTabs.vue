@@ -313,6 +313,7 @@
       :product-id="project.product_id"
       :project-status="project.status"
       :orchestrator-closeout-blocked="orchestratorCloseoutBlocked"
+      :orchestrator-job-id="orchestratorJobId"
       @close="showCloseoutModal = false"
       @closeout="handleCloseoutComplete"
       @continue="handleContinueWorking"
@@ -331,7 +332,7 @@ import { useProjectStateStore } from '@/stores/projectStateStore'
 import { useIntegrationStatus } from '@/composables/useIntegrationStatus'
 import { useToast } from '@/composables/useToast'
 import { useClipboard } from '@/composables/useClipboard'
-import { isCloseoutBlocked } from '@/utils/statusConfig'
+import { isAwaitingUser } from '@/utils/statusConfig'
 import { useProjectCloseout } from '@/composables/useProjectCloseout'
 import api from '@/services/api'
 import LaunchTab from './LaunchTab.vue'
@@ -508,7 +509,17 @@ const {
 const orchestratorCloseoutBlocked = computed(() => {
   const jobs = sortedJobs.value || []
   const orch = jobs.find((j) => j.agent_display_name === 'orchestrator')
-  return orch ? isCloseoutBlocked(orch.status, orch.block_reason) : false
+  return orch ? isAwaitingUser(orch.status) : false
+})
+
+/**
+ * FE-5017 Phase C: orchestrator job_id used by CloseoutModal to look up the
+ * pending user_approval row in useApprovalsStore.
+ */
+const orchestratorJobId = computed(() => {
+  const jobs = sortedJobs.value || []
+  const orch = jobs.find((j) => j.agent_display_name === 'orchestrator')
+  return orch?.job_id || null
 })
 
 /**
@@ -822,14 +833,14 @@ async function handleStageProject() {
 
     if (copied) {
       const _pasteLabels = {
-        multi_terminal: 'Orchestrator prompt copied - paste into ANY terminal (fresh or existing)',
-        claude_code_cli: 'Orchestrator prompt copied - paste into Claude Code CLI',
-        codex_cli: 'Orchestrator prompt copied - paste into Codex CLI',
-        gemini_cli: 'Orchestrator prompt copied - paste into Gemini CLI',
+        multi_terminal: 'Orchestrator brief copied. Paste into any terminal to stage the project.',
+        claude_code_cli: 'Orchestrator brief copied. Paste into Claude Code CLI to stage the project.',
+        codex_cli: 'Orchestrator brief copied. Paste into Codex CLI to stage the project.',
+        gemini_cli: 'Orchestrator brief copied. Paste into Gemini CLI to stage the project.',
       }
       showToast({ message: _pasteLabels[currentMode] || _pasteLabels.multi_terminal, type: 'success' })
     } else {
-      showToast({ message: 'Copy failed — select the prompt text and press Ctrl+C', type: 'warning', timeout: 6000 })
+      showToast({ message: 'Copy failed. Check your browser\'s clipboard permissions and try again.', type: 'warning', timeout: 6000 })
     }
   } catch (error) {
     console.error('Stage project failed:', error)
@@ -863,6 +874,9 @@ async function handleLaunchJobs() {
 
     // Auto-switch to Jobs/Implement tab after launch (Handover 0243e)
     activeTab.value = 'jobs'
+    if (route.query.via !== 'jobs') {
+      router.replace({ query: { ...route.query, via: 'jobs' } })
+    }
   } catch (error) {
     console.error('Launch jobs failed:', error)
     const msg = error.response?.data?.detail || error.message || 'Failed to launch jobs'

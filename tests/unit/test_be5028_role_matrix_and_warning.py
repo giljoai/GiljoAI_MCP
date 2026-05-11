@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition -- source-available, single-user use only.
+# [CE] Community Edition.
 
 """BE-5028 verification: orchestrator/worker authorization matrix + warning suppression.
 
@@ -140,9 +140,9 @@ def _mock_db_manager(db_session):
 # ---- 1 + 2: Matrix coverage + structured rejection shape -------------------
 
 
-# All 7 entry_types under matrix consideration, partitioned by allowed-role.
+# Matrix entry_types partitioned by allowed-role. Count loosened in INF-5025b.
 ALL_MATRIX_ENTRY_TYPES = sorted(WORKER_ALLOWED_ENTRY_TYPES | ORCHESTRATOR_ONLY_ENTRY_TYPES)
-assert len(ALL_MATRIX_ENTRY_TYPES) == 7, "Matrix sanity: 4 worker + 3 orchestrator"
+assert len(ALL_MATRIX_ENTRY_TYPES) >= 6, "Matrix sanity: at least 4 worker + 2 orchestrator"
 
 
 class TestAuthorizationMatrix:
@@ -370,7 +370,7 @@ async def test_caller_role_unknown_when_job_lookup_returns_none(db_session, test
             summary="unknown caller",
             key_outcomes=["k"],
             decisions_made=["d"],
-            entry_type="action_required",
+            entry_type="project_completion",
             author_job_id=bogus_job_id,
             git_commits=[],
             tags=[],
@@ -578,7 +578,6 @@ class TestValidEntryTypeFrozenset:
         "project_completion",
         "handover_closeout",
         "session_handover",
-        "action_required",
         "baseline",
         "decision",
         "architecture",
@@ -599,7 +598,7 @@ class TestValidEntryTypeFrozenset:
 
         We use an orchestrator caller so the matrix gate also passes; if Fix D
         is reverted, write_360_memory raises ValidationError on the new types
-        (decision/architecture/discovery/baseline/action_required) BEFORE
+        (decision/architecture/discovery/baseline) BEFORE
         reaching the matrix gate, and this test fails.
         """
         mock_mgr = _mock_db_manager(db_session)

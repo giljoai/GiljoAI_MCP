@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """Orchestrator 3-phase coordination lifecycle protocol generation."""
 
@@ -239,10 +239,9 @@ After completing a coordination loop with no actionable work remaining:
 3. Review your TODO list — ALL items must be `completed`
    If any are not, either complete them or explain why they were dropped
 
-**Action tags for unresolved findings:**
+**Deferred findings:**
 If the reviewer reported non-blocking findings that were NOT fixed during this project,
-include `tags=["action_required:<file> — <description>"]` in `close_project_and_update_memory()`
-or write a separate `write_360_memory()` entry with those tags so they persist for future agents.
+create a follow-up task via `mcp__giljo_mcp__create_task` — or a project via `mcp__giljo_mcp__create_project` if it is multi-step — and cite the returned ID in `decisions_made` when you call `close_project_and_update_memory`. Do not use `action_required:` tags or `action_required` 360 entries; they are deprecated.
 For trivial items (~10 lines), prefer fixing immediately rather than deferring.
 
 **Closeout works without git:**
@@ -260,14 +259,12 @@ list will be empty or contain only agent-supplied hashes. When this happens, inc
    → Pass `acknowledge_closeout_todo=True` so the gate auto-completes any TODO whose content describes the closeout itself (matches "closeout", "complete_job", or "close_project"). This avoids the chicken-and-egg of needing to mark your closeout TODO done before calling closeout. Non-closeout incomplete TODOs still block. The unread-messages gate is independent — drain messages with `receive_messages()` first.
    → ESCAPE HATCH for stuck inboxes: pass `acknowledge_messages_on_complete=True` to drain (mark acknowledged) all unread messages addressed to this agent within the project+tenant before evaluating the gate. This is the messages-side mirror of `acknowledge_closeout_todo`. Use it only when you are stuck in a reactivation-on-stale-message loop and cannot otherwise close out — preferred path is still `receive_messages()` then complete. The TODOs gate is independent: this flag does NOT bypass incomplete TODOs.
    → READ the `closeout_checklist` in the response
-   → If `user_approval_required=true`: set status blocked with reason "Closeout: awaiting user review", present deferred findings and options to user, WAIT for user response
-   → If `user_approval_required=false`: proceed with best judgment
-3. Write `action_required` tags for deferred findings via `write_360_memory()` BEFORE closing the project
-4. Create follow-up tasks/projects if needed via `create_task()` or `create_project()`
-5. `mcp__giljo_mcp__close_project_and_update_memory(project_id="...", summary="...", key_outcomes=[...], decisions_made=[...], tags=[...], git_commits=[...])` — final close. `tags` is REQUIRED-IN-SPIRIT: supply 1-5 from the 16-tag CONTROLLED_TAG_VOCABULARY (see Chapter 5). Unknown tags are rejected.
-6. Tell user: "Project complete. Use /gil_add for follow-up tasks or tech debt."
+   → When the closeout has deferred findings, call `mcp__giljo_mcp__request_approval(...)` (see CH4) — your execution status will be flipped to `awaiting_user` automatically, and `complete_job` will refuse until the user decides via `POST /api/approvals/{id}/decide`. Otherwise proceed with best judgment.
+3. Create follow-up tasks/projects for deferred findings via `create_task()` or `create_project()` and cite the returned IDs in `decisions_made`
+4. `mcp__giljo_mcp__close_project_and_update_memory(project_id="...", summary="...", key_outcomes=[...], decisions_made=[...], tags=[...], git_commits=[...])` — final close. `tags` is REQUIRED-IN-SPIRIT: supply 1-5 from the 16-tag CONTROLLED_TAG_VOCABULARY (see Chapter 5). Unknown tags are rejected.
+5. Tell user: "Project complete. Use `/gil_add` to create follow-ups, `/gil_get` to look up existing project/task state."
 
-**IMPORTANT:** You MUST complete your own job (step 2) BEFORE closing the project (step 5). The server requires all agents including the orchestrator to be complete before project closeout.
+**IMPORTANT:** You MUST complete your own job (step 2) BEFORE closing the project (step 4). The server requires all agents including the orchestrator to be complete before project closeout.
 
 **If `complete_job()` is rejected:** Read the error. Common causes:
 - Unread messages remain → run receive_messages() and process them (the `acknowledge_closeout_todo` flag does NOT bypass this gate; if you are stuck, use the `acknowledge_messages_on_complete=True` escape hatch instead)
@@ -276,7 +273,9 @@ list will be empty or contain only agent-supplied hashes. When this happens, inc
 ## ORCHESTRATOR CONSTRAINTS
 - **Git commit requirement does NOT apply.** You coordinate, you do not commit.
 - **Handover-on-context-exhaustion does NOT apply.** If context is exhausted, tell the user.
-- **If uncertain what to do, ask the user.** You are user-mediated by design.
+- **You operate with the user's delegated authority.** Decide and document in
+  `decisions_made`. Escalate via `request_approval` only when the choice is
+  irreversible, materially changes scope, or has no clear default.
 - **Your TODO list is your authority.** The mission describes what needs to happen.
   Your TODOs are the structured breakdown. Work them systematically.
 

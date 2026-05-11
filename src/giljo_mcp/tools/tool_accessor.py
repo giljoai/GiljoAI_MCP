@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 Tool Accessor for API Integration
@@ -31,6 +31,7 @@ from giljo_mcp.services.message_service import MessageService
 from giljo_mcp.services.orchestration_service import OrchestrationService
 from giljo_mcp.services.project_service import ProjectService
 from giljo_mcp.services.task_service import TaskService
+from giljo_mcp.services.user_approval_service import UserApprovalService
 from giljo_mcp.tenant import TenantManager
 from giljo_mcp.tools.setup_instructions import build_setup_instructions
 
@@ -75,6 +76,14 @@ class ToolAccessor:
             db_manager,
             tenant_manager,
             message_service=self._message_service,
+            test_session=test_session,
+        )
+
+        # BE-5029: User approval primitive
+        self._user_approval_service = UserApprovalService(
+            db_manager,
+            tenant_manager,
+            websocket_manager=websocket_manager,
             test_session=test_session,
         )
 
@@ -144,6 +153,9 @@ class ToolAccessor:
         completed_before: Any = None,
         include_completed: bool = False,
         hidden: bool | None = None,
+        # BE-5042 agent-facing projection mode
+        mode: str | None = None,
+        memory_limit: int | None = None,
     ) -> dict[str, Any]:
         """List projects for active product (v1.2.1: server-side filtering).
 
@@ -170,6 +182,8 @@ class ToolAccessor:
             completed_before=completed_before,
             include_completed=include_completed,
             hidden=hidden,
+            mode=mode,
+            memory_limit=memory_limit,
         )
 
     async def update_project_metadata(
@@ -283,6 +297,48 @@ class ToolAccessor:
             project_id=project_id, status=status, agent_id=agent_id, tenant_key=tenant_key, limit=limit
         )
 
+    # User Approval Tools (BE-5029)
+
+    async def request_approval(
+        self,
+        job_id: str,
+        project_id: str,
+        reason: str,
+        options: list[dict],
+        context: dict | None = None,
+        tenant_key: str | None = None,
+    ) -> dict[str, Any]:
+        """Create a pending user approval and flip the calling agent to awaiting_user.
+
+        Input is validated through ``RequestApprovalInput`` (closed schema, length
+        caps, unique option ids) before reaching the service. The service performs
+        the insert + status flip + WebSocket broadcast atomically.
+        """
+        from giljo_mcp.schemas.user_approval import RequestApprovalInput
+
+        if tenant_key is None:
+            raise ValidationError("tenant_key is required")
+
+        validated = RequestApprovalInput(
+            job_id=job_id,
+            project_id=project_id,
+            reason=reason,
+            options=options,
+            context=context,
+        )
+        approval = await self._user_approval_service.create_pending(
+            tenant_key=tenant_key,
+            job_id=validated.job_id,
+            project_id=validated.project_id,
+            reason=validated.reason,
+            options=[opt.model_dump() for opt in validated.options],
+            context=validated.context,
+        )
+        return {
+            "approval_id": approval.id,
+            "status": approval.status,
+        }
+
     # Task Tools
 
     async def create_task(
@@ -290,20 +346,85 @@ class ToolAccessor:
         title: str,
         description: str,
         priority: str = "medium",
-        category: str | None = None,
+        task_type: str | None = None,
         assigned_to: str | None = None,
         tenant_key: str | None = None,
     ) -> dict[str, Any]:
-        """Create a task bound to active product. Sprint 002f: delegates to TaskService."""
+        """Create a task bound to active product. Phase B: task_type replaces category."""
         return await self._task_service.create_task_for_mcp(
             title=title,
             description=description,
             priority=priority,
-            category=category,
+            task_type=task_type,
             assigned_to=assigned_to,
             tenant_key=tenant_key,
             db_manager=self.db_manager,
             websocket_manager=self._websocket_manager,
+        )
+
+    async def update_task(
+        self,
+        task_id: str,
+        tenant_key: str | None = None,
+        title: str | None = None,
+        description: str | None = None,
+        status: str | None = None,
+        priority: str | None = None,
+        task_type: str | None = None,
+        due_date: Any = None,
+        project_id: str | None = None,
+        estimated_effort: float | None = None,
+        actual_effort: float | None = None,
+    ) -> dict[str, Any]:
+        """Update one or more task fields. Phase C; TaskService-routed."""
+        return await self._task_service.update_task_for_mcp(
+            task_id=task_id,
+            tenant_key=tenant_key,
+            title=title,
+            description=description,
+            status=status,
+            priority=priority,
+            task_type=task_type,
+            due_date=due_date,
+            project_id=project_id,
+            estimated_effort=estimated_effort,
+            actual_effort=actual_effort,
+        )
+
+    async def complete_task(
+        self,
+        task_id: str,
+        tenant_key: str | None = None,
+        completion_notes: str | None = None,
+    ) -> dict[str, Any]:
+        """Mark a task completed. Phase C; TaskService-routed."""
+        return await self._task_service.complete_task_for_mcp(
+            task_id=task_id,
+            tenant_key=tenant_key,
+            completion_notes=completion_notes,
+        )
+
+    async def list_tasks(
+        self,
+        tenant_key: str | None = None,
+        mode: str = "summary",
+        status: str | None = None,
+        priority: str | None = None,
+        task_type: str | None = None,
+        due_before: Any = None,
+        summary_only: bool | None = None,
+        memory_limit: int | None = None,
+    ) -> dict[str, Any]:
+        """List tasks for the current tenant. Phase D; summary/full modes."""
+        return await self._task_service.list_tasks_for_mcp(
+            tenant_key=tenant_key,
+            mode=mode,
+            status=status,
+            priority=priority,
+            task_type=task_type,
+            due_before=due_before,
+            summary_only=summary_only,
+            memory_limit=memory_limit,
         )
 
     # Orchestration Tools
@@ -725,6 +846,8 @@ class ToolAccessor:
             author_job_id: Job ID of agent writing entry (optional)
             git_commits: Agent-supplied git commits (from local git log)
             tags: Tags for categorization (e.g. 'action_required:description')
+
+        DEPRECATED: do not use `action_required:` tag prefixes or write `action_required` 360 entries for new work. Create a follow-up task via `mcp__giljo_mcp__create_task` (or a project via `mcp__giljo_mcp__create_project` for multi-step work) and cite the returned ID in `decisions_made` at closeout.
 
         Returns:
             Success/error response with sequence number

@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 Integration test fixtures for Handover 0316
@@ -11,6 +11,7 @@ from uuid import uuid4
 
 import pytest
 import pytest_asyncio
+from mcp.shared.memory import create_connected_server_and_client_session
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.models import User
@@ -54,3 +55,33 @@ def set_tenant_context(test_user: User):
     """Ensure TenantManager is set to the primary test user's tenant."""
     TenantManager.set_current_tenant(test_user.tenant_key)
     return test_user.tenant_key
+
+
+# In-process MCP transport (avoids TCP port + auth middleware) -- the SDK's
+# create_connected_server_and_client_session wires the FastMCP instance to a
+# ClientSession via in-memory streams. Fixture yields an async context manager
+# (not the session directly) so anyio task-group setup/teardown stays inside
+# one coroutine task, sidestepping pytest-asyncio's "exit cancel scope in a
+# different task" finalization bug.
+@pytest_asyncio.fixture
+async def mcp_client(db_manager):
+    """Yield an async context manager that produces an initialized MCP ClientSession."""
+    from api.app_state import state
+    from api.endpoints.mcp_sdk_server import mcp
+    from giljo_mcp.tools.tool_accessor import ToolAccessor
+
+    prior_tool_accessor = state.tool_accessor
+    prior_tenant_manager = state.tenant_manager
+    prior_db_manager = state.db_manager
+
+    if state.tenant_manager is None:
+        state.tenant_manager = TenantManager()
+    state.db_manager = db_manager
+    state.tool_accessor = ToolAccessor(db_manager=db_manager, tenant_manager=state.tenant_manager)
+
+    try:
+        yield create_connected_server_and_client_session(mcp)
+    finally:
+        state.tool_accessor = prior_tool_accessor
+        state.tenant_manager = prior_tenant_manager
+        state.db_manager = prior_db_manager

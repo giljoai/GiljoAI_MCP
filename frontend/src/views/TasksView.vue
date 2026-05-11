@@ -5,7 +5,7 @@
       <v-col>
         <h1 class="text-h4">Tasks</h1>
         <p class="text-body-2 text-muted-a11y mt-1">
-          Use MCP tool /gil_add to have the AI coding agent add ideas and thoughts to Task dashboard.
+          Use MCP tool /gil_add to have the AI coding agent add ideas and thoughts to the Task dashboard, or /gil_get to read tasks back (filter by status, task_type, or priority).
           <v-tooltip location="bottom start" max-width="600">
             <template #activator="{ props }">
               <v-icon v-bind="props" size="16" class="help-icon">mdi-help-circle-outline</v-icon>
@@ -19,10 +19,11 @@
               <div class="ml-2 text-caption">pending · in_progress · completed · blocked · cancelled · converted</div>
               <div class="mt-1"><span class="font-weight-medium">priority (optional):</span></div>
               <div class="ml-2 text-caption">low · medium · high · critical</div>
-              <div class="mt-1"><span class="font-weight-medium">category (optional):</span></div>
-              <div class="ml-2 text-caption">general · feature · bug · improvement · docs · testing</div>
-              <div class="mt-2"><span class="font-weight-medium">Example:</span></div>
+              <div class="mt-1"><span class="font-weight-medium">task_type (optional):</span></div>
+              <div class="ml-2 text-caption">Taxonomy abbreviation (e.g. BE, FE, INF)</div>
+              <div class="mt-2"><span class="font-weight-medium">Examples:</span></div>
               <div class="ml-2 text-caption">/gil_add add task ... description ...</div>
+              <div class="ml-2 text-caption">/gil_get list tasks status=pending task_type=BE</div>
             </div>
           </v-tooltip>
         </p>
@@ -46,7 +47,7 @@
       />
       <v-select
         v-model="statusFilter"
-        :items="statusOptions"
+        :items="statusSelectOptions"
         placeholder="Status"
         variant="solo"
         density="compact"
@@ -59,6 +60,18 @@
         v-model="priorityFilter"
         :items="priorityOptions"
         placeholder="Priority"
+        variant="solo"
+        density="compact"
+        clearable
+        hide-details
+        flat
+        class="filter-select"
+      />
+      <v-select
+        v-if="taxonomyTypes.length > 0"
+        v-model="taskTypeFilter"
+        :items="typeSelectOptions"
+        placeholder="Type"
         variant="solo"
         density="compact"
         clearable
@@ -97,12 +110,12 @@
             </div>
           </template>
 
-          <!-- Status Column - Inline Dropdown (0870h: tinted chips) -->
+          <!-- Status Column - Inline Dropdown rendering TaskStatusBadge -->
           <template v-slot:item.status="{ item }">
             <div class="d-flex justify-center">
               <v-select
                 :model-value="item.status"
-                :items="statusOptions"
+                :items="statusSelectOptions"
                 variant="plain"
                 density="compact"
                 hide-details
@@ -110,13 +123,7 @@
                 @update:model-value="(newStatus) => updateTaskField(item, 'status', newStatus)"
               >
                 <template v-slot:selection="{ item: statusItem }">
-                  <span
-                    class="tinted-chip"
-                    :class="'tinted-status-' + statusItem.value"
-                  >
-                    <v-icon size="12">{{ getStatusIcon(statusItem.value) }}</v-icon>
-                    {{ statusItem.value }}
-                  </span>
+                  <TaskStatusBadge :status="statusItem.value" />
                 </template>
                 <template v-slot:item="{ props, item: statusItem }">
                   <v-list-item v-bind="props">
@@ -186,22 +193,22 @@
             <span class="date-cell">{{ formatDateWithTime(item.created_at) }}</span>
           </template>
 
-          <!-- Category Column - Inline Dropdown -->
-          <template v-slot:item.category="{ item }">
+          <!-- Type Column - Inline Taxonomy Type dropdown (re-tag a task) -->
+          <template v-slot:item.task_type="{ item }">
             <div class="d-flex justify-center">
               <v-select
-                :model-value="item.category"
-                :items="categoryOptions"
+                :model-value="item.task_type"
+                :items="taskTypeOptions"
                 variant="plain"
                 density="compact"
                 hide-details
                 class="inline-select inline-select-no-arrow"
                 @update:model-value="
-                  (newCategory) => updateTaskField(item, 'category', newCategory)
+                  (newType) => updateTaskField(item, 'task_type', newType)
                 "
               >
-                <template v-slot:selection="{ item: categoryItem }">
-                  <span class="category-pill">{{ categoryItem.value }}</span>
+                <template v-slot:selection="{ item: typeItem }">
+                  <span class="task-type-pill">{{ typeItem.value || '—' }}</span>
                 </template>
               </v-select>
             </div>
@@ -305,7 +312,7 @@
             <EmptyState
               icon="mdi-clipboard-text-outline"
               title="No tasks found"
-              :description="search || statusFilter || priorityFilter || categoryFilter
+              :description="search || statusFilter || priorityFilter || taskTypeFilter
                 ? 'Try adjusting your filters'
                 : 'Create your first task to get started'"
             />
@@ -344,7 +351,7 @@
               <v-col cols="6">
                 <v-select
                   v-model="currentTask.status"
-                  :items="statusOptions"
+                  :items="statusSelectOptions"
                   label="Status"
                   variant="outlined"
                 />
@@ -362,10 +369,11 @@
             <v-row>
               <v-col cols="6">
                 <v-select
-                  v-model="currentTask.category"
-                  :items="categoryOptions"
-                  label="Category"
+                  v-model="currentTask.task_type"
+                  :items="taskTypeOptions"
+                  label="Type"
                   variant="outlined"
+                  clearable
                 />
               </v-col>
             </v-row>
@@ -471,6 +479,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useTaskStore } from '@/stores/tasks'
 import { useProductStore } from '@/stores/products'
 import EmptyState from '@/components/common/EmptyState.vue'
+import TaskStatusBadge from '@/components/TaskStatusBadge.vue'
 import { format, isAfter } from 'date-fns'
 import api from '@/services/api'
 import BaseDialog from '@/components/common/BaseDialog.vue'
@@ -500,20 +509,18 @@ const errorMessage = ref('')
 
 // Table headers
 const headers = [
-  { title: 'Status', key: 'status', width: '120', align: 'center' },
+  { title: 'Status', key: 'status', width: '130', align: 'center' },
   { title: 'Priority', key: 'priority', width: '95' },
   { title: 'Task', key: 'title', maxWidth: '400' },
   { title: 'Created', key: 'created_at', width: '150' },
-  { title: 'Category', key: 'category', width: '100', align: 'center' },
+  { title: 'Type', key: 'task_type', width: '90', align: 'center' },
   { title: 'Due Date', key: 'due_date', width: '110' },
   { title: 'Convert', key: 'convert', width: '60', align: 'center', sortable: false },
   { title: 'Actions', key: 'actions', sortable: false, width: '80' },
 ]
 
 // Filter options
-const statusOptions = ['pending', 'in_progress', 'completed', 'cancelled']
 const priorityOptions = ['low', 'medium', 'high', 'critical']
-const categoryOptions = ['general', 'feature', 'bug', 'improvement', 'docs', 'testing']
 
 // Computed
 const loading = computed(() => taskStore.loading)
@@ -528,9 +535,32 @@ const userFilteredTasks = computed(() => {
   return tasks.value.filter((task) => task.product_id === productId)
 })
 
-// Filters composable — receives product-scoped task list
-const { search, statusFilter, priorityFilter, categoryFilter, filteredTasks, clearFilters } =
-  useTaskFilters(userFilteredTasks)
+// Taxonomy types (loaded once on mount; fed into useTaskFilters for the
+// Type dropdown and reused by the inline Type column / create dialog).
+const taxonomyTypes = ref([])
+
+// Filters composable — receives product-scoped task list + taxonomy types
+const {
+  search,
+  statusFilter,
+  priorityFilter,
+  taskTypeFilter,
+  statusSelectOptions,
+  typeSelectOptions,
+  filteredTasks,
+  clearFilters,
+} = useTaskFilters(userFilteredTasks, { taxonomyTypes })
+
+// Items for the inline Type column dropdown — abbreviation + a "no type"
+// option that re-tags the task to NULL via update_task(task_type=null).
+const taskTypeOptions = computed(() => {
+  const items = taxonomyTypes.value.map((t) => ({
+    title: t.abbreviation,
+    value: t.abbreviation,
+  }))
+  items.unshift({ title: '—', value: null })
+  return items
+})
 
 // Hierarchy feature disabled — return filtered tasks directly
 const hierarchicalTasks = computed(() => filteredTasks.value)
@@ -546,10 +576,21 @@ const {
   cancelTask,
   saveTask: _saveTask,
   handleNewTask: _handleNewTask,
-  completeTask,
+  completeTask: _completeTask,
   updateTaskField: _updateTaskField,
   updateTaskDueDate: _updateTaskDueDate,
 } = useTaskCrud()
+
+// Wrap completeTask: list-row callers pass the task object; the composable
+// expects (taskId, notes?). Keep the row-level UX unchanged.
+async function completeTask(task) {
+  try {
+    await _completeTask(task.id)
+  } catch {
+    errorMessage.value = 'Failed to complete task. Please try again.'
+    showErrorDialog.value = true
+  }
+}
 
 // Wrap handleNewTask to show the no-product dialog when needed
 function handleNewTask() {
@@ -586,11 +627,15 @@ async function saveTask() {
 
 // Methods
 function getStatusColor(status) {
+  // Hex literals match the Luminous Pastels palette in design-tokens.scss /
+  // TaskStatusBadge.vue — Vuetify's `color` prop on <v-icon> takes a hex.
   const colors = {
-    pending: 'warning',
-    in_progress: '#ffffff', // $color-surface — Vuetify color prop requires hex
-    completed: 'success',
-    cancelled: '#c6298c', // $color-status-failed — Vuetify color prop requires hex
+    pending: 'grey',
+    in_progress: '#6db3e4',
+    completed: '#5ec48e',
+    blocked: '#e07872',
+    cancelled: '#8895a8',
+    converted: '#ac80cc',
   }
   return colors[status] || 'grey'
 }
@@ -600,7 +645,9 @@ function getStatusIcon(status) {
     pending: 'mdi-clock-outline',
     in_progress: 'mdi-progress-clock',
     completed: 'mdi-check-circle',
+    blocked: 'mdi-block-helper',
     cancelled: 'mdi-cancel',
+    converted: 'mdi-folder-arrow-right',
   }
   return icons[status] || 'mdi-help'
 }
@@ -676,6 +723,16 @@ async function fetchTasks() {
   await taskStore.fetchTasks(params)
 }
 
+async function fetchTaxonomyTypes() {
+  try {
+    const response = await api.taxonomyTypes.list()
+    taxonomyTypes.value = response.data || []
+  } catch (error) {
+    console.error('Failed to load taxonomy types:', error)
+    taxonomyTypes.value = []
+  }
+}
+
 onMounted(() => {
   if (showCreateDialog.value) {
     showTaskDialog.value = true
@@ -684,7 +741,7 @@ onMounted(() => {
 
 onMounted(async () => {
   try {
-    await fetchTasks()
+    await Promise.all([fetchTasks(), fetchTaxonomyTypes()])
   } catch (error) {
     console.error('Failed to initialize TasksView:', error)
   }
@@ -788,38 +845,7 @@ onMounted(async () => {
   border-bottom: none !important;
 }
 
-/* 0870h: tinted status chips */
-.tinted-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 10px;
-  border-radius: $border-radius-pill;
-  font-size: 0.65rem;
-  font-weight: 600;
-  min-width: 80px;
-  justify-content: center;
-}
-
-.tinted-status-pending {
-  background: rgba($color-brand-yellow, 0.12);
-  color: $color-brand-yellow;
-}
-
-.tinted-status-in_progress {
-  background: rgba($color-agent-implementor, 0.12);
-  color: $color-agent-implementor;
-}
-
-.tinted-status-completed {
-  background: rgba($color-status-success, 0.15);
-  color: $color-status-success;
-}
-
-.tinted-status-cancelled {
-  background: rgba($color-status-failed, 0.12);
-  color: $color-status-failed;
-}
+/* Status badges: see <TaskStatusBadge> for tinted-pill markup. */
 
 /* 0870h: tinted priority pills */
 .priority-pill {
@@ -878,8 +904,8 @@ onMounted(async () => {
   overflow: hidden;
 }
 
-/* 0870h: category pill */
-.category-pill {
+/* Type pill (taxonomy abbreviation in the inline Type column) */
+.task-type-pill {
   display: inline-block;
   padding: 2px 8px;
   border-radius: $border-radius-pill;
@@ -890,7 +916,7 @@ onMounted(async () => {
   cursor: pointer;
 }
 
-.category-pill:hover {
+.task-type-pill:hover {
   background: rgba(255, 255, 255, 0.08);
 }
 

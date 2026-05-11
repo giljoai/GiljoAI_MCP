@@ -105,4 +105,117 @@ describe('usePlayButton', () => {
 
     expect(mockShowToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
   })
+
+  // --- Layer 4: error/success surfacing for Copy Implementation Prompt ---
+
+  it('handlePlay surfaces actionable toast when implementation prompt returns 404', async () => {
+    project = { project_id: 'proj-404', execution_mode: 'claude_code_cli' }
+    api.projects.launchImplementation.mockResolvedValue({ data: { success: true } })
+    const err = new Error('Request failed')
+    err.response = { status: 404, data: { detail: 'Project not staged' } }
+    api.prompts.implementation.mockRejectedValue(err)
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const { handlePlay } = usePlayButton(project, getProjectState, clipboardCopy)
+    const agent = { job_id: 'job-orch', agent_display_name: 'orchestrator', status: 'waiting' }
+
+    await handlePlay(agent)
+
+    expect(mockShowToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'error',
+        message: expect.stringMatching(/404/),
+      })
+    )
+    const call = mockShowToast.mock.calls.find(([opts]) => opts?.type === 'error')
+    expect(call[0].message.toLowerCase()).toMatch(/staging|refresh|launched/)
+    expect(warnSpy).toHaveBeenCalled()
+    warnSpy.mockRestore()
+  })
+
+  it('handlePlay surfaces toast with status code when implementation prompt returns 500', async () => {
+    project = { project_id: 'proj-500', execution_mode: 'claude_code_cli' }
+    api.projects.launchImplementation.mockResolvedValue({ data: { success: true } })
+    const err = new Error('Server error')
+    err.response = { status: 500, data: { detail: 'boom' } }
+    api.prompts.implementation.mockRejectedValue(err)
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const { handlePlay } = usePlayButton(project, getProjectState, clipboardCopy)
+    const agent = { job_id: 'job-orch', agent_display_name: 'orchestrator', status: 'waiting' }
+
+    await handlePlay(agent)
+
+    expect(mockShowToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'error',
+        message: expect.stringMatching(/500/),
+      })
+    )
+    expect(warnSpy).toHaveBeenCalled()
+    warnSpy.mockRestore()
+  })
+
+  it('handlePlay shows success toast on successful implementation prompt copy', async () => {
+    project = { project_id: 'proj-ok', execution_mode: 'claude_code_cli' }
+    api.projects.launchImplementation.mockResolvedValue({ data: { success: true } })
+    api.prompts.implementation.mockResolvedValue({
+      data: { prompt: 'impl prompt', agent_count: 2 },
+    })
+
+    const { handlePlay } = usePlayButton(project, getProjectState, clipboardCopy)
+    const agent = { job_id: 'job-orch', agent_display_name: 'orchestrator', status: 'waiting' }
+
+    await handlePlay(agent)
+
+    expect(clipboardCopy).toHaveBeenCalledWith('impl prompt')
+    expect(mockShowToast).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'success' })
+    )
+  })
+
+  it('handlePlay shows distinct clipboard-error toast when clipboard write fails', async () => {
+    project = { project_id: 'proj-clip', execution_mode: 'claude_code_cli' }
+    api.projects.launchImplementation.mockResolvedValue({ data: { success: true } })
+    api.prompts.implementation.mockResolvedValue({
+      data: { prompt: 'impl prompt', agent_count: 2 },
+    })
+    clipboardCopy = vi.fn(() => Promise.resolve(false))
+
+    const { handlePlay } = usePlayButton(project, getProjectState, clipboardCopy)
+    const agent = { job_id: 'job-orch', agent_display_name: 'orchestrator', status: 'waiting' }
+
+    await handlePlay(agent)
+
+    const errorCalls = mockShowToast.mock.calls.filter(([opts]) => opts?.type === 'error')
+    expect(errorCalls.length).toBeGreaterThan(0)
+    const clipboardCall = errorCalls.find(([opts]) =>
+      /clipboard|browser blocked/i.test(opts.message || '')
+    )
+    expect(clipboardCall).toBeDefined()
+  })
+
+  it('handlePlay logs payload to console.warn on non-2xx implementation fetch', async () => {
+    project = { project_id: 'proj-warn', execution_mode: 'claude_code_cli' }
+    api.projects.launchImplementation.mockResolvedValue({ data: { success: true } })
+    const err = new Error('boom')
+    err.response = { status: 422, data: { detail: 'validation', extra: 'payload' } }
+    api.prompts.implementation.mockRejectedValue(err)
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const { handlePlay } = usePlayButton(project, getProjectState, clipboardCopy)
+    const agent = { job_id: 'job-orch', agent_display_name: 'orchestrator', status: 'waiting' }
+
+    await handlePlay(agent)
+
+    expect(warnSpy).toHaveBeenCalled()
+    const calledWithPayload = warnSpy.mock.calls.some((args) =>
+      args.some(
+        (a) =>
+          a && typeof a === 'object' && a.payload && a.payload.detail === 'validation'
+      )
+    )
+    expect(calledWithPayload).toBe(true)
+    warnSpy.mockRestore()
+  })
 })

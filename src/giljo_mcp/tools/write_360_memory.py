@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 Write 360 Memory Tool (Handover 0412, updated 0390c, 0431)
@@ -56,54 +56,11 @@ SKIP_STATUSES = {"decommissioned", "closed"}
 
 # BE-5028 Fix B: Per-entry-type authorization matrix.
 # Workers may only write background/discovery-style entries when explicitly
-# assigned. Closeout-shaped entries (project_completion, session_handover,
-# action_required) are ORCHESTRATOR-ONLY because they document team-wide state
-# that only the orchestrator can attest to.
+# assigned. Closeout-shaped entries (project_completion, session_handover)
+# are ORCHESTRATOR-ONLY because they document team-wide state that only the
+# orchestrator can attest to.
 WORKER_ALLOWED_ENTRY_TYPES = frozenset({"baseline", "decision", "architecture", "discovery"})
-ORCHESTRATOR_ONLY_ENTRY_TYPES = frozenset({"project_completion", "session_handover", "action_required"})
-
-# INF-WriteShape: the production write path validates via
-# product_memory_service.validate_memory_entry_write() (strict caps + tag
-# vocabulary). The MAX_TAGS / MAX_TAG_LENGTH / _validate_tags() symbols below
-# are retained ONLY as a legacy helper surface that pre-existing tests still
-# import. Production code does NOT call _validate_tags() any more.
-MAX_TAGS = 10
-MAX_TAG_LENGTH = 200
-
-
-def _validate_tags(tags: list[str] | None) -> list[str]:
-    """Legacy helper: kept for test backward compatibility.
-
-    Production write path now uses
-    ``product_memory_service.validate_memory_entry_write`` (single validated
-    write boundary, strict caps + tag vocabulary). This helper preserves the
-    pre-INF-WriteShape behavior (lenient cleanup) so that existing tests
-    pinning that surface continue to pass.
-    """
-    from giljo_mcp.utils.tag_utils import strip_tag_punctuation
-
-    if tags is None:
-        return []
-
-    if not isinstance(tags, list):
-        raise ValidationError("tags must be a list")
-
-    if len(tags) > MAX_TAGS:
-        raise ValidationError(f"Too many tags: maximum {MAX_TAGS} tags allowed, got {len(tags)}")
-
-    cleaned: list[str] = []
-    for tag in tags:
-        if not isinstance(tag, str):
-            raise ValidationError("All tags must be strings")
-        if not tag.strip():
-            raise ValidationError("Tags must not be empty or whitespace-only")
-        if len(tag) > MAX_TAG_LENGTH:
-            raise ValidationError(
-                f"Tag too long: maximum {MAX_TAG_LENGTH} characters per tag, got {len(tag)} characters"
-            )
-        cleaned.append(strip_tag_punctuation(tag))
-
-    return [t for t in cleaned if t]
+ORCHESTRATOR_ONLY_ENTRY_TYPES = frozenset({"project_completion", "session_handover"})
 
 
 async def _resolve_project_and_product(
@@ -426,7 +383,7 @@ async def _check_closeout_readiness(
             "blockers": blockers,
             "summary": summary,
             "message": f"Closeout blocked: {len(blockers)} unresolved blocker(s) found",
-            "action_required": "Resolve all blockers before closeout. Use set_agent_status(status='blocked') if unable to resolve.",
+            "next_steps": "Resolve all blockers before closeout. Use set_agent_status(status='blocked') if unable to resolve.",
         }
 
     return True, {
@@ -468,16 +425,18 @@ async def write_360_memory(
         entry_type: Type of entry. Workers may write ``baseline``, ``decision``,
             ``architecture``, ``discovery``. Orchestrator-only types (rejected
             with ``ORCHESTRATOR_ONLY_ENTRY_TYPE`` for workers): ``project_completion``,
-            ``session_handover``, ``action_required``. ``handover_closeout`` is
-            preserved for back-compat.
+            ``session_handover``. ``handover_closeout`` is preserved for back-compat.
+            ``action_required`` is no longer accepted (INF-5025) -- use
+            ``mcp__giljo_mcp__create_task`` / ``create_project`` for deferred follow-ups.
         author_job_id: Job ID of agent writing entry (optional)
         git_commits: Agent-supplied commits from local git log. When provided,
             skips the GitHub API fetch entirely (passive server model).
-        tags: <= 8 tags, each <= 30 chars matching ``^[a-z0-9-]+$``,
-            OR ``action_required:<title>`` for items that must persist
-            beyond the depth window.
+        tags: <= 8 tags, each <= 30 chars matching ``^[a-z0-9-]+$``.
+            DEPRECATED: do not use ``action_required:<title>`` tag prefixes for new work.
         db_manager: Database manager (dependency injection)
         session: Optional existing session
+
+    DEPRECATED: do not use `action_required:` tag prefixes or write `action_required` 360 entries for new work. Create a follow-up task via `mcp__giljo_mcp__create_task` (or a project via `mcp__giljo_mcp__create_project` for multi-step work) and cite the returned ID in `decisions_made` at closeout.
 
     Returns:
         Success/error dictionary with sequence number and entry_id
@@ -502,7 +461,7 @@ async def write_360_memory(
     # INF-WriteShape: single validated write boundary -- shared with
     # close_project_and_update_memory. Caps:
     #   summary <= 500, key_outcomes <= 5x200, decisions_made <= 5x250,
-    #   deliverables <= 10x150, tags <= 8x30 (^[a-z0-9-]+$ or action_required:<title>)
+    #   deliverables <= 10x150, tags <= 8x30 (controlled vocabulary)
     # Raises MemoryEntryWriteValidationError (structured rejection) on failure;
     # the caller-level except clause filters and re-raises so MCP surfaces it.
     validated = validate_memory_entry_write(
@@ -533,7 +492,6 @@ async def write_360_memory(
             "project_completion",
             "handover_closeout",
             "session_handover",
-            "action_required",
             "baseline",
             "decision",
             "architecture",

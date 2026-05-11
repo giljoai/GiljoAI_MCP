@@ -309,7 +309,7 @@ vi.mock('@/services/api', () => {
       restoreProduct: vi.fn(() => Promise.resolve({ data: { success: true } })),
       getMemoryEntries: vi.fn(() => Promise.resolve({ data: [] })),
     },
-    projectTypes: {
+    taxonomyTypes: {
       list: vi.fn(() => Promise.resolve({ data: [] })),
       create: vi.fn(() => Promise.resolve({ data: {} })),
       update: vi.fn(() => Promise.resolve({ data: {} })),
@@ -411,6 +411,10 @@ vi.mock('@/services/api', () => {
     stats: {
       getSystem: vi.fn(() => Promise.resolve({ data: {} })),
       getCallCounts: vi.fn(() => Promise.resolve({ data: {} })),
+    },
+    approvals: {
+      listPending: vi.fn(() => Promise.resolve({ data: { items: [], count: 0 } })),
+      decide: vi.fn(() => Promise.resolve({ data: { approval_id: 'mock-id', status: 'decided', decided_option_id: 'opt', job_id: 'job', project_id: 'proj' } })),
     },
   }
   return {

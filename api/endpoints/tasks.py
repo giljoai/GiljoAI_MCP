@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 Task Management API endpoints for Phase 4: Task-Centric Multi-User Dashboard.
@@ -76,11 +76,13 @@ def task_to_response(task: Task) -> TaskResponse:
     Returns:
         TaskResponse schema (Handover 0076: removed assignment fields)
     """
+    task_type_abbr = task.task_type.abbreviation if task.task_type else None
     return TaskResponse(
         id=task.id,
         title=task.title,
         description=task.description,
-        category=task.category,
+        task_type=task_type_abbr,
+        task_type_id=task.task_type_id,
         status=task.status,
         priority=task.priority,
         product_id=task.product_id,
@@ -199,6 +201,14 @@ async def create_task(
             detail="No active product set. Please activate a product before creating tasks.",
         )
 
+    task_type_id: str | None = None
+    if task_create.task_type:
+        from giljo_mcp.services.taxonomy_service import TaxonomyService
+
+        taxonomy = TaxonomyService(db_manager=None, session=db)
+        resolved = await taxonomy.validate(task_create.task_type, current_user.tenant_key)
+        task_type_id = resolved.id
+
     task = Task(
         tenant_key=current_user.tenant_key,
         product_id=task_create.product_id,
@@ -206,7 +216,7 @@ async def create_task(
         parent_task_id=task_create.parent_task_id,
         title=task_create.title,
         description=task_create.description,
-        category=task_create.category,
+        task_type_id=task_type_id,
         status=task_create.status or "pending",
         priority=task_create.priority or "medium",
         estimated_effort=task_create.estimated_effort,
@@ -309,9 +319,27 @@ async def update_task(
         logger.warning("User %s not authorized to update task %s", sanitize(current_user.username), sanitize(task_id))
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to update this task")
 
-    # Use TaskService.update_task() to perform the update
+    # Use TaskService.update_task() to perform the update.
+    # Translate task_type abbreviation -> task_type_id at this boundary so the
+    # service-layer field allowlist stays focused on FK ids only.
     update_data = task_update.dict(exclude_unset=True)
+    completion_notes = update_data.pop("completion_notes", None)
+    if "task_type" in update_data:
+        from api.app_state import state as _app_state
+        from giljo_mcp.auth.dependencies import get_db_session  # noqa: F401  (typing only)
+        from giljo_mcp.services.taxonomy_service import TaxonomyService
+
+        taxonomy = TaxonomyService(db_manager=_app_state.db_manager)
+        abbr = update_data.pop("task_type")
+        if abbr:
+            resolved = await taxonomy.validate(abbr, current_user.tenant_key)
+            update_data["task_type_id"] = resolved.id
+        else:
+            update_data["task_type_id"] = None
     await task_service.update_task(task_id, **update_data)
+
+    if completion_notes and update_data.get("status") == "completed":
+        await task_service.append_completion_notes(task_id, completion_notes)
 
     logger.info("Updated task %s by user %s", sanitize(task_id), sanitize(current_user.username))
 

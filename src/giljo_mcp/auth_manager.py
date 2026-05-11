@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 Authentication Middleware for GiljoAI MCP
@@ -243,10 +243,10 @@ class AuthManager:
 
         # Validate JWT token if found
         if token:
-            logger.info(f"[Network Auth] Found JWT token (length: {len(token)})")
+            logger.debug(f"[Network Auth] Found JWT token (length: {len(token)})")
             # Check if it's a JWT token
             token_info = self.validate_jwt_token(token)
-            logger.info(f"[Network Auth] JWT validation result: {bool(token_info)}")
+            logger.debug(f"[Network Auth] JWT validation result: {bool(token_info)}")
             if token_info:
                 jwt_result = {
                     "authenticated": True,

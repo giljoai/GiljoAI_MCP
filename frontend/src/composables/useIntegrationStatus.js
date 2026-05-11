@@ -1,7 +1,7 @@
 /**
  * Integration Status Composable (Handover 0427)
  *
- * Fetches and manages GitHub and Serena MCP integration status.
+ * Fetches and manages Git and Serena MCP integration status.
  * Used to display integration status icons in the UI.
  */
 

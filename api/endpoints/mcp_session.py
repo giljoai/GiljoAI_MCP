@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 MCP Session Management for HTTP Transport
@@ -97,8 +97,8 @@ class MCPSessionManager:
         """Log IP address for API key usage tracking (passive, non-blocking).
 
         Uses PostgreSQL upsert (INSERT ... ON CONFLICT) to either create a new
-        entry or increment the request_count and update last_seen_at for an
-        existing api_key + ip_address pair.
+        entry or increment the request_count for an existing api_key + ip_address
+        pair.
 
         This method is designed to never raise exceptions. All errors are
         caught and logged as warnings so that IP logging never blocks or
@@ -125,7 +125,6 @@ class MCPSessionManager:
                 .on_conflict_do_update(
                     constraint="uq_api_key_ip",
                     set_={
-                        "last_seen_at": func.now(),
                         "request_count": ApiKeyIpLog.request_count + 1,
                     },
                 )

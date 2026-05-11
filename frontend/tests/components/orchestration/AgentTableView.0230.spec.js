@@ -220,7 +220,7 @@ describe('AgentTableView - Copy Prompt (Handover 0230)', () => {
       // Check error toast was called
       expect(mockShowToast).toHaveBeenCalledWith(
         expect.objectContaining({
-          message: expect.stringContaining('Failed to copy prompt'),
+          message: expect.stringContaining('Copy failed'),
           type: 'error'
         })
       )

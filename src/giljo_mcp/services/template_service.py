@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 TemplateService - Dedicated service for agent template management
@@ -32,6 +32,7 @@ from datetime import UTC
 from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql import func
 
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.exceptions import (
@@ -645,9 +646,8 @@ class TemplateService:
 
         Deletes in order:
         1. Sets AgentJob.template_id to NULL for historical jobs
-        2. Deletes TemplateUsageStats records
-        3. Deletes TemplateArchive records (version history)
-        4. Deletes the template itself
+        2. Deletes TemplateArchive records (version history)
+        3. Deletes the template itself
 
         Args:
             session: Database session
@@ -670,13 +670,10 @@ class TemplateService:
         # 1. Set AgentJob.template_id to NULL for historical jobs
         await self._repo.nullify_job_template_refs(session, template_id)
 
-        # 2. Delete related TemplateUsageStats records
-        await self._repo.delete_usage_stats(session, template_id)
-
-        # 3. Delete related TemplateArchive records (version history)
+        # 2. Delete related TemplateArchive records (version history)
         await self._repo.delete_archives(session, template_id)
 
-        # 4. Delete the template itself
+        # 3. Delete the template itself
         await self._repo.delete_template(session, template)
 
         await self._repo.commit(session)
@@ -779,7 +776,7 @@ class TemplateService:
             archive_reason=archive_reason,
             archive_type=archive_type,
             archived_by=archived_by,
-            usage_count_at_archive=template.usage_count,
+            usage_count_at_archive=0,
             avg_generation_ms_at_archive=template.avg_generation_ms,
         )
         await self._repo.add_archive(session, archive)
@@ -790,6 +787,7 @@ class TemplateService:
         session: AsyncSession,
         template: AgentTemplate,
         archive: TemplateArchive,
+        restored_by: str | None = None,
     ) -> None:
         """
         Restore a template's content from an archive entry.
@@ -798,15 +796,17 @@ class TemplateService:
             session: Database session
             template: AgentTemplate ORM object to restore into
             archive: TemplateArchive ORM object to restore from
+            restored_by: Username performing the restore (audit trail)
 
         Example:
-            >>> await service.restore_template_from_archive(session, template, archive)
+            >>> await service.restore_template_from_archive(session, template, archive, "admin")
         """
-        # ORIGINAL QUERY: history.py line 135-139 (restore_template endpoint)
         template.variables = archive.variables
         template.behavioral_rules = validate_behavioral_rules(archive.behavioral_rules)
         template.success_criteria = validate_success_criteria(archive.success_criteria)
         template.version = archive.version
+        archive.restored_at = func.now()
+        archive.restored_by = restored_by
 
     async def reset_template_to_defaults(
         self,

@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 Database models package for GiljoAI MCP.
@@ -14,7 +14,7 @@ Database models package for GiljoAI MCP.
 Use specific module imports for clarity and maintainability:
 
     from giljo_mcp.models.auth import User, APIKey, ApiKeyIpLog, MCPSession
-    from giljo_mcp.models.projects import Project, ProjectType
+    from giljo_mcp.models.projects import Project, TaxonomyType
     from giljo_mcp.models.agent_identity import AgentJob, AgentExecution
     from giljo_mcp.models.products import Product, VisionDocument
     from giljo_mcp.models.tasks import Task, Message
@@ -38,12 +38,12 @@ src/giljo_mcp/models/
 ├── base.py            → Base, generate_uuid, generate_project_alias
 ├── auth.py            → User, APIKey, MCPSession
 ├── products.py        → Product, VisionDocument, Vision
-├── projects.py        → Project, ProjectType
+├── projects.py        → Project, TaxonomyType
 ├── agent_identity.py  → AgentJob, AgentExecution (Handover 0366a)
-├── templates.py       → AgentTemplate, TemplateArchive, TemplateUsageStats
+├── templates.py       → AgentTemplate, TemplateArchive
 ├── tasks.py           → Task, Message
 ├── context.py         → MCPContextIndex
-└── config.py          → Configuration, GitCommit, SetupState, DownloadToken, ApiMetrics
+└── config.py          → Configuration, SetupState, DownloadToken, ApiMetrics
 
 Migration Strategy:
 -------------------
@@ -89,7 +89,6 @@ from .config import (
     ApiMetrics,
     Configuration,
     DownloadToken,
-    GitCommit,
     SetupState,
 )
 
@@ -101,6 +100,7 @@ from .context import (
 # OAuth models
 from .oauth import (
     OAuthAuthorizationCode,
+    OAuthRefreshToken,
 )
 
 # Organization models (Handover 0424a)
@@ -132,7 +132,7 @@ from .products import (
 # Project models
 from .projects import (
     Project,
-    ProjectType,
+    TaxonomyType,
 )
 
 # Settings models
@@ -152,12 +152,19 @@ from .tasks import (
 from .templates import (
     AgentTemplate,
     TemplateArchive,
-    TemplateUsageStats,
+)
+
+# User approval primitive (BE-5029 Phase A)
+from .user_approval import (
+    VALID_USER_APPROVAL_STATUSES,
+    UserApproval,
 )
 
 
 # Export all for backward compatibility
 __all__ = [
+    "VALID_USER_APPROVAL_STATUSES",
+    # Auth
     "APIKey",
     "AgentExecution",
     "AgentJob",
@@ -170,7 +177,6 @@ __all__ = [
     # Config
     "Configuration",
     "DownloadToken",
-    "GitCommit",
     # Context
     "MCPContextIndex",
     "MCPSession",
@@ -180,6 +186,7 @@ __all__ = [
     "MessageRecipient",
     # OAuth
     "OAuthAuthorizationCode",
+    "OAuthRefreshToken",
     "OrgMembership",
     # Organizations (Handover 0424a)
     "Organization",
@@ -194,17 +201,16 @@ __all__ = [
     "ProductTestConfig",
     # Projects
     "Project",
-    "ProjectType",
     # Settings
     "Settings",
     "SetupState",
     "SystemSetting",
     # Tasks
     "Task",
+    "TaxonomyType",
     "TemplateArchive",
-    "TemplateUsageStats",
-    # Auth
     "User",
+    "UserApproval",
     "UserFieldPriority",
     "VisionDocument",
     "VisionDocumentSummary",

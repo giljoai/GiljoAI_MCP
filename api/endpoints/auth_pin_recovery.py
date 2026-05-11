@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 Password Reset via Recovery PIN endpoints (Handover 0023).
@@ -35,9 +35,6 @@ from api.middleware.auth_rate_limiter import get_rate_limiter
 from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from giljo_mcp.models import User
 from giljo_mcp.repositories.auth_repository import AuthRepository
-
-
-_auth_repo = AuthRepository()
 
 
 logger = logging.getLogger(__name__)
@@ -100,7 +97,7 @@ async def verify_pin_and_reset_password(
     # (AUTH-EMAIL Phase 4, handover af53e62b). Same login-boundary semantics
     # as AuthService.authenticate_user — no tenant filter because tenant is
     # unknown pre-auth and both columns carry global UNIQUE constraints.
-    user = await _auth_repo.get_user_by_username_or_email(db, request_data.username)
+    user = await AuthRepository().get_user_by_username_or_email(db, request_data.username)
 
     # SECURITY: Generic error message - don't reveal if username exists
     if not user:
@@ -191,7 +188,7 @@ async def verify_pin(request_data: VerifyPinRequest = Body(...), db: AsyncSessio
     if GILJO_MODE != "ce":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
 
-    user = await _auth_repo.get_user_by_username_or_email(db, request_data.username)
+    user = await AuthRepository().get_user_by_username_or_email(db, request_data.username)
 
     if not user or not user.recovery_pin_hash:
         return VerifyPinResponse(valid=False, message="Invalid username or PIN")
@@ -231,7 +228,7 @@ async def check_first_login(
     """
     # Dual-lookup: wire field `username` accepts either username OR email
     # (AUTH-EMAIL Phase 4). Same login-boundary semantics as above.
-    user = await _auth_repo.get_user_by_username_or_email(db, request_data.username)
+    user = await AuthRepository().get_user_by_username_or_email(db, request_data.username)
 
     if not user:
         # Return safe defaults for non-existent users to prevent username enumeration

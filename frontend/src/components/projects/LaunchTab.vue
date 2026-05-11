@@ -60,14 +60,14 @@
                   :class="{ 'icon-disabled': !gitEnabled }"
                   size="28"
                   color="white"
-                  data-testid="github-status-icon"
+                  data-testid="git-status-icon"
                   class="cursor-pointer integration-icon"
-                  aria-label="GitHub integration status"
+                  aria-label="Git integration status"
                   @click="goToIntegrations"
-                >mdi-github</v-icon>
+                >mdi-git</v-icon>
               </template>
-              <span v-if="gitEnabled">GitHub integration enabled.</span>
-              <span v-else>GitHub disabled. Click to enable.</span>
+              <span v-if="gitEnabled">Git integration enabled.</span>
+              <span v-else>Git disabled. Click to enable.</span>
             </v-tooltip>
             <v-tooltip location="bottom" max-width="300">
               <template #activator="{ props: tooltipProps }">

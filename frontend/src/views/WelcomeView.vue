@@ -449,6 +449,20 @@ const taskBoardCard = {
   to: '/Tasks',
 }
 
+// /gil_get read-only lookup card — mirrors taskBoardCard layout but routes
+// nowhere (the badge is the call to action; users invoke /gil_get from their
+// AI tool). Uses documenter green via CSS var (no hardcoded hex).
+const lookupCard = {
+  title: 'Look Up',
+  description: 'Read projects and tasks from your AI tool — filter by status, type, or priority.',
+  icon: 'mdi-magnify',
+  iconBg: 'var(--agent-documenter-tinted)',
+  iconColor: 'var(--agent-documenter-primary)',
+  accent: 'var(--agent-documenter-primary)',
+  badge: '/gil_get',
+  to: '/Tasks',
+}
+
 const activeProjectsCard = computed(() => ({
   title: 'Active Projects',
   description: 'Monitor running orchestrations, agent status, and real-time progress.',
@@ -554,11 +568,13 @@ const quickCards = computed(() => {
     return [newProjectCard.value, ...templateCards.value]
   }
 
-  // --- Onboarding complete: full 3-card layout ---
+  // --- Onboarding complete: full layout ---
+  // taskBoardCard (/gil_add task) and lookupCard (/gil_get) sit side by side
+  // so users see the read counterpart of /gil_add on the same row.
   if (activeProjectCount.value > 0) {
-    return [activeProjectsCard.value, dashboardCard, taskBoardCard]
+    return [activeProjectsCard.value, dashboardCard, taskBoardCard, lookupCard]
   }
-  return [dashboardCard, newProjectCard.value, taskBoardCard]
+  return [dashboardCard, newProjectCard.value, taskBoardCard, lookupCard]
 })
 
 // Recent projects (from dashboard API)

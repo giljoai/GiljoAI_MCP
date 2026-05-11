@@ -2,84 +2,75 @@
 
 ## What We Believe
 
-GiljoAI MCP is built with full source code included because we believe the best developer tools are transparent. We want individual developers to have full access to a powerful agent orchestration system without paying a dime or jumping through hoops.
+GiljoAI MCP is built with full source code included because we believe the best developer tools are transparent. We want individual developers and teams to have full access to a powerful agent orchestration system, run it on their own infrastructure, modify it, and build with it.
 
-At the same time, we need the right to build a sustainable business. When organizations deploy this software across teams, when someone hosts it as a service for others, or when someone repackages it as a competing product — those are commercial use cases, and we want the option to monetize them.
+At the same time, we need the right to build a sustainable business. When someone repackages this software as a hosted or managed service that competes with our own offering, that is a commercial use case, and we want the option to monetize it.
 
 These two goals are not in conflict. Here is how we balance them.
 
-## Who Can Use This for Free
+## What You Can Do (Free)
 
-If you are a solo developer, you can use GiljoAI MCP for anything. Build products, sell services, run your business. There are zero restrictions on what you create with it. You get the full product, not a crippled "free tier."
+Under the **Elastic License 2.0 (ELv2)**, you can:
 
-The Community Edition is the real product. It is not a demo.
+- Run the software for yourself, your team, or your company — solo, small team, large enterprise. Zero per-user gates.
+- Modify the source code, fork it, redistribute it.
+- Build products and services with it. Sell what you build.
+- Use it internally to power your own internal tools and workflows.
 
-## When a License Is Needed
+The Community Edition is the real product. It is not a demo, and it is not feature-gated by user count.
 
-Three things trigger a licensing requirement:
+## What You May Not Do (Without a Commercial License)
 
-1. **Multi-user deployment** — two or more individuals accessing or using the system, regardless of how accounts are shared or configured.
+ELv2 has three core restrictions:
 
-2. **Hosted service use** — making the Software available to third parties as a hosted, managed, or embedded service, even if no fee is charged.
+1. **No managed service for others.** You may not provide the software to third parties as a hosted or managed service where you give them access to substantially the features or functionality of the software. (Internal use within your own organization is fine. Reselling our software as your own SaaS is not.)
 
-3. **Competing product use** — repackaging the Software or a derivative of it as a standalone product that does substantially the same thing.
+2. **No license-key tampering.** You may not move, change, disable, or circumvent license-key functionality, or remove functionality protected by a license key.
 
-If you are a small startup with a few people and you want to use this together, reach out. We are not trying to squeeze money out of early-stage teams. Commercial licenses can be granted for free at our discretion. The point is that we know who is using the software in these ways, not that everyone has to pay.
+3. **No removing or obscuring license/copyright notices.** Trademarks (the GiljoAI name, logo, "Community Edition" branding) remain ours.
 
-The licensing requirement exists so that when a large enterprise rolls this out across departments, when someone stands up a competing hosted service, or when someone forks and sells a rebranded version, we have the legal standing to act. That is the business model.
+If you want to do any of these things commercially, contact `sales@giljo.ai` for a Commercial License.
 
-## How the License Actually Works (No Legalese)
+## Why ELv2 (and not MIT/Apache/BSL)
 
-Our license (the **GiljoAI Community License v1.1**) boils down to these points:
+We chose ELv2 because:
 
-1. **One person = completely free.** Use it, modify it, redistribute it, build commercial products with it. No restrictions on what you create.
-
-2. **Two or more people = contact us.** You need a Commercial License. This might cost nothing (we can grant free licenses), or it might be a paid agreement depending on the scale.
-
-3. **Don't host it for others.** You may not offer the Software as a managed or hosted service to third parties without a Commercial License. Using it internally for your own work is always fine.
-
-4. **Don't repackage it as a competing product.** You may not sell, license, or distribute the Software (or a derivative of it) as a standalone product that does substantially the same thing.
-
-5. **You can fork and modify the code.** Keep the license file intact. Don't remove the edition branding. Don't represent the software as your own product.
-
-6. **No warranty.** The software is provided as-is.
-
-7. **Break the rules, lose the license.** If you violate the terms, the license terminates.
+- **It protects the actual moat.** Our concern is not "someone runs this in their company" — that's a feature. Our concern is "someone forks this and runs it as a competing managed service." ELv2 directly addresses that.
+- **It's lawyer-vetted by Elastic.** We get the legal substance of a custom license without writing or maintaining one.
+- **It's widely understood.** Adopted by Elasticsearch, Redis, Sentry (briefly), MariaDB MaxScale. Companies' OSS-policy reviewers recognize it.
+- **It does not gate per-user.** Earlier versions of our license (the GiljoAI Community License v1.1, retired 2026-05-07) gated commercial conversion at "two or more users." We retired that because the architecture itself protects what matters: the SaaS code (billing, multi-org UI, trial reaper, deletion reaper, OAuth onboarding) is not in the public CE export. A team running CE internally is welcome to do so.
 
 ## How Contributions Work
 
 We welcome contributions — bug fixes, features, documentation, all of it.
 
-When you contribute code back to this repository (via pull request or patch), you are assigning the intellectual property rights of that contribution to GiljoAI LLC. In plain terms: you are donating the code to us.
-
-Why? Because we ship this software under two license tracks — the free Community License and paid Commercial Licenses. If we do not own the IP for every line of code, we legally cannot offer commercial licenses. This is standard practice for dual-licensed projects.
+When you contribute code back to this repository (via pull request or patch), you are licensing your contribution to GiljoAI LLC under the Elastic License 2.0 with permission to relicense it under additional terms (including commercial agreements with our customers).
 
 What you keep:
-- **You can still use your own code** in your other projects. The assignment covers our copy in our repository, not your ability to reuse your own work.
+- **You can still use your own code** in your other projects. Your contribution to our repository does not strip your right to reuse your own work elsewhere.
 
-What you give up:
-- **Any claim over how we use the contribution.** We might include it in a paid product, a SaaS deployment, or any other commercial offering.
+What you give us:
+- **The right to include your contribution in commercial offerings.** That is the dual-licensing model that lets us offer paid commercial licenses for the "no managed service" restriction.
 
-If that does not work for you, no hard feelings. You are welcome to fork the repository and use it under the Community License terms without contributing back.
+If that does not work for you, no hard feelings. You are welcome to fork the repository and run it under ELv2 without contributing back.
 
 ## The "Community Edition" Brand
 
-The downloadable version of GiljoAI MCP is branded as the **Community Edition**. This is the full product. It is not limited, locked down, or missing features compared to what we run ourselves.
+The downloadable version of GiljoAI MCP is branded as the **Community Edition**. This is the full product. It is not limited, locked down, or missing features compared to what we run ourselves on the SaaS side — except that the SaaS-only code (billing, multi-org provisioning, trial lifecycle, deletion lifecycle, OAuth onboarding flows) is not part of the CE distribution.
 
-The branding exists so users know which edition they are running and so we can maintain a clear distinction between the Community Edition and any future commercial or hosted offering.
+The branding exists so users know which edition they are running and so we can maintain a clear distinction between the Community Edition and any commercial or hosted offering.
 
 ## Summary
 
-| Scenario | License Required? | Cost |
+| Scenario | Allowed under ELv2? | Cost |
 |---|---|---|
-| Solo developer building a product | No | Free |
-| Solo developer running a business | No | Free |
-| Forking and modifying for personal use | No | Free |
-| Redistributing the software (license intact) | No | Free |
-| Small startup, one person at a time | No | Free |
-| Small startup, multiple people | Yes (Commercial License) | Likely free, just ask |
-| Enterprise, team deployment | Yes (Commercial License) | Contact us |
-| Hosting it as a service for others | Yes (Commercial License) | Contact us |
-| Repackaging as a competing product | Yes (Commercial License) | Contact us |
+| Solo developer building a product | Yes | Free |
+| Solo developer running a business | Yes | Free |
+| Internal team / company use (any size) | Yes | Free |
+| Forking and modifying for own use | Yes | Free |
+| Redistributing the software (license + notices intact) | Yes | Free |
+| Hosting it as a managed service for third parties | **No** without a Commercial License | Contact us |
+| Selling a competing rebranded SaaS built on it | **No** without a Commercial License | Contact us |
+| Removing license/copyright notices | **No** | N/A |
 
 **Contact:** sales@giljo.ai

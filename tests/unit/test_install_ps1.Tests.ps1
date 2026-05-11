@@ -2,8 +2,8 @@
 #Requires -Modules Pester
 
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
-# [CE] Community Edition
+# Licensed under the Elastic License 2.0.
+# [CE] Community Edition.
 
 <#
 .SYNOPSIS

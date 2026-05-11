@@ -79,6 +79,23 @@ export function createAuthGuard({ setupService, configService }) {
       const hasUsers = (setupState.total_users_count ?? 0) > 0
 
       if (signal === 'public_landing' && !isAuthenticated) {
+        // API-0021d Phase 1: OAuth Authorization Code flow exemption.
+        // claude.ai (and other MCP clients) deep-link anonymous users to
+        // /oauth/authorize with critical query params (client_id,
+        // redirect_uri, state, code_challenge). The OAuth view owns its own
+        // unauthenticated UX (inline login that preserves the OAuth params),
+        // so the public-landing redirect must NOT hijack /oauth/* paths -
+        // doing so strips the params and breaks the handshake. Path-prefix
+        // matching (not exact /oauth/authorize) defends against re-navigation
+        // mid-flow (e.g. /oauth/callback, /oauth/authorize/, etc.).
+        // Conditional on signal === 'public_landing' so CE behavior is
+        // unchanged (CE never emits that signal).
+        if (to.path.startsWith('/oauth/')) {
+          // Skip PRIORITY-1 entirely for OAuth paths and let PRIORITY-2/3
+          // handle the request (the OAuth view itself owns its auth UX).
+          next()
+          return
+        }
         // Deep-link preserving: a logged-out user clicking a bookmark like
         // /home or /projects should land on /login with ?redirect= so they
         // return to the bookmarked page after signing in. Vue Router rewrites

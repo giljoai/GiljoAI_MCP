@@ -37,6 +37,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useProductStore } from '@/stores/products'
 import { useProjectStatusesStore } from '@/stores/projectStatusesStore'
+import { useTaskStatusesStore } from '@/stores/taskStatusesStore'
 import { useWebSocketStore } from '@/stores/websocket'
 import { useMessageStore } from '@/stores/messages'
 import { initWebsocketEventRouter } from '@/stores/websocketEventRouter'
@@ -61,6 +62,7 @@ const router = useRouter()
 const userStore = useUserStore()
 const productStore = useProductStore()
 const projectStatusesStore = useProjectStatusesStore()
+const taskStatusesStore = useTaskStatusesStore()
 const wsStore = useWebSocketStore()
 const messageStore = useMessageStore()
 
@@ -128,6 +130,14 @@ onMounted(async () => {
   if (userLoaded && currentUser.value) {
     projectStatusesStore.ensureLoaded().catch((error) => {
       console.warn('[DefaultLayout] Failed to load project statuses:', error)
+    })
+  }
+
+  // FE-5041 Phase 2: prime the canonical task-status metadata cache once
+  // per session. Same coalesced/idempotent pattern as project statuses.
+  if (userLoaded && currentUser.value) {
+    taskStatusesStore.ensureLoaded().catch((error) => {
+      console.warn('[DefaultLayout] Failed to load task statuses:', error)
     })
   }
 

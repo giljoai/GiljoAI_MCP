@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 Repository layer for GiljoAI MCP database operations.
@@ -29,10 +29,10 @@ from .product_statistics_repository import ProductStatisticsRepository
 from .progress_repository import ProgressRepository
 from .project_lifecycle_repository import ProjectLifecycleRepository
 from .project_repository import ProjectRepository
-from .project_type_repository import ProjectTypeRepository
 from .settings_repository import SettingsRepository
 from .statistics_repository import StatisticsRepository
 from .task_repository import TaskRepository
+from .taxonomy_repository import TaxonomyRepository
 from .template_repository import TemplateRepository
 from .user_repository import UserRepository
 from .vision_document_repository import VisionDocumentRepository
@@ -55,10 +55,10 @@ __all__ = [
     "ProgressRepository",
     "ProjectLifecycleRepository",
     "ProjectRepository",
-    "ProjectTypeRepository",
     "SettingsRepository",
     "StatisticsRepository",
     "TaskRepository",
+    "TaxonomyRepository",
     "TemplateRepository",
     "UserRepository",
     "VisionDocumentRepository",

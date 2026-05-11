@@ -35,7 +35,7 @@
         :variant="enabled ? 'flat' : 'outlined'"
         size="small"
         :loading="loading"
-        data-testid="github-integration-toggle"
+        data-testid="git-integration-toggle"
         class="intg-toggle-pill"
         @click="$emit('update:enabled', !enabled)"
       >
@@ -46,12 +46,12 @@
         variant="text"
         size="small"
         color="light-blue"
-        href="https://docs.github.com/en/get-started/quickstart/set-up-git"
+        href="https://git-scm.com/book/en/v2/Getting-Started-First-Time-Git-Setup"
         target="_blank"
         class="mt-2"
       >
         <v-icon start>mdi-book-open-variant</v-icon>
-        GitHub Setup Guide
+        Git Setup Guide
       </v-btn>
     </div>
   </div>

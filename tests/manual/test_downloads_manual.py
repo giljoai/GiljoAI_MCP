@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 Manual integration test script for Download API endpoints (Handover 0094)
@@ -11,6 +11,8 @@ Run this script manually to verify the download system works end-to-end.
 """
 
 import asyncio
+import importlib
+import os
 import sys
 from pathlib import Path
 
@@ -19,17 +21,37 @@ from pathlib import Path
 # TODO: Remove after editable install confirmed on all platforms
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
-import os
-
-from dotenv import load_dotenv
-
-
-load_dotenv()
-
+from dotenv import dotenv_values, load_dotenv  # noqa: E402
 from sqlalchemy import select  # noqa: E402
 
 from giljo_mcp.database import DatabaseManager  # noqa: E402
 from giljo_mcp.models import AgentTemplate, User  # noqa: E402
+
+
+def test_module_import_does_not_mutate_environ():
+    """Re-importing this module must not write to os.environ (BE-5040 invariant)."""
+    pre_snapshot = dict(os.environ)
+    module = sys.modules[__name__]
+    importlib.reload(module)
+    post_snapshot = dict(os.environ)
+    assert post_snapshot == pre_snapshot, (
+        "Importing test_downloads_manual mutated os.environ; module-level load_dotenv() must stay out of import path."
+    )
+
+
+def test_dotenv_values_is_read_only(tmp_path, monkeypatch):
+    """dotenv_values must parse without mutating os.environ."""
+    env_file = tmp_path / ".env"
+    env_file.write_text("DOWNLOADS_MANUAL_PROBE=alpha\n")
+
+    monkeypatch.delenv("DOWNLOADS_MANUAL_PROBE", raising=False)
+    pre = os.environ.get("DOWNLOADS_MANUAL_PROBE")
+
+    parsed = dotenv_values(env_file)
+
+    post = os.environ.get("DOWNLOADS_MANUAL_PROBE")
+    assert parsed.get("DOWNLOADS_MANUAL_PROBE") == "alpha"
+    assert pre == post, "dotenv_values must not mutate os.environ"
 
 
 class DownloadsTester:
@@ -398,6 +420,7 @@ class DownloadsTester:
 
 async def main():
     """Main test runner"""
+    load_dotenv()
     tester = DownloadsTester()
     await tester.run_all_tests()
 

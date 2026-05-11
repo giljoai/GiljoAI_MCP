@@ -26,7 +26,7 @@ GiljoAI MCP is a **single codebase** in a **single private repository**. Three d
 **Key relationships:**
 - **Demo is SaaS Lite.** Demo uses real multi-tenant infrastructure (registration, provisioning, org setup) with a 7-day TTL. Everything built for Demo is reused by SaaS.
 - **Enterprise** is a deployment mode of SaaS (self-hosted by corporate IT), not a separate edition.
-- The Community Edition is licensed under the **GiljoAI Community License v1.1** (single-user free, multi-user requires commercial license). This is NOT an OSI-approved license. Never reference MIT, open source, or open core in code, documentation, or UI.
+- The Community Edition is licensed under the **Elastic License 2.0 (ELv2)**. ELv2 permits free internal/team/company use; it restricts only managed-service redistribution to third parties, license-key tampering, and removal of copyright notices. ELv2 is source-available, not OSI-approved. Never reference MIT, open source, or open core in code, documentation, or UI.
 
 ---
 

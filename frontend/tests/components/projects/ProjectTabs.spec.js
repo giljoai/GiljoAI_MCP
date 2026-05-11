@@ -329,7 +329,7 @@ describe('ProjectTabs - Action Buttons', () => {
       await flushPromises()
 
       expect(mockShowToast).toHaveBeenCalledWith(expect.objectContaining({
-        message: expect.stringContaining('Orchestrator prompt copied'),
+        message: expect.stringContaining('Orchestrator brief copied'),
         type: 'success',
       }))
     })

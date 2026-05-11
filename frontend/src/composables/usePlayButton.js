@@ -51,51 +51,44 @@ export function usePlayButton(project, getProjectState, clipboardCopy) {
 
     try {
       if (agent.agent_display_name === 'orchestrator') {
-        if (['claude_code_cli', 'codex_cli', 'gemini_cli'].includes(proj?.execution_mode)) {
-          try {
-            const projectId = proj.project_id || proj.id
-            try {
-              await api.projects.launchImplementation(projectId)
-            } catch (gateError) {
-              console.warn('[usePlayButton] launch-implementation call failed (non-blocking):', gateError)
-            }
+        const isCliMode = ['claude_code_cli', 'codex_cli', 'gemini_cli'].includes(
+          proj?.execution_mode
+        )
+        const projectId = proj?.project_id || proj?.id
 
-            const response = await api.prompts.implementation(projectId)
-            const prompt = response.data.prompt
-            await _copyPrompt(prompt)
-            showToast({
-              message: `Implementation prompt copied! ${response.data.agent_count + 1} jobs ready (1 orchestrator, ${response.data.agent_count} agents)`,
-              type: 'success',
-              timeout: 5000,
-            })
-          } catch (error) {
-            const errorMsg = error.response?.data?.detail || 'Failed to generate implementation prompt'
-            showToast({ message: errorMsg, type: 'error', timeout: 6000 })
-          }
+        try {
+          await api.projects.launchImplementation(projectId)
+        } catch (gateError) {
+          console.warn(
+            '[usePlayButton] launch-implementation call failed (non-blocking):',
+            gateError
+          )
+        }
+
+        let response
+        try {
+          response = await api.prompts.implementation(projectId)
+        } catch (error) {
+          _handleImplementationFetchError(error)
           return
         }
 
-        // Multi-terminal orchestrator
-        try {
-          const projectId = proj.project_id || proj.id
-          try {
-            await api.projects.launchImplementation(projectId)
-          } catch (gateError) {
-            console.warn('[usePlayButton] launch-implementation call failed (non-blocking):', gateError)
-          }
-
-          const response = await api.prompts.implementation(projectId)
-          const prompt = response.data.prompt
-          await _copyPrompt(prompt)
+        const prompt = response?.data?.prompt
+        const clipboardOk = await clipboardCopy(prompt)
+        if (!clipboardOk) {
           showToast({
-            message: `Orchestrator prompt copied! ${response.data.agent_count} agents ready for launch.`,
-            type: 'success',
-            timeout: 5000,
+            message: 'Browser blocked clipboard access. Copy from the dialog manually.',
+            type: 'error',
+            timeout: 6000,
           })
-        } catch (error) {
-          const errorMsg = error.response?.data?.detail || 'Failed to generate orchestrator prompt'
-          showToast({ message: errorMsg, type: 'error', timeout: 6000 })
+          return
         }
+
+        const agentCount = response?.data?.agent_count ?? 0
+        const successMsg = isCliMode
+          ? `Implementation prompt copied. ${agentCount + 1} jobs ready to launch (1 orchestrator, ${agentCount} specialists).`
+          : `Orchestrator prompt copied. ${agentCount} specialists ready to launch.`
+        showToast({ message: successMsg, type: 'success', timeout: 5000 })
         return
       }
 
@@ -108,7 +101,8 @@ export function usePlayButton(project, getProjectState, clipboardCopy) {
       }
 
       await _copyPrompt(promptText)
-      showToast({ message: 'Launch prompt copied to clipboard', type: 'success', timeout: 3000 })
+      const role = _titleCaseRole(agent.agent_display_name)
+      showToast({ message: `${role} prompt copied. Paste in a fresh terminal to bring this specialist online.`, type: 'success', timeout: 3000 })
     } catch (error) {
       console.error('[usePlayButton] Failed to prepare launch prompt:', error)
       const msg = error.response?.data?.detail || error.message || 'Failed to prepare launch prompt'
@@ -116,11 +110,40 @@ export function usePlayButton(project, getProjectState, clipboardCopy) {
     }
   }
 
+  function _titleCaseRole(name) {
+    if (!name) return 'Specialist'
+    return String(name).replace(/\b\w/g, (c) => c.toUpperCase())
+  }
+
   async function _copyPrompt(text) {
     const success = await clipboardCopy(text)
     if (!success) {
       throw new Error('Clipboard copy failed')
     }
+  }
+
+  /**
+   * Handle a non-2xx response from `api.prompts.implementation`.
+   * Surfaces an actionable toast (with HTTP status + hint) and logs the
+   * full response payload to console.warn for debug visibility.
+   */
+  function _handleImplementationFetchError(error) {
+    const status = error?.response?.status
+    const payload = error?.response?.data
+    console.warn(
+      '[usePlayButton] Implementation prompt fetch failed:',
+      { status, payload, error }
+    )
+
+    const statusLabel = status ? `HTTP ${status}` : 'Network error'
+    const hint =
+      'Make sure staging is complete and at least one agent has launched. ' +
+      'Refresh the dashboard and try again.'
+    showToast({
+      message: `Couldn't copy implementation prompt (${statusLabel}). ${hint}`,
+      type: 'error',
+      timeout: 7000,
+    })
   }
 
   return {

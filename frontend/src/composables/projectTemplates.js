@@ -18,7 +18,7 @@ export const PROJECT_TEMPLATES = Object.freeze([
     projectDescription: [
       'Scaffold the project skeleton for a brand-new product: backend folder, frontend folder, shared requirements.txt (or package.json depending on stack), and a starter README.md. Use sensible defaults for the stack the user has indicated, or ask if unclear.',
       '',
-      'When the scaffold is in place, propose four follow-up projects via /gil_add (Claude Code, Gemini CLI) or $gil-add (Codex CLI) covering:',
+      'When the scaffold is in place, propose four follow-up projects via /gil_add (Claude Code, Gemini CLI) or $gil-add (Codex CLI). Use /gil_get (or $gil-get) to read back project and task state when you need to confirm what is already staged. Cover:',
       '1. Backend bootstrap — framework choice, app entry, health endpoint, env handling',
       '2. Frontend bootstrap — framework choice, root layout, theme, basic routing',
       '3. Auth + data layer — chosen auth strategy, ORM/DB connection, first migration',
@@ -35,7 +35,7 @@ export const PROJECT_TEMPLATES = Object.freeze([
     icon: 'mdi-database-import-outline',
     projectName: 'Import existing product (GiljoAI 360-memory bootstrap)',
     projectDescription: [
-      'Bootstrap the 360-memory for an existing codebase. Propose four read-only audit projects via /gil_add (Claude Code, Gemini CLI) or $gil-add (Codex CLI):',
+      'Bootstrap the 360-memory for an existing codebase. Use /gil_get (Claude Code, Gemini CLI) or $gil-get (Codex CLI) first to inspect any existing projects and tasks before proposing new ones, then propose four read-only audit projects via /gil_add (or $gil-add):',
       '1. Frontend audit — components, routes, state management, design system, build setup',
       '2. Backend audit — services, endpoints, data model, auth flow, integration points',
       '3. Documentation audit — README, handovers, ADRs, inline docstrings, gaps',

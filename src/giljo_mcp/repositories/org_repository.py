@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 OrgRepository - Data access layer for Organization and OrgMembership entities.
@@ -12,7 +12,7 @@ are routed through this repository.
 
 Tenant isolation: All query methods accept tenant_key and apply it when
 provided. Callers SHOULD always pass tenant_key; None is accepted only for
-backward compatibility during incremental migration (see action_required tag).
+backward compatibility during incremental migration.
 """
 
 from __future__ import annotations

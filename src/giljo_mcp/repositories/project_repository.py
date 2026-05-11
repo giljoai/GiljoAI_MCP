@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 ProjectRepository - Data access layer for core project CRUD and query operations.
@@ -24,7 +24,7 @@ from sqlalchemy.orm import selectinload
 from giljo_mcp.domain.project_status import ProjectStatus
 from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from giljo_mcp.models.product_memory_entry import ProductMemoryEntry
-from giljo_mcp.models.projects import Project, ProjectType
+from giljo_mcp.models.projects import Project, TaxonomyType
 from giljo_mcp.models.tasks import Message
 
 
@@ -175,12 +175,12 @@ class ProjectRepository:
         session: AsyncSession,
         tenant_key: str,
         label: str,
-    ) -> ProjectType | None:
+    ) -> TaxonomyType | None:
         """Resolve a project type by label (case-insensitive)."""
         result = await session.execute(
-            select(ProjectType).where(
-                ProjectType.tenant_key == tenant_key,
-                func.lower(ProjectType.label) == label.lower(),
+            select(TaxonomyType).where(
+                TaxonomyType.tenant_key == tenant_key,
+                func.lower(TaxonomyType.label) == label.lower(),
             )
         )
         return result.scalar_one_or_none()
@@ -190,12 +190,12 @@ class ProjectRepository:
         session: AsyncSession,
         tenant_key: str,
         abbreviation: str,
-    ) -> ProjectType | None:
+    ) -> TaxonomyType | None:
         """Resolve a project type by abbreviation (case-insensitive)."""
         result = await session.execute(
-            select(ProjectType).where(
-                ProjectType.tenant_key == tenant_key,
-                func.upper(ProjectType.abbreviation) == abbreviation.upper(),
+            select(TaxonomyType).where(
+                TaxonomyType.tenant_key == tenant_key,
+                func.upper(TaxonomyType.abbreviation) == abbreviation.upper(),
             )
         )
         return result.scalar_one_or_none()
@@ -220,20 +220,35 @@ class ProjectRepository:
         self,
         session: AsyncSession,
         tenant_key: str,
-        status: str | None = None,
+        status: str | list[str] | None = None,
         include_cancelled: bool = False,
         product_id: str | None = None,
     ) -> list[Project]:
-        """List projects for a tenant with optional filters."""
+        """List projects for a tenant with optional filters.
+
+        ``status`` accepts a single value or a list (SQL ``IN`` pushdown). When a
+        list contains ``"deleted"``, the soft-delete clause widens to
+        ``deleted_at IS NOT NULL`` for that bucket only when ``status`` is
+        exactly ``["deleted"]``; mixed lists keep the default ``IS NULL``
+        guard (mirrors the pre-existing single-string semantics).
+        """
         query = select(Project).options(selectinload(Project.project_type)).where(Project.tenant_key == tenant_key)
 
         if product_id:
             query = query.where(Project.product_id == product_id)
 
         if status:
-            query = query.where(Project.status == status)
-            if status == "deleted":
-                query = query.where(Project.deleted_at.isnot(None))
+            status_list = [status] if isinstance(status, str) else list(status)
+            if len(status_list) == 1:
+                only = status_list[0]
+                query = query.where(Project.status == only)
+                if only == "deleted":
+                    query = query.where(Project.deleted_at.isnot(None))
+                else:
+                    query = query.where(Project.deleted_at.is_(None))
+            else:
+                query = query.where(Project.status.in_(status_list))
+                query = query.where(Project.deleted_at.is_(None))
         else:
             query = query.where(Project.deleted_at.is_(None))
             if not include_cancelled:
@@ -321,8 +336,30 @@ class ProjectRepository:
         session: AsyncSession,
         tenant_key: str,
         project_id: str,
+        limit: int | None = None,
     ) -> list[ProductMemoryEntry]:
-        """Get 360 memory entries for a project."""
+        """Get 360 memory entries for a project.
+
+        When ``limit`` is set, returns the most recent ``limit`` entries
+        (highest sequence first), then re-orders ascending so callers see a
+        chronological view of the trailing window. When unset, returns the
+        full chronological history.
+        """
+        if limit is not None:
+            query = (
+                select(ProductMemoryEntry)
+                .where(
+                    ProductMemoryEntry.project_id == project_id,
+                    ProductMemoryEntry.tenant_key == tenant_key,
+                )
+                .order_by(ProductMemoryEntry.sequence.desc())
+                .limit(limit)
+            )
+            result = await session.execute(query)
+            entries = list(result.scalars().all())
+            entries.reverse()
+            return entries
+
         query = (
             select(ProductMemoryEntry)
             .where(

@@ -5,7 +5,7 @@
       <v-col>
         <h1 class="text-h4">Project Management</h1>
         <p class="text-body-2 text-muted-a11y mt-1">
-          Use MCP tool /gil_add to have the AI coding agent add new projects to the Project dashboard.
+          Use MCP tool /gil_add to have the AI coding agent add new projects to the Project dashboard, or /gil_get to look up existing projects without leaving your AI tool.
           <v-tooltip location="bottom start" max-width="600">
             <template #activator="{ props }">
               <v-icon v-bind="props" size="16" class="help-icon">mdi-help-circle-outline</v-icon>
@@ -23,8 +23,9 @@
               <div class="text-caption text-center">Sequential number within a type (e.g. 1 → BE-0001)</div>
               <div class="mt-1"><span class="font-weight-medium">subseries (optional):</span></div>
               <div class="text-caption text-center">Single-letter suffix (e.g. a → BE-0001a)</div>
-              <div class="mt-2"><span class="font-weight-medium">Example:</span></div>
+              <div class="mt-2"><span class="font-weight-medium">Examples:</span></div>
               <div class="ml-2 text-caption">/gil_add add project ... description ...</div>
+              <div class="ml-2 text-caption">/gil_get list projects status=active</div>
             </div>
           </v-tooltip>
         </p>
@@ -615,7 +616,6 @@ const isProjectStaged = (project) =>
 
 // Normalize legacy status values
 function normalizeStatus(status) {
-  if (status === 'paused') return 'inactive'
   return status || 'inactive'
 }
 
@@ -902,7 +902,7 @@ onMounted(async () => {
       projectStore.fetchDeletedProjects(),
     ])
     try {
-      const typesResponse = await api.projectTypes.list()
+      const typesResponse = await api.taxonomyTypes.list()
       projectTypes.value = typesResponse.data || []
     } catch {
       console.error('Failed to load project types')

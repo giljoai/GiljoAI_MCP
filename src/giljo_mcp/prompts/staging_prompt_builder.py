@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """Staging and thin-prompt builders.
 
@@ -18,6 +18,13 @@ from giljo_mcp.models import Product, Project
 
 
 logger = logging.getLogger(__name__)
+
+
+def _project_title(project: Any) -> str:
+    has_taxonomy = bool(getattr(project, "project_type_id", None) or getattr(project, "series_number", None))
+    if has_taxonomy:
+        return f"{project.taxonomy_alias} {project.name}"
+    return project.name
 
 
 class StagingPromptBuilder:
@@ -63,7 +70,7 @@ class StagingPromptBuilder:
         api_key_configured = bool(config.server.api_key)
         auth_note = "(authenticated)" if api_key_configured else "(check config.yaml for API key)"
 
-        return f"""I am Orchestrator for GiljoAI Project "{project.name}".
+        return f"""I am Orchestrator for GiljoAI Project "{_project_title(project)}".
 
 IDENTITY:
 - Orchestrator Agent ID: {agent_id}
@@ -92,7 +99,6 @@ WORKFLOW:
    → Returns configured context (vision, tech stack, architecture, memory, git history, templates)
    → User toggle/depth configuration automatically applied server-side
    → Depth configuration (chunking, commit count, etc.) pre-configured
-   → Note: tenant_key auto-injected by server from your API key session
 3. Create condensed mission plan from fetched context
 4. Persist mission: mcp__giljo_mcp__update_project_mission('{project_id}', mission)
 5. Spawn specialist agents: mcp__giljo_mcp__spawn_job(agent_display_name, agent_name, mission, '{project_id}')
@@ -111,7 +117,7 @@ CRITICAL DISTINCTIONS:
 - Project.mission = YOUR OUTPUT (condensed execution plan you CREATE in Step 2)
 - Agent jobs = Specialist agents who will DO THE ACTUAL WORK (you coordinate them)
 
-MCP CORE TOOLS (Always Available - tenant_key auto-injected by server):
+MCP CORE TOOLS (Always Available):
 ✓ mcp__giljo_mcp__health_check() - Verify MCP connection
 ✓ mcp__giljo_mcp__get_orchestrator_instructions('{orchestrator_id}') - Fetch complete prioritized context
 ✓ mcp__giljo_mcp__update_project_mission('{project_id}', mission) - Save mission plan
@@ -148,7 +154,7 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
         Returns:
             Thin staging prompt (~113 tokens)
         """
-        return f"""You are the ORCHESTRATOR for project "{project.name}"
+        return f"""You are the ORCHESTRATOR for project "{_project_title(project)}"
 
 YOUR IDENTITY (use these in all MCP calls):
   YOUR Agent ID: {agent_id}
@@ -156,7 +162,6 @@ YOUR IDENTITY (use these in all MCP calls):
   THE Project ID: {project_id}
 
 MCP Server: {mcp_url}
-Note: tenant_key is auto-injected by server from your API key session (secure server-side isolation)
 
 START NOW:
 1. Verify MCP: mcp__giljo_mcp__health_check()

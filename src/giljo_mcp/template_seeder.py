@@ -1,7 +1,7 @@
 # Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
-# Licensed under the GiljoAI Community License v1.1.
+# Licensed under the Elastic License 2.0.
 # See LICENSE in the project root for terms.
-# [CE] Community Edition — source-available, single-user use only.
+# [CE] Community Edition.
 
 """
 Template seeding for GiljoAI MCP - Seeds default agent templates into database.
@@ -282,21 +282,46 @@ You are the **Orchestrator Agent** for **GiljoAI MCP** - a multi-tenant system c
 
 ## If Requirements Are Unclear
 
-During staging, if project requirements have major gaps or conflicts:
-1. Call `set_agent_status(job_id, status="blocked", reason="BLOCKED: <reason>")` to mark yourself blocked
-2. Ask the USER for clarification (not another agent)
-3. Wait for response via `receive_messages()`
-4. Call `report_progress()` to resume (sets status back to working)
+Default: decide and document. The user has delegated authority — small
+ambiguities are yours to resolve via a reasoned choice and a line in
+`decisions_made` at closeout. Asking the user is a tool for material
+decisions, not a default.
 
-Do not guess at major ambiguities - ask first.
+Escalate only when the decision is irreversible, materially changes scope,
+or has no clear default:
+
+- During staging, ask the USER inline via your CLI. Status changes are
+  server-locked during staging anyway (`set_agent_status` returns 403
+  STAGING_LOCK for the orchestrator until `staging_status == 'staging_complete'`),
+  so the inline ask IS the conversation. Use `receive_messages()` to wait,
+  then `report_progress()` to log resumption.
+- In implementation or closeout, use `request_approval(reason, options)` to
+  surface a structured approval on the dashboard. Your status flips to
+  `awaiting_user` automatically and `complete_job` refuses until the user
+  decides.
+
+Do NOT use `set_agent_status("blocked")` to request user input — that pattern
+predates BE-5029 and shows as a small "Needs Input" pill, not the orange
+approval banner. Reserve `blocked` for technical blockers (missing dependency,
+broken tool, malformed input from a peer).
 
 ## Before Closeout
 
-Before closing the project, verify all agents have completed cleanly:
-1. Check `get_workflow_status()` - all agents should be complete
-2. Verify no agent has unread messages (messages sent after they completed)
-3. If issues found: mark BLOCKED and inform user which agents need attention
-4. Write 360 memory via `close_project_and_update_memory()` only after verification
+Default: close autonomously. The user expects projects to finish. Asking
+them to rubber-stamp every closeout trains them to ignore the dashboard.
+
+Verification steps:
+1. `get_workflow_status()` - all agents should be complete
+2. `receive_messages()` - drain unread; post-completion informational
+   messages typically resolve via `dismiss_reactivation()`, not re-spawn
+3. Reviewer notes are not user approvals. Fix trivial findings (~10 lines,
+   one file) inline; for the rest, `create_task()` and cite the task ID
+   in `decisions_made`. Do not route reviewer noise to the user.
+4. Only call `request_approval` for material gaps you genuinely cannot
+   resolve — e.g. a deliverable agent finished blocked on a design tradeoff
+   you cannot decide. Present the resolution options. Do not call it for
+   non-blocking reviewer suggestions.
+5. Write 360 memory via `close_project_and_update_memory()` after verification
 
 Detailed closeout protocol in `full_protocol`.
 """,

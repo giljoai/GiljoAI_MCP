@@ -46,6 +46,36 @@ export function useProjectTaxonomy({ projectTypes, projectData, editingProject =
     return items
   })
 
+  /**
+   * Auto-fill the next available serial number for the given project type.
+   * Only runs in create mode (no editingProject) when the serial input is empty.
+   * Failures are swallowed (console.warn) so dropdown selection never throws.
+   * UI-0004.
+   */
+  async function autoFillNextSeries(typeId) {
+    if (!typeId || typeId === '__add_custom__') return
+    if (editingProject.value) return
+    const currentInput = (seriesNumberInput.value || '').trim()
+    if (currentInput !== '' || projectData.value.series_number != null) return
+    try {
+      const { data } = await api.projects.getNextSeries(typeId)
+      const next = data?.next_series_number
+      if (typeof next !== 'number') return
+      // Re-check guards after async await — user may have typed meanwhile.
+      const inputNow = (seriesNumberInput.value || '').trim()
+      if (inputNow !== '' || projectData.value.series_number != null) return
+      seriesNumberInput.value = String(next).padStart(4, '0')
+      projectData.value.series_number = next
+      seriesChecking.value = true
+      if (seriesCheckTimer) clearTimeout(seriesCheckTimer)
+      seriesCheckTimer = setTimeout(() => checkSeriesAvailability(next), 300)
+    } catch (err) {
+      // Never throw out of handleTypeChange — leave field empty for manual entry.
+
+      console.warn('[useProjectTaxonomy] getNextSeries failed:', err)
+    }
+  }
+
   function handleTypeChange(typeId) {
     if (typeId === '__add_custom__') {
       showAddTypeModal.value = true
@@ -59,6 +89,9 @@ export function useProjectTaxonomy({ projectTypes, projectData, editingProject =
       seriesChecking.value = true
       if (seriesCheckTimer) clearTimeout(seriesCheckTimer)
       seriesCheckTimer = setTimeout(() => checkSeriesAvailability(projectData.value.series_number), 300)
+    } else {
+      // Create mode + empty serial → auto-fill next available (UI-0004).
+      autoFillNextSeries(typeId)
     }
   }
 
@@ -70,6 +103,9 @@ export function useProjectTaxonomy({ projectTypes, projectData, editingProject =
       seriesChecking.value = true
       if (seriesCheckTimer) clearTimeout(seriesCheckTimer)
       seriesCheckTimer = setTimeout(() => checkSeriesAvailability(projectData.value.series_number), 300)
+    } else {
+      // Create mode + empty serial → auto-fill next available (UI-0004).
+      autoFillNextSeries(newType.id)
     }
   }
 
