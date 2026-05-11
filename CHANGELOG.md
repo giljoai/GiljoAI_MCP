@@ -4,21 +4,17 @@ All notable changes to this project are recorded here. Versions follow `MAJOR.MI
 
 ## [Unreleased]
 
-### API-0021h — Declare MCP spec-version conformance
+This release adopts the [Keep a Changelog](https://keepachangelog.com/) format going forward — entries are grouped by change type (Added / Changed / Fixed / Removed / Security), with optional internal project IDs in parentheses for traceability. Historical releases below remain in their original narrative format.
 
-GiljoAI MCP now formally declares conformance to MCP spec versions `2025-03-26`, `2025-06-18` (default), and `2025-11-25` (PARTIAL — CIMD deferred). The declaration ships in two places: a new `mcp_spec_versions_supported` custom claim on `/.well-known/oauth-authorization-server` (RFC 8414 §2 permits additional claims), and a new public `GET /.well-known/mcp-server-info` endpoint returning `{spec_versions, capabilities, server_name, server_version}` where capabilities iterate the canonical `TOOL_SCOPES` registry. A 20-test regression suite (`tests/api/test_spec_conformance.py`) drives both endpoints via the FastAPI route layer to lock the declaration to CI — every PASS verdict in `docs/CONFORMANCE.md` cites a test file in the public suite. Single-source-of-truth constant in `api/endpoints/oauth.py` keeps the metadata, endpoint, and tests in lockstep. Public conformance audit + drift-tracking process documented in `docs/CONFORMANCE.md`. Edition Scope: Both.
+### Added
 
-### API-0022a — Claude.ai handshake PR labeler + manual-test runbook
+- **Declare MCP spec-version conformance.** New `mcp_spec_versions_supported` custom claim on `/.well-known/oauth-authorization-server`, plus a new public `GET /.well-known/mcp-server-info` endpoint returning `{spec_versions, capabilities, server_name, server_version}`. Declared: `2025-03-26`, `2025-06-18` (default), `2025-11-25` (PARTIAL — CIMD deferred). A 20-test regression suite locks the declaration to CI; full audit and drift-tracking process in [docs/CONFORMANCE.md](docs/CONFORMANCE.md). (API-0021h)
+- **Claude.ai handshake PR labeler + manual-test runbook.** PRs touching the Claude.ai → demo OAuth handshake path are now auto-labeled `manual-test:claude-ai-handshake` and receive a sticky comment linking to the 9-step manual runbook at `scripts/conformance/claude_ai_handshake.md`. Activation requires `gh label create` for the two labels plus a GitHub Rulesets entry; see the runbook footer. Workflow is private-only (excluded from CE export). (API-0022a)
+- **Agent-parity MCP tools for tasks.** New tools `update_task`, `update_task_status`, `complete_task`, and `list_tasks` (summary/full modes). `fetch_context` now accepts `categories=["tasks"]`.
 
-PRs touching the Claude.ai → demo OAuth handshake path (oauth endpoints, MCP SDK server, authGuard, OAuthAuthorize, DemoConsentScreen, oauth_service, saas/auth, demo seed) now automatically receive the `manual-test:claude-ai-handshake` label and a sticky PR comment linking to the runbook. Runbook at `scripts/conformance/claude_ai_handshake.md` covers pre-requisites, 9-step test sequence, pass/fail criteria, and a copy-paste Claude Code prompt for browser-driven verification via `mcp__claude-in-chrome__*` tools. Workflow is private-only (excluded from CE export). To activate: create the `manual-test:claude-ai-handshake` and `manual-test:verified` labels on the repo (see `gh label create` one-liner in the runbook footer), then configure the branch-protection rule in GitHub Settings → Rules → Rulesets to require `manual-test:verified` before merge on PRs carrying `manual-test:claude-ai-handshake`.
+### Changed
 
-### Task taxonomy unification + agent-parity MCP tools
-
-`tasks.category` (freewrite string) replaced with `tasks.task_type_id` FK to the unified `taxonomy_types` table (renamed from `project_types`). On upgrade, tasks whose old `category` value did not exact-match a taxonomy abbreviation or label arrive with no type — re-tag via the TasksView Type dropdown, or ask an agent to set them via the new `update_task` MCP tool.
-
-New agent surface: `update_task`, `update_task_status`, `complete_task`, `list_tasks` (summary/full modes), `fetch_context(categories=["tasks"])`. REST endpoint path `/api/v1/project-types` renamed to `/api/v1/taxonomy-types` (router file moved + path updated; backend sweep complete).
-
-CE migrations: `ce_0014_rename_project_types_to_taxonomy_types`, `ce_0015_tasks_add_task_type_id` (adds FK + backfills from category), `ce_0016_tasks_drop_category` (removes the legacy column). All idempotent.
+- **Task taxonomy unified.** `tasks.category` (freewrite string) replaced with `tasks.task_type_id` foreign key to the renamed `taxonomy_types` table (was `project_types`). REST path `/api/v1/project-types` → `/api/v1/taxonomy-types`. On upgrade, tasks whose old `category` value did not exact-match a taxonomy abbreviation or label arrive untyped — re-tag via the TasksView Type dropdown or via `update_task`. CE migrations `ce_0014`–`ce_0016` apply the rename, FK backfill, and legacy-column drop; all idempotent.
 
 ## [1.2.4] — 2026-05-03
 
