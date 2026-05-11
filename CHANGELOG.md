@@ -1,185 +1,149 @@
 # Changelog
 
-All notable changes to this project are recorded here. Versions follow `MAJOR.MINOR.PATCH[.HOTFIX]` and tags live on the public repository (`giljoai/GiljoAI_MCP`).
+All notable changes to this project are recorded here. This changelog follows the [Keep a Changelog](https://keepachangelog.com/) convention — entries are grouped by change type (Added / Changed / Fixed / Removed / Security). Internal project IDs appear in parentheses for traceability. Versions follow `MAJOR.MINOR.PATCH[.HOTFIX]` and tags live on the public repository (`giljoai/GiljoAI_MCP`).
 
 ## [Unreleased]
-
-This release adopts the [Keep a Changelog](https://keepachangelog.com/) format going forward — entries are grouped by change type (Added / Changed / Fixed / Removed / Security), with optional internal project IDs in parentheses for traceability. Historical releases below remain in their original narrative format.
 
 ### Added
 
 - **Declare MCP spec-version conformance.** New `mcp_spec_versions_supported` custom claim on `/.well-known/oauth-authorization-server`, plus a new public `GET /.well-known/mcp-server-info` endpoint returning `{spec_versions, capabilities, server_name, server_version}`. Declared: `2025-03-26`, `2025-06-18` (default), `2025-11-25` (PARTIAL — CIMD deferred). A 20-test regression suite locks the declaration to CI; full audit and drift-tracking process in [docs/CONFORMANCE.md](docs/CONFORMANCE.md). (API-0021h)
-- **Claude.ai handshake PR labeler + manual-test runbook.** PRs touching the Claude.ai → demo OAuth handshake path are now auto-labeled `manual-test:claude-ai-handshake` and receive a sticky comment linking to the 9-step manual runbook at `scripts/conformance/claude_ai_handshake.md`. Activation requires `gh label create` for the two labels plus a GitHub Rulesets entry; see the runbook footer. Workflow is private-only (excluded from CE export). (API-0022a)
 - **Agent-parity MCP tools for tasks.** New tools `update_task`, `update_task_status`, `complete_task`, and `list_tasks` (summary/full modes). `fetch_context` now accepts `categories=["tasks"]`.
 
 ### Changed
 
-- **Task taxonomy unified.** `tasks.category` (freewrite string) replaced with `tasks.task_type_id` foreign key to the renamed `taxonomy_types` table (was `project_types`). REST path `/api/v1/project-types` → `/api/v1/taxonomy-types`. On upgrade, tasks whose old `category` value did not exact-match a taxonomy abbreviation or label arrive untyped — re-tag via the TasksView Type dropdown or via `update_task`. CE migrations `ce_0014`–`ce_0016` apply the rename, FK backfill, and legacy-column drop; all idempotent.
+- **Task taxonomy unified.** `tasks.category` (freewrite string) replaced with `tasks.task_type_id` foreign key to the renamed `taxonomy_types` table (was `project_types`). REST path `/api/v1/project-types` → `/api/v1/taxonomy-types`. On upgrade, tasks whose old `category` value did not exact-match a taxonomy abbreviation or label arrive untyped — re-tag via the TasksView Type dropdown or via the `update_task` tool. CE migrations apply the rename, FK backfill, and legacy-column drop; all idempotent.
+
+### Security
+
+- **Public-doc leak guardrail.** New pre-commit check blocks RFC 1918 IPs, internal hostnames, and absolute drive-letter paths from being committed to public-bound files. Allowlist: `127.0.0.1`, `::1`, `0.0.0.0`, `localhost`, and the RFC 5737 / RFC 3849 documentation prefixes. Prevents the class of leakage that surfaced in earlier releases.
 
 ## [1.2.4] — 2026-05-03
 
-Sprint v1.2.4 release: backlog burn-down across infrastructure hygiene, MCP-tool correctness, CI tier-separation, and the dashboard staleness bug we discovered while organizing the sprint itself.
+### Added
 
-### BREAKING CHANGE — minimum Python raised to 3.12 (INF-5022)
+- **Pluggable SMTP email provider.** New `EMAIL_BACKEND` config switch lets self-hosted SaaS deployments route email through any SMTP server instead of the Resend default. (INF-5023)
 
-Bumped `requires-python` in `pyproject.toml` from `>=3.10` to `>=3.12`. Removed `Programming Language :: Python :: 3.10` and `:: 3.11` PyPI classifiers.
+### Changed
 
-`pip install` on pre-3.12 Python now fails with a `requires-python` resolver error. CI, installer scripts (`install.py`, `install.ps1`, `install.sh`), and docs already required 3.12; this aligns the wheel-build constraint with the de-facto minimum already enforced everywhere else.
+- **BREAKING — minimum Python raised to 3.12.** `pyproject.toml` `requires-python` bumped from `>=3.10` to `>=3.12`. `pip install` on pre-3.12 Python now fails with a `requires-python` resolver error. CI, installer scripts, and docs already required 3.12; this aligns the wheel-build constraint with the existing floor. (INF-5022)
+- **Ruff lint target raised to py312.** Lint sweep auto-fixed PEP 604 unions, walrus opportunities, datetime-aware constructions, and ~60 other modernization sites; remaining warnings either fixed manually or carry justified `# noqa` markers. (INF-5020)
+- **CI tier-separated.** Private-repo CI restructured into two tiers: a fast tier of eight checks running on every push and PR (gitleaks, ruff, AI-signature block, CE/SaaS boundary, SaaS table refs, pytest, frontend lint+build, vitest), and a slower installer-integrity matrix that runs only on tag pushes matching `v*`. The public CE-export script runs the integrity check locally before push so installer regressions are caught before reaching the public repo. (INF-5024)
+- **Project tracking migrated into the MCP server.** New work goes through the `create_project` and `write_360_memory` MCP tools rather than the legacy markdown handover files.
 
-### INF-5020 — ruff target-version `py39` → `py312`
+### Fixed
 
-`.ruff.toml` `target-version` aligned with the actual Python floor. The lint sweep auto-fixed PEP 604 unions, walrus opportunities, UP rules, datetime-aware constructions, and ~60 other modernization sites; remaining warnings either fixed manually or carry justified `# noqa` markers. Removed the `.ruff.toml` allowlist entry from `scripts/check_version_consistency.py`. Eight sequential cleanup commits land in this release.
+- **Dashboard project list returned stale status values.** The `list_projects` tool now correctly filters across all eight project statuses, and a project that changes status reflects in the list within one poll cycle. Regression tests added. (IMP-5026)
+- **`create_project` MCP tool: type validation restored.** Unknown `project_type` values now raise `ValidationError` with the structured `valid_types` list (abbreviation, label, color) in the error context. Omitted `project_type` returns the same hint in the success response. (IMP-5027)
+- **System-update banner copy.** Bell-icon notification dropped the redundant "re-run `/giljo_setup`" line (the skills-drift banner already covers that). Both the bell notification and the dashboard update banner now say "restart your server" instead of the older `python update.py` wording.
 
-### INF-5021 — delete deprecated `scripts/deployment/deploy_lan_windows.ps1`
+### Removed
 
-Pre-unified-installer artifact (2025-10) fully obsoleted by the current `install.ps1` flow. Removed.
-
-### INF-5023 — SMTP email provider with `EMAIL_BACKEND` factory
-
-New `src/giljo_mcp/saas/email/SmtpProvider` plus an `EMAIL_BACKEND` config switch lets sprint test boxes route mail through a local SMTP server (Mailpit) instead of Resend. AI-TOP demo/saas test box (10.1.0.163) verified live with Mailpit on `127.0.0.1:1025` (web UI on `:8025`). 13/13 new tests pass; SaaS-only.
-
-### INF-5024 — Tier-separate CI: installer-integrity to tag-only
-
-Restructure private-repo CI into two tiers so sprint cadence is no longer dragged by the installer matrix:
-
-- **Tier 1 (every push, PR, workflow_dispatch):** 8 fast checks — gitleaks, ruff, AI-signature block, CE/SaaS boundary, SaaS table refs, pytest, frontend lint+build, vitest.
-- **Tier 2 (tag-only, `v*` pattern):** new `installer-integrity.yml` workflow runs the BOM / bat-entry / startup.py-import-order / venv-guard self-test matrix when a release tag is pushed.
-- **Local safety net:** `merge_to_public.sh` now runs `scripts/check_installer_integrity.py` as Step 1d preflight, so installer regressions are caught locally before any public push.
-
-GitHub branch protection rulesets reconfigured: `master-protection` (id `15690228`) drops to 8 required checks; new `tag-installer-integrity` ruleset (id `15889843`) gates `refs/tags/v*` on the integrity check.
-
-### IMP-5026 — Dashboard project list/state consistency bug
-
-`mcp__giljo_mcp__list_projects` was returning stale `status` values that disagreed with `mcp__giljo_mcp__fetch_context` for the same project. Root cause traced and fixed at the read path; the `status` filter now actually filters across all 8 `ProjectStatus` enum values, and a project that just transitioned reflects in `list_projects` within one poll cycle. Three regression tests added (status-filter correctness + `fetch_context` parity + state-transition reflection).
-
-### IMP-5027 — `create_project` MCP tool: type validation restored
-
-Regression introduced 2026-04-30 by commit `6f702526a` (which dropped the embedded taxonomy from `list_projects` for performance) silently lost validation in `create_project_for_mcp` — unknown `project_type` values were accepted with no error. Fixed: unknown types now raise `ValidationError` with the structured `valid_types` list (abbreviation + label + color) in the error context, and omitted `project_type` returns the same hint in the success response. `/gil_add` skill text + tool docstring aligned with the new behavior.
-
-### Side-effect infrastructure fixes
-
-Discovered while shipping v1.2.4 commits through the export pipeline:
-
-- **`.gitleaks.toml`** — allowlist generalized to a single `.*\.old/.*` regex covering `.venv.old/`, `frontend/node_modules.old/`, and any future migration backup directory. `dev_tools/venv_devtools` added explicitly.
-- **`scripts/export_ce.sh` / `scripts/export_ce_dev.sh`** — `COPY_EXCLUDES` generalized to a `*.old` glob (with `venv_devtools` explicit). Future `mv X X.old` safety-net workflows automatically excluded from the CE bundle.
-- **System-update banner copy** — post-IMP-5024 stale messaging cleaned up: bell-icon notification dropped the redundant "re-run /giljo_setup" line (skills-drift banner already covers that), and both the bell notification and the dashboard update banner now say "restart your server" instead of "python update.py" (functionally redundant for manual-restart workflows; `startup.py` runs migrations on boot).
-
-### Workflow change — retire HO-doc protocol
-
-Project tracking has fully migrated into the GiljoAI MCP server itself. `handovers/HANDOVER_INSTRUCTIONS.md`, `handovers/HANDOVER_CATALOGUE.md`, and superseded roadmap files moved to `handovers/Reference_docs/archived/`. `EM_HANDOVER_*.md` session-rotation pattern remains. New work goes through `mcp__giljo_mcp__create_project` + `mcp__giljo_mcp__write_360_memory` rather than markdown spec files.
+- **Deprecated `deploy_lan_windows.ps1` script.** Pre-unified-installer artifact (2025-10) fully obsoleted by the current `install.ps1` flow. (INF-5021)
 
 ## [1.2.3] — 2026-05-03
 
-Sprint v1.2.3 release: one security fix and a refactor of the skills-version drift banner that turned three pieces of state into one.
+### Security
 
-### SEC-5009 — remove `GiljoMCP` password fallback
+- **Removed default password fallback in user creation.** `UserService.create_user` no longer silently substitutes a literal default when no password is supplied. The admin endpoint now forwards the user-provided password, and the service treats the absence of a password as an explicit error. (SEC-5009)
 
-`UserService.create_user` no longer silently substitutes the literal `"GiljoMCP"` when no password is supplied. The admin endpoint now forwards `user_data.password` and the service treats the absence of a password as an explicit error. Reviewer + tester clean (zero findings, 64/64 unit + 985/985 service tests). Stale `GiljoMCP` tenant_key matrix verified false on dev / demo prod / dogfood — no rotation needed.
+### Changed
 
-### IMP-5024 — skills-version drift banner: simplified server-side model
-
-Replaces the per-user tracking model from HO1028 + IMP-0022. The previous design used three pieces of state (`users.last_installed_skills_version` column + `localStorage giljo_skills_version` cache + server-side `never_installed` flag) for what is fundamentally one comparison: "did the bundled `SKILLS_VERSION` move past the version we last announced?"
-
-- **New migration `ce_0009`** drops `users.last_installed_skills_version` and `users.last_update_reminder_at`, then seeds `system_settings.skills_version_announced` to the current bundled `SKILLS_VERSION` via `ON CONFLICT DO NOTHING`.
-- **Endpoint `/api/notifications/check-skills-version`** now returns `{current, announced, drift_detected, message}` — no per-user state involved. Drift is the difference between what the running deployment ships with and what was last operator-announced.
-- **`SystemStatusBanner.vue`** simplified: `showSkillsDrift = isAdmin && drift_detected && !dismissedForCurrent`. Per-version dismissal continues via `localStorage.giljo_skills_dismissed_for_<version>`. Banner switched from `type="info"` (Vuetify blue) to `type="warning"` (brand yellow `#ffc300`) for better contrast and semantic correctness — drift is a "take action" notice.
-- **30-day post-login reminder loop dropped.** Per-version dismissal is the right primitive; the throttle was belt-and-suspenders.
-- Edition-aware copy: CE says "run `/giljo_setup` then `git pull`"; demo/saas says just "run `/giljo_setup`" (no `git pull` line — those users don't run the server).
-
-Verified on dogfood: bumped `SKILLS_VERSION` triggers banner, click-X dismisses it, F5 reload keeps it dismissed (per-version key), bumping again re-arms.
+- **Skills-version drift banner simplified.** Replaces the previous per-user tracking model. The earlier design tracked three pieces of state for what is fundamentally one comparison: "did the bundled `SKILLS_VERSION` move past the version we last announced?" The new endpoint `/api/notifications/check-skills-version` returns `{current, announced, drift_detected, message}` with no per-user state. Per-version dismissal continues via localStorage. Banner switched from informational blue to brand-yellow warning for better contrast and semantic correctness. The 30-day post-login reminder loop was dropped. Edition-aware copy: CE says "run `/giljo_setup` then `git pull`"; demo/saas says just "run `/giljo_setup`". (IMP-5024)
 
 ## [1.2.2] — 2026-05-01
 
-Foundation + installer hardening release. Two substantial pieces of work that set up the next several sprints: a real single-source-of-truth for project status, and a cross-platform installer story that finally works end-to-end on every supported path.
+### Added
 
-### Project status SSoT (BE-5039)
+- **Project status as a typed enum.** Eight statuses (`active`, `inactive`, `staging`, `paused`, `completed`, `cancelled`, `terminated`, `archived`) now live in one place — no more drift between backend services, frontend stores, and database CHECK constraints. (BE-5039)
+- **New REST endpoint `GET /api/v1/project-statuses/`** exposes the canonical list with labels, color tokens, and lifecycle flags. The frontend reads from this, never from a hardcoded array.
+- **Version-consistency check (`scripts/check_version_consistency.py`).** `VERSION` is the single source of truth; `pyproject.toml`, `frontend/package.json`, `package-lock.json`, `__init__.py` fallback, and the latest `CHANGELOG.md` entry must all match. Wired into pre-commit and the release pipeline.
 
-- **`ProjectStatus` is now a typed enum.** Eight statuses (`active`, `inactive`, `staging`, `paused`, `completed`, `cancelled`, `terminated`, `archived`) live in one place — no more drift between backend services, frontend stores, and database CHECK constraints.
-- **New REST endpoint `GET /api/v1/project-statuses/`** exposes the canonical list with labels, color tokens, and lifecycle flags. Frontend reads from this, never from a hardcoded array.
-- **Migration `ce_0008`** converts the existing TEXT column to a Postgres enum type with idempotent guards: NULL backfill before cast, unknown-value catch-all, partial unique index drop-and-recreate against the enum value. Safe to re-run.
-- **Backwards compatible.** `ProjectStatus` inherits from `str`, so every existing `project.status == "active"` comparison still works. Callers adopt the enum at their own pace.
-- **Adding a new status is now a one-record change.** `PROJECT_STATUS_META` centralizes label, color, immutability, and MCP-mutability per status.
+### Changed
 
-### Installer hardening (INF-5014)
-
-All four install paths now work on stock systems with no manual prep:
-
-- **Windows `install.ps1`** — verified on stock PowerShell 5.1 + Windows 11.
-- **Windows `install.py` direct** — Node.js auto-installs via `winget` when missing; PATH refresh resolves the chicken-egg where a subprocess inherits the pre-install PATH.
-- **Linux `install.sh`** — verified on stock Ubuntu / Debian / WSL.
-- **Linux `install.py` direct** — `python3-venv` detection now uses an actual `ensurepip` probe instead of `venv --help` (which doesn't fail when the module is missing). Catches the broken split-package state on stock Debian/Ubuntu before it becomes a cryptic error mid-install.
-
-The "please restart your shell" banner now only fires on Windows where it's actually needed. Eight commits of fixes; every fix verified on a real box.
-
-**macOS is not validated this release.** The CI smoke matrix runs `install.py` on macOS-latest, but no end-to-end real-box test was performed. Track as a known gap.
-
-### Tooling
-
-- **New `scripts/check_version_consistency.py`** — `VERSION` is the single source of truth; `pyproject.toml`, `frontend/package.json`, `package-lock.json`, `__init__.py` fallback, and the latest `CHANGELOG.md` entry must all match. Wired into pre-commit and the release pipeline. Bump everything atomically with `python scripts/check_version_consistency.py --bump X.Y.Z`. Catches the drift class that nearly slipped this release out the door with a stale `package-lock.json`.
+- **Installers hardened on every supported path.** All four install paths now work on stock systems with no manual prep: Windows `install.ps1` (verified on stock PowerShell 5.1 + Windows 11), Windows `install.py` direct (Node.js auto-installs via `winget` when missing), Linux `install.sh` (verified on stock Ubuntu / Debian / WSL), Linux `install.py` direct (`python3-venv` detection via an actual `ensurepip` probe). The "please restart your shell" banner now only fires on Windows where it is actually needed. (INF-5014)
+- **`ProjectStatus` enum is backwards compatible.** `ProjectStatus` inherits from `str`, so every existing `project.status == "active"` comparison still works. Callers adopt the enum at their own pace.
 
 ### Notes for upgraders
 
-- No database schema rollback path. `ce_0008` is a one-way migration; if you need to back out, restore from a pre-upgrade backup.
-- Routine `git pull` + restart on the test/dogfood server. `startup.py` runs `alembic upgrade head` automatically.
+- No database schema rollback path. The status-enum migration is one-way; if you need to back out, restore from a pre-upgrade backup.
+- **macOS not validated this release.** The CI smoke matrix runs `install.py` on macOS-latest, but no end-to-end real-box test was performed. Track as a known gap.
 
 ## [1.2.1] — 2026-04-30
 
-- **BREAKING:** `list_projects` MCP tool no longer returns completed or cancelled projects by default. Pass `include_completed=true` to retrieve archived projects. Agents running `list_projects()` with no arguments will now see only active/inactive projects.
-- **New filter parameters:** `status` (single or comma-separated), `project_type`, `taxonomy_alias_prefix`, `created_after`, `created_before`, `completed_after`, `completed_before`, `include_completed`, `hidden` (tri-state: `"true"` / `"false"` / `""` for no filter).
-- **`hidden` field behaviour:** The `hidden` column is a UI declutter flag and appears in every row regardless of filter. Agents always see hidden and non-hidden projects alike unless `hidden=true|false` is passed explicitly. It is not an agent-visibility gate.
-- **Legacy backward-compat:** Callers using `status_filter="all"` continue to work; that value implies `include_completed=True` and is honored when the new `status` param is unset.
-- **REST endpoint unchanged:** `GET /api/projects/` (used by the dashboard) was not modified — only the MCP-tool-facing path changed.
+### Changed
+
+- **BREAKING — `list_projects` MCP tool default behavior.** No longer returns completed or cancelled projects by default. Pass `include_completed=true` to retrieve archived projects. Agents running `list_projects()` with no arguments will now see only active and inactive projects.
+
+### Added
+
+- **New filter parameters on `list_projects`:** `status` (single or comma-separated), `project_type`, `taxonomy_alias_prefix`, `created_after`, `created_before`, `completed_after`, `completed_before`, `include_completed`, and `hidden` (tri-state: `"true"` / `"false"` / `""` for no filter).
+- **`hidden` field exposed in every row** regardless of filter. The `hidden` column is a UI declutter flag, not an agent-visibility gate. Agents always see hidden and non-hidden projects alike unless `hidden=true|false` is passed explicitly.
+
+### Notes
+
+- **Legacy backward-compat.** Callers using `status_filter="all"` continue to work; that value implies `include_completed=True` and is honored when the new `status` param is unset.
+- **REST endpoint unchanged.** `GET /api/projects/` (used by the dashboard) was not modified — only the MCP-tool-facing path changed.
 
 ## [1.2.0] — 2026-04-29
 
-The first minor-version release since the v1.1 line, consolidating six weeks of installer hardening, dependency cleanup, and dashboard polish into a single public cut. If you've been running v1.1.9.5, this upgrade is recommended — especially on Windows.
+First minor-version release since the v1.1 line, consolidating six weeks of installer hardening, dependency cleanup, and dashboard polish into a single public cut. If you have been running v1.1.9.5, this upgrade is recommended — especially on Windows.
 
-### Installers, fixed for real
+### Fixed
 
 - **Windows install now works on stock PowerShell 5.1.** Earlier Windows installs could fail with cryptic parser errors before reaching the wizard; `install.ps1` is now ASCII-clean and parses correctly under every PowerShell version that ships with Windows 10 / 11.
-- **macOS Apple Silicon installs are more resilient.** A new floor on the `greenlet` dependency plus an explicit fail-fast guard prevents the long silent hangs that some early Apple Silicon users saw when binary wheels weren't yet published for a new Python release.
+- **macOS Apple Silicon installs are more resilient.** A new floor on the `greenlet` dependency plus an explicit fail-fast guard prevents long silent hangs that some early Apple Silicon users saw when binary wheels were not yet published for a new Python release.
 - **Linux first-run no longer crashes** on the elevation-guidance step. A path edge case that produced `ValueError` on stock Ubuntu has been fixed.
 
-### Dashboard polish
+### Changed
 
 - **"Tools → Connect"** replaces the old "Settings → Integrations" naming throughout the dashboard. Same feature, clearer mental model: one place to connect Claude Code, Cursor, and other tooling.
 - **Welcome wizard** now offers a starter-template card on step 4 so new users can get to a working agent setup with a single click.
+- **Frontend builds now require Node 22** (matching what most current distributions ship by default).
+- **Vite line stabilized.** Vite 8 was briefly trialed but pulled back when its new bundler stack proved unstable on macOS and Windows under real installer conditions; the upgrade will return once that stack ships a stable 1.0.
 
-### Agent skills bundle (v1.1.11)
+### Added (agent skills bundle v1.1.11)
 
 - **`/gil_add` gained a Read mode**, so you can pull a project's context or status by alias without opening the dashboard. Add mode is unchanged.
 - **Faster, cheaper agent context fetches.** Agents now fetch only the context they need rather than pulling the full bundle every time — meaningfully fewer tokens per multi-step run.
-- **Cleaner predecessor handling.** Multi-agent handovers now auto-detect whether you're handing off or being handed to, removing a class of "wrong context" agent runs.
-- The dashboard will show a "skills bundle out of date" banner when you load v1.2.0 for the first time — that's expected. Run `giljo_setup` (or pull the latest skills via the dashboard) to upgrade your local CLI skills to v1.1.11.
+- **Cleaner predecessor handling.** Multi-agent handovers now auto-detect whether you are handing off or being handed to, removing a class of "wrong context" agent runs.
 
-### Under the hood
+### Removed
 
-- Frontend toolchain is back on a stable, broadly-tested vite line. Vite 8 was briefly trialed but pulled back when its new bundler stack proved unstable on macOS and Windows under real installer conditions; the upgrade will return once that stack ships a stable 1.0.
-- Frontend builds now require Node 22 (matching what most current distributions ship by default).
-- Updated dependencies: `vue`, `postcss`, `greenlet` — all routine patch / minor bumps.
-- Repository housekeeping: legacy distribution-tarball scripts removed (the hosted installer at `giljo.ai/install.ps1` and `giljo.ai/install.sh` is the only supported install path). Security policy document rewritten to accurately reflect current supported versions.
+- **Legacy distribution-tarball scripts.** The hosted installer at `giljo.ai/install.ps1` and `giljo.ai/install.sh` is the only supported install path.
 
 ### Notes for upgraders
 
 - Tagged as `v1.2.0-rc.1` first; promoted to `v1.2.0` after a soak window.
 - No database schema changes vs v1.1.9.5. Routine `git pull` + restart is sufficient.
-- If you're upgrading from v1.1.9.4 or earlier, you'll also pick up the security-foundation work that landed in v1.1.9.5 (four-layer secrets defense, hardened CI). No action required on your end.
+- If you are upgrading from v1.1.9.4 or earlier, you will also pick up the security-foundation work that landed in v1.1.9.5 (four-layer secrets defense, hardened CI). No action required.
+- The dashboard will show a "skills bundle out of date" banner when you load v1.2.0 for the first time — this is expected. Run `/giljo_setup` (or pull the latest skills via the dashboard) to upgrade your local CLI skills to v1.1.11.
 
 ## [1.1.9.5] — 2026-04-29
 
-Security foundation release. Public repo brought from "no protections" to a full four-layer secrets defense in one session.
+### Security
 
-- Three-layer secrets defense established (gitignore + pre-commit `gitleaks` + push-CI `gitleaks` on private; defensive working-tree `gitleaks` on public)
-- Boundary `gitleaks` gate added to `export_ce.sh` and `export_ce_dev.sh` (INF-5018) — last-chance scan after SaaS-strip and before push to public
-- Private repo migrated to PRIMARY CI gate with branch-protection ruleset (9 required checks); public CI slimmed to a 6-check smoke set (INF-5017)
-- Cross-platform installer smoke matrix (Ubuntu / Windows / macOS) added to private CI (INF-5016) — caught a real macOS arm64 `greenlet` regression on first run
-- History rewrite: stripped HAR files (containing PII) from both repos including 16 version tags
-- Bulk cleanup: 19 stale branches deleted per repo (Dependabot + abandoned dev branches)
+- **Four-layer secrets defense established.** Three layers in private (gitignore + pre-commit `gitleaks` + push-CI `gitleaks`), defensive working-tree `gitleaks` in public.
+- **Boundary `gitleaks` gate added to CE export pipeline** — last-chance scan after SaaS-strip and before push to public. (INF-5018)
+- **History rewrite:** stripped HAR files containing PII from both repos, including 16 version tags.
+
+### Changed
+
+- **Private repo migrated to PRIMARY CI gate** with branch-protection ruleset (9 required checks); public CI slimmed to a 6-check smoke set. (INF-5017)
+- **Cross-platform installer smoke matrix** (Ubuntu / Windows / macOS) added to private CI — caught a real macOS arm64 `greenlet` regression on first run. (INF-5016)
+
+### Removed
+
+- **Bulk branch cleanup:** 19 stale branches deleted per repo (Dependabot and abandoned dev branches).
 
 ## [1.1.9.4] — 2026-04-28
 
-- Frontend deps train: `cryptography` 47, `numpy` 2.2.6 (with `sumy` LSA verified), `vite` 8 *(reverted in [Unreleased] — see above)*
-- Linux installer fix: `Path.relative_to` `ValueError` in `display_elevation_guide`
+### Changed
+
+- **Frontend dependency train.** Bumped `cryptography` to 47 and `numpy` to 2.2.6 (with the summarization library verified against the new numpy). Vite 8 was attempted and reverted (see [1.2.0] notes).
+
+### Fixed
+
+- **Linux installer:** `Path.relative_to` `ValueError` in `display_elevation_guide`.
 
 ## [1.1.9.3] and earlier
 

@@ -49,9 +49,9 @@ The public repo is the customer-facing face of the product. Red CI badges signal
 
 If post-push CI fails, stop other work, diagnose, and **fix-forward** with another commit/PR — or revert the offending commit. Do not leave the badges red.
 
-**After INF-5017 (2026-04-29):** The primary CI gate is on the private repo (9 required checks, ruleset 15690228). Public CI is the downstream smoke test (6 checks). Both must be green before declaring a public deploy done. Run private CI first — if private is red, do not export.
+**After INF-5017 (2026-04-29):** The primary CI gate is on the private repo (8 required checks, enforced via branch-protection ruleset). Public CI is the downstream smoke test (6 checks). Both must be green before declaring a public deploy done. Run private CI first — if private is red, do not export.
 
-**For installer-touching changes** (`install.py`, `startup.py`, `install.ps1`, `install.sh`): static checks are necessary but NOT sufficient. Run the actual installer end-to-end on Windows AND Linux (deps-test box at `patrik@10.1.0.163`) before merging. macOS validation is a known gap — until a box exists, state "macOS not validated" explicitly in the commit message and handover.
+**For installer-touching changes** (`install.py`, `startup.py`, `install.ps1`, `install.sh`): static checks are necessary but NOT sufficient. Run the actual installer end-to-end on Windows AND Linux on a dedicated dependency-test box before merging. macOS validation is a known gap — until a validation box exists, state "macOS not validated" explicitly in the commit message and handover.
 
 ### Function and Class Size
 

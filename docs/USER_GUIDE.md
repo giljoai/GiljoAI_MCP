@@ -339,7 +339,7 @@ When GiljoAI MCP is configured for HTTPS (LAN or WAN access), it uses a self-sig
 
 ### First Connection
 
-When you first navigate to your GiljoAI server from a workstation (e.g. `https://10.1.0.101:7272`), your browser will show a "Your connection is not private" warning. This is expected. Click **Advanced** and then **Proceed** to access the server. The connection page will provide a download link for the root certificate and copy-paste commands to install it.
+When you first navigate to your GiljoAI server from a workstation (e.g. `https://your-server-ip:7272` or `https://your-server-hostname:7272`), your browser will show a "Your connection is not private" warning. This is expected. Click **Advanced** and then **Proceed** to access the server. The connection page will provide a download link for the root certificate and copy-paste commands to install it.
 
 ### Installing the Certificate (Linux)
 

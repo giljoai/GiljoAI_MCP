@@ -66,7 +66,7 @@ rail — SEC-0002 Phase 3).
 ### Exact commands used
 
 ```bash
-cd /media/gildemo/Server/GiljoAI_MCP_Private
+cd <repo-root>
 
 # A1
 grep -rn -E "^\s*(from|import)\s+anthropic" src/giljo_mcp api --include="*.py"
@@ -470,7 +470,7 @@ hypothetical LLM-gateway feature with real SDKs behind a feature flag), add a ta
 After applying the config, confirm the guard bites with a negative test:
 
 ```bash
-cd /media/gildemo/Server/GiljoAI_MCP_Private
+cd <repo-root>
 
 # 1. Baseline clean (should exit 0)
 ruff check . --config pyproject.toml --select TID251
