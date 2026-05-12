@@ -663,6 +663,45 @@ async def oauth_protected_resource_metadata(request: Request):
     )
 
 
+# API-0021k — RFC 9728 §3.1 path-suffix discovery variant. Spec-aware clients
+# (claude.ai connector backend, MCP Inspector) probe
+# `<host>/.well-known/oauth-protected-resource/<resource-path>` to ask "tell me
+# about the protected resource at this path". Without this route, the Vue SPA
+# catch-all in api/app.py intercepts the 404 and serves index.html (200 HTML),
+# misleading clients into parsing an OAuth-irrelevant body. Only `/mcp` is a
+# valid resource on this server; everything else is 404. Single source of truth
+# preserved by re-invoking the host-only handler — no duplicated response body.
+# The unknown-suffix branch returns JSONResponse(status_code=404) directly
+# rather than `raise HTTPException(404)` because the SPA fallback in
+# api/app.py is registered as `@app.exception_handler(404)` and intercepts
+# raised 404s for any path outside its prefix allowlist (which does not
+# include `/.well-known/...`). Same pattern as the openid-configuration route.
+@well_known_router.get(
+    "/.well-known/oauth-protected-resource/{resource_path:path}",
+    response_model=ProtectedResourceMetadataResponse,
+    include_in_schema=False,
+    tags=["oauth"],
+)
+async def oauth_protected_resource_metadata_pathsuffix(
+    resource_path: str,
+    request: Request,
+):
+    """RFC 9728 §3.1 path-suffix variant: `/.well-known/oauth-protected-resource/{path}`.
+
+    Returns identical metadata to the host-only form for `resource_path == "mcp"`;
+    404 for any other suffix. `mcp` is the only protected resource this server
+    exposes — multi-resource support is out of scope (API-0021k).
+    """
+    from fastapi.responses import JSONResponse
+
+    if resource_path.lstrip("/") != "mcp":
+        return JSONResponse(
+            status_code=404,
+            content={"error": "Not Found"},
+        )
+    return await oauth_protected_resource_metadata(request)
+
+
 # API-0021i: spec-aware clients (claude.ai, OIDC libraries) probe the OIDC
 # discovery document opportunistically when bootstrapping against an unknown
 # issuer. We don't implement OIDC, so the correct signal is 404 ("path not

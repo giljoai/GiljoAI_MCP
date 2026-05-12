@@ -681,6 +681,39 @@ class TestProtectedResourceMetadataResourceIndicators:
         assert body.get("resource_indicators_supported") is True, body
 
 
+class TestProtectedResourceMetadataPathSuffix:
+    """API-0021k: RFC 9728 §3.1 path-suffix discovery variant.
+
+    Pre-fix bug: `GET /.well-known/oauth-protected-resource/mcp` returned the
+    Vue SPA `index.html` (200 HTML) because no route handler matched and the
+    SPA 404 exception handler in api/app.py served the SPA shell. These tests
+    exercise the route at the FastAPI boundary (the failing layer) — service
+    coverage would not have caught this. Tests confirm the path-suffix form
+    for `/mcp` returns identical metadata to the host-only form and that any
+    other suffix returns 404 (only `/mcp` is a valid protected resource).
+    """
+
+    @pytest.mark.asyncio
+    async def test_pathsuffix_mcp_matches_host_only_response(self, api_client):
+        host_only = await api_client.get("/.well-known/oauth-protected-resource")
+        pathsuffix = await api_client.get("/.well-known/oauth-protected-resource/mcp")
+
+        assert host_only.status_code == 200, host_only.text
+        assert pathsuffix.status_code == 200, pathsuffix.text
+        assert pathsuffix.headers["content-type"].startswith("application/json")
+        assert pathsuffix.json() == host_only.json()
+
+    @pytest.mark.asyncio
+    async def test_pathsuffix_unknown_resource_is_404(self, api_client):
+        response = await api_client.get("/.well-known/oauth-protected-resource/notmcp")
+        assert response.status_code == 404, response.text
+
+    @pytest.mark.asyncio
+    async def test_pathsuffix_deeper_path_is_404(self, api_client):
+        response = await api_client.get("/.well-known/oauth-protected-resource/mcp/extra")
+        assert response.status_code == 404, response.text
+
+
 # ---------------------------------------------------------------------------
 # API-0021e Phase 1 — verify client_secret at /token for confidential clients
 # ---------------------------------------------------------------------------
