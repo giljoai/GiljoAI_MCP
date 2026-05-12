@@ -21,7 +21,7 @@ from typing import Annotated, Any, Literal
 from fastapi import HTTPException
 from mcp.server.fastmcp import Context, FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
-from pydantic import Field
+from pydantic import BaseModel, Field
 from starlette.requests import Request as StarletteRequest
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
@@ -230,6 +230,16 @@ async def _call_tool(ctx: Context, method_name: str, kwargs: dict[str, Any]) -> 
         except (OSError, RuntimeError, ValueError, TypeError, AttributeError, KeyError):
             logger.debug("heartbeat update failed for job_id=%s (non-blocking)", job_id)
 
+    # Wire-contract normalisation: every @mcp.tool wrapper in this module is
+    # annotated `-> dict[str, Any]`, but service-layer methods return typed
+    # Pydantic response models (MissionResponse, ProgressResult, SpawnResult,
+    # SendMessageResult, etc.). FastMCP validates the return against the
+    # annotation and rejects Pydantic instances with a DictModel error, which
+    # surfaces to MCP clients while server-side state has already been
+    # persisted. Normalise here so every tool produces a JSON-safe dict
+    # regardless of which service layer it delegates to.
+    if isinstance(result, BaseModel):
+        return result.model_dump(mode="json")
     return result
 
 

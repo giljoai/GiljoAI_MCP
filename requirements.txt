@@ -25,7 +25,7 @@ PyJWT>=2.8.0                      # JWT token handling (using PyJWT instead of p
 email-validator>=2.1.0            # Required by Pydantic EmailStr (auth.py, users.py)
 
 # MCP SDK (Model Context Protocol)
-mcp>=1.27.1                 # MCP SDK (upgraded from 1.12.3 for CVE-2025-66416 DNS rebinding fix)
+mcp>=1.27.1,<1.28           # MCP SDK — upper bound: minor bumps require re-running tests/integration/test_mcp_wire_contract_dict_serialization.py (wire contract). Patch bumps allowed. CVE-2025-66416 DNS rebinding fix required >=1.27.1.
 
 # Core Utilities
 python-dotenv>=1.0.0        # Environment variable loading
