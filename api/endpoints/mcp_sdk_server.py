@@ -1901,15 +1901,35 @@ class MCPAuthMiddleware:
                     token_scopes = ["mcp:read", "mcp:write"]
                 else:
                     token_scopes = [s for s in str(raw_scope).split() if s]
-                if "aud" not in payload:
-                    logger.warning(
-                        "Legacy aud-less token accepted on /mcp; client should rotate to aud-bound token (sub=%s)",
-                        payload.get("sub", "unknown"),
-                    )
+
+                # API-0022: RFC 7009 revocation enforcement. A token whose
+                # jti has been revoked in this tenant is treated as if it
+                # never existed (401 + WWW-Authenticate). Tokens minted
+                # before API-0022 lack jti — those rows can't be revoked
+                # server-side and roll off when they expire.
+                jti = payload.get("jti")
+                if jti:
+                    from api.app_state import state as _app_state
+
+                    if _app_state.db_manager is not None:
+                        from giljo_mcp.services import oauth_revocation_service as _revoke
+
+                        async with _app_state.db_manager.get_session_async() as _rev_db:
+                            if await _revoke.is_access_token_jti_revoked(_rev_db, tenant_key=tenant_key, jti=jti):
+                                logger.warning(
+                                    "Rejecting revoked JWT on /mcp: jti=%s tenant_key=%s",
+                                    jti,
+                                    tenant_key,
+                                )
+                                resp = _unauthenticated_response(scope, "Token revoked")
+                                await resp(scope, receive, send)
+                                return
             except JWTAudienceMismatchError as exc:
                 # Token presents a valid signature but for a different resource
-                # server. Reject outright — do NOT fall back to API-key path.
-                logger.warning("Rejecting JWT with foreign aud on /mcp: %s", exc)
+                # server, or carries no `aud` at all (API-0022: legacy aud-less
+                # tokens no longer accepted). Reject outright — do NOT fall
+                # back to API-key path.
+                logger.warning("Rejecting JWT on /mcp (audience): %s", exc)
                 resp = _unauthenticated_response(scope, "Invalid token audience")
                 await resp(scope, receive, send)
                 return

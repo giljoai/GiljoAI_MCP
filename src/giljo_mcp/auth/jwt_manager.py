@@ -40,7 +40,7 @@ Usage Example:
 
 import os
 from datetime import UTC, datetime, timedelta
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import jwt
 from fastapi import HTTPException, status
@@ -134,6 +134,11 @@ class JWTManager:
             "exp": expire,
             "iat": datetime.now(UTC),
             "type": "access",
+            # API-0022: jti enables RFC 7009 token revocation lookup
+            # (oauth_revoked_tokens.jti). Every access token carries one;
+            # cookie-auth tokens are unaffected since revocation is enforced
+            # only at the /mcp resource boundary.
+            "jti": uuid4().hex,
         }
         if audience is not None:
             payload["aud"] = audience
@@ -150,9 +155,11 @@ class JWTManager:
         only when `expected_audience` is supplied (caller is a specific resource
         server such as the MCP Bearer middleware):
 
-        - Token has no `aud` claim → ACCEPT (legacy back-compat). Caller is
-          expected to log a deprecation warning. This window closes once
-          all clients have rotated to aud-bound tokens.
+        - Token has no `aud` claim → REJECT (API-0022). The legacy transition
+          window opened by API-0021a has closed; aud-less tokens are no longer
+          accepted at resource-server boundaries. Raises
+          :class:`JWTAudienceMismatchError` so the caller emits 401 +
+          `WWW-Authenticate: Bearer` pointing at the resource metadata.
         - Token has `aud == expected_audience` → ACCEPT.
         - Token has `aud != expected_audience` → raise
           :class:`JWTAudienceMismatchError`. Caller must respond 401 with a
@@ -198,7 +205,12 @@ class JWTManager:
 
             if expected_audience is not None:
                 token_aud = payload.get("aud")
-                if token_aud is not None and token_aud != expected_audience:
+                if token_aud is None or token_aud == "":
+                    raise JWTAudienceMismatchError(
+                        f"JWT missing required 'aud' claim for resource '{expected_audience}' "
+                        "(API-0022: legacy aud-less tokens no longer accepted)"
+                    )
+                if token_aud != expected_audience:
                     raise JWTAudienceMismatchError(
                         f"JWT aud '{token_aud}' does not match expected '{expected_audience}'"
                     )

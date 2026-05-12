@@ -254,7 +254,18 @@ async def refresh_token_grant(
 
     db = service._db
     token_hash = hash_refresh_token(refresh_token)
-    row_result = await db.execute(select(OAuthRefreshToken).where(OAuthRefreshToken.token_hash == token_hash))
+    # API-0022 (folds API-0024): defense-in-depth. Bind the lookup itself to
+    # the body-supplied client_id so a stolen token_hash presented under a
+    # different client never even resolves a row. ``oauth_clients.client_id``
+    # is a UUIDv4 primary key (globally unique), so this is equivalent to
+    # binding to tenant_key without a second round-trip. The existing
+    # explicit client_id guard below stays as the second layer.
+    row_result = await db.execute(
+        select(OAuthRefreshToken).where(
+            OAuthRefreshToken.token_hash == token_hash,
+            OAuthRefreshToken.client_id == client_id,
+        )
+    )
     row = row_result.scalar_one_or_none()
 
     if row is None:

@@ -10,6 +10,7 @@ This module contains models for OAuth 2.1 Authorization Code flow with PKCE:
 - OAuthAuthorizationCode: Short-lived authorization codes exchanged for tokens
 - OAuthRefreshToken: Long-lived refresh tokens with family rotation +
   reuse detection (API-0021e Phase 2)
+- OAuthRevokedToken: RFC 7009 revocation ledger keyed by JWT jti (API-0022)
 """
 
 from sqlalchemy import (
@@ -121,4 +122,40 @@ class OAuthRefreshToken(Base):
         )
 
 
-__all__ = ["OAuthAuthorizationCode", "OAuthRefreshToken"]
+class OAuthRevokedToken(Base):
+    """RFC 7009 revocation ledger keyed by JWT ``jti`` (API-0022).
+
+    The /mcp Bearer middleware looks up the presented JWT's ``jti`` claim
+    against this table on every request (with a short-lived in-process TTL
+    cache in front to keep the hot path cheap). A row here means the token
+    has been revoked and must be treated as if it never existed.
+
+    Security contract:
+      - ``jti`` is the unique lookup key. JWTs minted before API-0022 may
+        not carry a jti; rows for them simply do not exist and revocation
+        is best-effort (those tokens roll off naturally as they expire).
+      - ``tenant_key`` is NOT NULL + indexed; revocation is tenant-scoped
+        (CLAUDE.md tenant-isolation rule).
+      - ``token_type`` records the revoked type (``access_token`` or
+        ``refresh_token``) per RFC 7009 token_type_hint. Refresh-token
+        revocations additionally flip ``revoked=true`` on the entire
+        ``oauth_refresh_tokens`` family (API-0021e §10.4 guidance).
+      - This is an append-only ledger; rows are never deleted. A future
+        background sweep may prune rows whose underlying JWT exp has
+        passed, but the table is not load-bearing at JWT-issue time.
+    """
+
+    __tablename__ = "oauth_revoked_tokens"
+
+    jti = Column(String(64), primary_key=True)
+    token_type = Column(String(32), nullable=False)
+    tenant_key = Column(String(64), nullable=False)
+    revoked_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    __table_args__ = (Index("ix_oauth_revoked_tokens_tenant_key", "tenant_key"),)
+
+    def __repr__(self) -> str:
+        return f"<OAuthRevokedToken(jti={self.jti}, token_type={self.token_type}, tenant_key={self.tenant_key})>"
+
+
+__all__ = ["OAuthAuthorizationCode", "OAuthRefreshToken", "OAuthRevokedToken"]

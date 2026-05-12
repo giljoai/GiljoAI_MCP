@@ -8,14 +8,19 @@ All notable changes to this project are recorded here. This changelog follows th
 
 - **Declare MCP spec-version conformance.** New `mcp_spec_versions_supported` custom claim on `/.well-known/oauth-authorization-server`, plus a new public `GET /.well-known/mcp-server-info` endpoint returning `{spec_versions, capabilities, server_name, server_version}`. Declared: `2025-03-26`, `2025-06-18` (default), `2025-11-25` (PARTIAL — CIMD deferred). A 20-test regression suite locks the declaration to CI; full audit and drift-tracking process in [docs/CONFORMANCE.md](docs/CONFORMANCE.md). (API-0021h)
 - **Agent-parity MCP tools for tasks.** New tools `update_task`, `update_task_status`, `complete_task`, and `list_tasks` (summary/full modes). `fetch_context` now accepts `categories=["tasks"]`.
+- **OAuth token revocation endpoint (RFC 7009).** New `POST /api/oauth/revoke` revokes access and refresh tokens idempotently. Public clients may revoke their own tokens without separate authentication per RFC 7009 §2.1. `MCPAuthMiddleware` enforces revocation on every protected request via an in-process TTL cache (60s positive / 5s negative, tenant-keyed). Refresh-token revocation flips the entire token family per RFC 6749 §10.4. CE migration `ce_0022_oauth_revoked_tokens` adds the revocation ledger. (API-0022)
+- **Per-token revocation identity on access JWTs.** Every issued access JWT now carries a `jti` claim (uuid4 hex) so individual tokens can be revoked without invalidating the broader session. (API-0022)
 
 ### Changed
 
 - **Task taxonomy unified.** `tasks.category` (freewrite string) replaced with `tasks.task_type_id` foreign key to the renamed `taxonomy_types` table (was `project_types`). REST path `/api/v1/project-types` → `/api/v1/taxonomy-types`. On upgrade, tasks whose old `category` value did not exact-match a taxonomy abbreviation or label arrive untyped — re-tag via the TasksView Type dropdown or via the `update_task` tool. CE migrations apply the rename, FK backfill, and legacy-column drop; all idempotent.
+- **BREAKING — `/mcp` hard-rejects JWTs missing an `aud` claim.** The legacy warn-and-accept transition path is removed. Tokens lacking `aud`, or whose `aud` does not include the configured resource, are rejected with `401 Unauthorized` + `WWW-Authenticate` header instead of being silently accepted with a log warning. Every fresh token issued since API-0021d Phase 2 carries a client-asserted `aud`, so legacy compatibility can sunset cleanly. Clients still presenting aud-less tokens must re-authenticate to obtain a properly audience-bound JWT. (API-0022)
+- **`oauth_authorization_codes.scope` server default canonicalized.** The Postgres column default moved from the historical `'mcp'` value to the post-API-0021b canonical `'mcp:read mcp:write'` form via CE migration `ce_0021_oauth_codes_scope_default`. The ORM-side default was already canonical; this aligns the schema. (API-0022)
 
 ### Security
 
 - **Public-doc leak guardrail.** New pre-commit check blocks RFC 1918 IPs, internal hostnames, and absolute drive-letter paths from being committed to public-bound files. Allowlist: `127.0.0.1`, `::1`, `0.0.0.0`, `localhost`, and the RFC 5737 / RFC 3849 documentation prefixes. Prevents the class of leakage that surfaced in earlier releases.
+- **OAuth lookup defense-in-depth.** Refresh-token and authorization-code service-layer lookups now bind on `client_id` in addition to the existing `token_hash` / `code` predicate. `oauth_clients.client_id` is a UUIDv4 primary key (globally unique across tenants), so the additional predicate makes every lookup cross-tenant-isolated at the query layer rather than relying solely on downstream guard checks. Honors the CLAUDE.md "every database query filters by tenant_key — no exceptions" rule. (API-0022 — folds API-0024)
 
 ## [1.2.4] — 2026-05-03
 
