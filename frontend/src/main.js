@@ -6,6 +6,7 @@ import { initializeApiConfig } from './config/api'
 import configService from './services/configService'
 import setupService from './services/setupService'
 import { initSentry } from './sentry'
+import { applyNonceToApp } from '@/composables/useCspNonce'
 
 // Vuetify
 import 'vuetify/styles'
@@ -51,6 +52,13 @@ const app = createApp(App)
 // when the beforeEach guard redirects to /demo-landing, so the redirect
 // falls into the NotFound catch-all and bounces to /login. Discovered
 // 2026-04-21 demo go-live.
+// SEC-0021: Pick up the per-request CSP nonce injected by the SaaS backend
+// into <meta name="csp-nonce"> and assign it to app.config.globalProperties.$nonce
+// BEFORE app.use(vuetify), so Vuetify's first runtime-injected <style> tag
+// carries the nonce attribute and is not blocked under nonce-only style-src.
+// CE mode (no meta tag) is a silent no-op; CE keeps 'unsafe-inline'.
+applyNonceToApp(app)
+
 app.use(pinia)
 app.use(vuetify)
 

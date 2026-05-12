@@ -133,6 +133,14 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         if self.is_dev:
             script_src += " 'unsafe-eval'"  # Vue HMR needs eval in dev
 
+        # CSP nonce hook (SEC-0021): when SaaS CspNonceMiddleware sets
+        # request.state.csp_nonce, swap 'unsafe-inline' for 'nonce-<X>' in
+        # style-src so Vuetify's runtime-injected style tags carry the matching
+        # nonce attribute. CE never sets the attribute, so style-src keeps
+        # 'unsafe-inline' — CE behavior is byte-identical to today.
+        nonce = getattr(request.state, "csp_nonce", "")
+        style_src = f"'self' 'nonce-{nonce}'" if nonce else "'self' 'unsafe-inline'"
+
         # connect-src: 'self' already covers same-origin API/WebSocket calls
         # (the common case). ws: / wss: allow cross-scheme WebSocket to the
         # same host. Building additional explicit host:port entries from config
@@ -149,7 +157,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
             f"script-src {script_src}; "
-            "style-src 'self' 'unsafe-inline'; "
+            f"style-src {style_src}; "
             "img-src 'self' data: https:; "
             "font-src 'self' data:; "
             f"connect-src {connect_src}; "

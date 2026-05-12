@@ -597,8 +597,8 @@ ACTIVE_PRODUCT=GiljoAI-MCP Coding Orchestrator
         security_config = {
             "cors": {
                 "allowed_origins": cors_origins
-                # Note: Do NOT use wildcards like 'http://10.1.0.*:7274' - they don't work
-                # Add specific IPs instead: 'http://192.168.1.100:7274'
+                # Note: Do NOT use wildcards like 'http://192.0.2.*:7274' - they don't work
+                # Add specific IPs instead: 'http://192.0.2.10:7274'
             },
             "cookie_domains": cookie_domains,  # Whitelist for cookie domain setting (cross-port auth)
             "api_keys": {

@@ -207,6 +207,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
             "/api/download/temp",  # Public download with token auth (one-time tokens)
             "/api/oauth/token",  # OAuth token exchange (public, PKCE-protected)
             "/api/oauth/refresh",  # OAuth refresh-token grant (public, secret-protected)
+            "/api/oauth/revoke",  # RFC 7009 token revocation (public — the token IS the credential, API-0022)
             "/api/oauth/.well-known/oauth-authorization-server",  # OAuth server metadata
             "/api/saas/oauth/",  # SaaS OAuth surface (DCR /register; RFC 7591 public per spec)
             "/.well-known/oauth-authorization-server",  # RFC 8414 root mirror (API-0021a)

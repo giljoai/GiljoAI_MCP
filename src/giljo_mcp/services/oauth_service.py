@@ -534,7 +534,19 @@ class OAuthService:
                 client authentication fails (``invalid_client``), or the
                 resource indicator does not match the bound value.
         """
-        result = await self._db.execute(select(OAuthAuthorizationCode).where(OAuthAuthorizationCode.code == code))
+        # API-0022 (folds API-0024): defense-in-depth. Bind the auth-code
+        # lookup itself to the body-supplied client_id so a stolen code
+        # presented under a different client never even resolves a row.
+        # ``oauth_clients.client_id`` is a UUIDv4 primary key (globally
+        # unique), so this is equivalent to binding to tenant_key without
+        # a second round-trip. The explicit client_id mismatch guard below
+        # stays as the second layer.
+        result = await self._db.execute(
+            select(OAuthAuthorizationCode).where(
+                OAuthAuthorizationCode.code == code,
+                OAuthAuthorizationCode.client_id == client_id,
+            )
+        )
         auth_code = result.scalar_one_or_none()
 
         if auth_code is None:

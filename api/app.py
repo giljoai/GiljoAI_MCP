@@ -84,6 +84,7 @@ try:
         network,
         notifications,
         oauth,
+        oauth_revoke,
         products,
         project_statuses,
         projects,
@@ -491,6 +492,7 @@ def _configure_middleware(app: FastAPI) -> None:
             "/api/saas/account/cancel-deletion",  # Account deletion cancel (token-auth, SAAS-022)
             "/api/oauth/token",  # OAuth token exchange (external MCP clients, PKCE-protected)
             "/api/oauth/refresh",  # OAuth refresh-token grant (external MCP clients, secret-protected)
+            "/api/oauth/revoke",  # RFC 7009 revocation (external MCP clients, token IS the credential)
             "/api/oauth/.well-known/",  # OAuth metadata (public GET)
             "/api/saas/oauth/",  # SaaS OAuth surface (DCR /register; called by external clients without CSRF cookie)
             "/api/setup/",  # Setup wizard (runs before auth is configured)
@@ -578,6 +580,8 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
     app.include_router(auth_pin_recovery.router, prefix="/api/auth", tags=["auth"])
     app.include_router(oauth.router, prefix="/api/oauth", tags=["oauth"])
+    # API-0022: RFC 7009 /revoke split out to stay under the 800-line guardrail.
+    app.include_router(oauth_revoke.router, prefix="/api/oauth", tags=["oauth"])
     # Root-level well-known documents (RFC 8414 + RFC 9728). Spec-compliant
     # clients (Claude.ai, MCP CLI) probe `<host>/.well-known/...` per
     # API-0021a. Body of the AS-metadata mirror matches the /api/oauth/...
