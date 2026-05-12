@@ -116,9 +116,9 @@ Run on each environment.
 
 | Environment | Distinct values observed | Counts |
 |-------------|-------------------------|--------|
-| Local dev (`giljo_mcp@localhost`) | `completed`, `deleted`, `inactive` | 1 / 1 / 1 |
-| Dogfood (`giljo@10.1.0.191`) | **NOT QUERIED** — no creds available to this analyzer agent. Implementer-DevOps must run the query during smoke testing of the migration on the dogfood box. See §6.3. |
-| Demo prod (`gildemo@10.1.0.16`) | **NOT QUERIED** — same reason. |
+| Local dev (Postgres on localhost) | `completed`, `deleted`, `inactive` | 1 / 1 / 1 |
+| Dogfood server | **NOT QUERIED** — no creds available to this analyzer agent. Implementer-DevOps must run the query during smoke testing of the migration on the dogfood box. See §6.3. |
+| Demo production server | **NOT QUERIED** — same reason. |
 
 A REQUEST_CONTEXT was sent to the orchestrator asking for credentials or
 the query result; design proceeds with the conservative pre-flight remap
@@ -568,8 +568,8 @@ path. Implementer-DevOps owns running these.
 | Box | Path | What to verify |
 |-----|------|----------------|
 | Local dev (Win) | `python startup.py --verbose` after pulling the branch | Migration applies; `\d projects` shows enum type; existing rows ({completed, deleted, inactive}) preserved; dashboard loads. |
-| Dogfood (`giljo@10.1.0.191`, Win 11) | Pull dev branch, restart | Run `SELECT DISTINCT status, COUNT(*) FROM projects GROUP BY 1` BEFORE and AFTER the migration. Confirm the post-state has only canonical values; check the migration log output for `RAISE NOTICE` lines reporting the remap row counts. If any orphan was found, capture the value and add it to §2.3 retroactively (then push a docs follow-up). |
-| Demo prod (`gildemo@10.1.0.16`, Ubuntu) | Same as dogfood | Same. |
+| Dogfood server (Windows 11) | Pull dev branch, restart | Run `SELECT DISTINCT status, COUNT(*) FROM projects GROUP BY 1` BEFORE and AFTER the migration. Confirm the post-state has only canonical values; check the migration log output for `RAISE NOTICE` lines reporting the remap row counts. If any orphan was found, capture the value and add it to §2.3 retroactively (then push a docs follow-up). |
+| Demo production server (Ubuntu) | Same as dogfood | Same. |
 
 ### 6.2 Orphan-data scenarios to test in the upgrade smoke
 
@@ -606,9 +606,9 @@ Definition of Done":
 - Post-push CI green on private repo (9 required checks).
 - After export to public master, verify the slimmer 6-check public CI
   badge stays green.
-- Installer-touching changes require real installer runs on Win + Linux
-  (AI-TOP at `patrik@10.1.0.163`). Migration runs as part of
-  `python startup.py --verbose` so this is exercised by any install
+- Installer-touching changes require real installer runs on Windows
+  and Linux on a dedicated dependency-test box. Migration runs as
+  part of `python startup.py --verbose` so this is exercised by any install
   smoke.
 
 ### 6.4 Rollback plan

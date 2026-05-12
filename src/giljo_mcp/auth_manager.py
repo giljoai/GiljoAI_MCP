@@ -12,6 +12,7 @@ import json
 import logging
 import os
 import secrets
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -26,6 +27,40 @@ from .config_manager import get_config
 
 
 logger = logging.getLogger(__name__)
+
+
+# SaaS hook: extension point for org-scoped API key resolution (SEC-0018b).
+# CE leaves this as None — `_validate_network_credentials` skips the SaaS
+# path entirely when no resolver is installed. SaaS bootstrap calls
+# `set_saas_api_key_resolver` at startup with a DB-backed resolver via
+# `giljo_mcp.saas.auth.org_api_key_resolver.install_saas_api_key_resolver`.
+#
+# Contract: ``Callable[[Request, str], Awaitable[dict | None]]``. Resolver
+# receives the FastAPI Request (for db_manager lookup) and the plaintext
+# inbound API key. Returns a dict shaped like the existing JWT/API-key
+# result (``authenticated``, ``tenant_key``, ``user_id``, ``permissions``,
+# ``user_obj`` optional) on success, or None if the key does not match any
+# active org row. CE auth_manager itself never imports from saas/.
+SaasApiKeyResolver = Callable[[Request, str], Awaitable[dict[str, Any] | None]]
+
+_saas_api_key_resolver: SaasApiKeyResolver | None = None
+
+
+def set_saas_api_key_resolver(resolver: SaasApiKeyResolver | None) -> None:
+    """Install (or clear) the SaaS org-API-key resolver.
+
+    Idempotent. Passing ``None`` clears the resolver (test helper).
+    Raises TypeError if a non-callable, non-None value is supplied.
+    """
+    if resolver is not None and not callable(resolver):
+        raise TypeError(f"SaaS API key resolver must be callable or None, got {type(resolver).__name__}")
+    global _saas_api_key_resolver  # noqa: PLW0603 — process-wide extension seam
+    _saas_api_key_resolver = resolver
+
+
+def get_saas_api_key_resolver() -> SaasApiKeyResolver | None:
+    """Return the currently installed SaaS API-key resolver (or None for CE)."""
+    return _saas_api_key_resolver
 
 
 class AuthManager:
@@ -293,6 +328,21 @@ class AuthManager:
             key_info = self.validate_api_key(api_key)
             if key_info:
                 return await self._build_api_key_result(key_info, request)
+
+        # SaaS extension: org-scoped API keys (SEC-0018b). The resolver is
+        # None in CE, so this branch is a no-op for CE auth. SaaS installs
+        # a DB-backed resolver at startup via install_saas_api_key_resolver.
+        # We try BOTH the bearer token (when it failed JWT *and* legacy API-key
+        # validation) AND the X-API-Key header — an inbound caller may put the
+        # org key in either slot.
+        resolver = _saas_api_key_resolver
+        if resolver is not None:
+            for candidate in (api_key, token):
+                if not candidate:
+                    continue
+                saas_result = await resolver(request, candidate)
+                if saas_result is not None:
+                    return saas_result
 
         # No valid credentials
         logger.warning("[Network Auth] Authentication failed - no valid credentials found")

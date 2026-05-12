@@ -235,8 +235,9 @@ class TestS2JwtMissingScopeClaimDefaultsToReadWrite:
         from giljo_mcp.tenant import TenantManager
 
         tenant_key = TenantManager.generate_tenant_key()
-        # Aud-less + scope-less = legacy/cookie token shape
-        token = _make_jwt(aud=None, tenant_key=tenant_key, scope=None)
+        # API-0022: aud-less tokens are now hard-rejected at /mcp. Test only
+        # the missing-scope-claim default; aud must be present and canonical.
+        token = _make_jwt(aud=CANONICAL_MCP_URI, tenant_key=tenant_key, scope=None)
 
         inner = _CapturingInnerApp()
         mw = MCPAuthMiddleware(app=inner)

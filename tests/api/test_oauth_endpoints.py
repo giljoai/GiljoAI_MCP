@@ -218,7 +218,7 @@ class TestOAuthTokenEndpoint:
                 redirect_uri="http://localhost:3000/callback",
                 code_challenge=challenge,
                 code_challenge_method="S256",
-                scope="mcp",
+                scope="mcp:read mcp:write",
                 expires_at=datetime.now(UTC) + timedelta(minutes=10),
                 used=False,
             )
@@ -285,7 +285,7 @@ class TestOAuthTokenEndpoint:
                 redirect_uri="http://localhost:3000/callback",
                 code_challenge=challenge,
                 code_challenge_method="S256",
-                scope="mcp",
+                scope="mcp:read mcp:write",
                 expires_at=datetime.now(UTC) + timedelta(minutes=10),
                 used=False,
             )
@@ -679,6 +679,39 @@ class TestProtectedResourceMetadataResourceIndicators:
         assert response.status_code == 200, response.text
         body = response.json()
         assert body.get("resource_indicators_supported") is True, body
+
+
+class TestProtectedResourceMetadataPathSuffix:
+    """API-0021k: RFC 9728 §3.1 path-suffix discovery variant.
+
+    Pre-fix bug: `GET /.well-known/oauth-protected-resource/mcp` returned the
+    Vue SPA `index.html` (200 HTML) because no route handler matched and the
+    SPA 404 exception handler in api/app.py served the SPA shell. These tests
+    exercise the route at the FastAPI boundary (the failing layer) — service
+    coverage would not have caught this. Tests confirm the path-suffix form
+    for `/mcp` returns identical metadata to the host-only form and that any
+    other suffix returns 404 (only `/mcp` is a valid protected resource).
+    """
+
+    @pytest.mark.asyncio
+    async def test_pathsuffix_mcp_matches_host_only_response(self, api_client):
+        host_only = await api_client.get("/.well-known/oauth-protected-resource")
+        pathsuffix = await api_client.get("/.well-known/oauth-protected-resource/mcp")
+
+        assert host_only.status_code == 200, host_only.text
+        assert pathsuffix.status_code == 200, pathsuffix.text
+        assert pathsuffix.headers["content-type"].startswith("application/json")
+        assert pathsuffix.json() == host_only.json()
+
+    @pytest.mark.asyncio
+    async def test_pathsuffix_unknown_resource_is_404(self, api_client):
+        response = await api_client.get("/.well-known/oauth-protected-resource/notmcp")
+        assert response.status_code == 404, response.text
+
+    @pytest.mark.asyncio
+    async def test_pathsuffix_deeper_path_is_404(self, api_client):
+        response = await api_client.get("/.well-known/oauth-protected-resource/mcp/extra")
+        assert response.status_code == 404, response.text
 
 
 # ---------------------------------------------------------------------------
@@ -1656,3 +1689,197 @@ class TestTokenIdempotency:
         body = second.json()
         detail_text = body.get("detail", body.get("message", "")).lower()
         assert "invalid_grant" in detail_text, body
+
+
+# ---------------------------------------------------------------------------
+# API-0022: RFC 7009 /oauth/revoke endpoint tests.
+#
+# Boundary tests go through TestClient (not direct service calls) per the
+# BE-5042 rule: test at the layer where the bug would occur. Revocation
+# state is asserted by attempting a follow-up /mcp request and looking for
+# 401 + WWW-Authenticate. The endpoint is idempotent (RFC 7009 §2.2): all
+# happy-path and error-path responses are 200 OK except `token` missing
+# (400 invalid_request — the one spec-allowed non-200 path).
+# ---------------------------------------------------------------------------
+
+
+async def _seed_org_user(db_manager):
+    from giljo_mcp.models.auth import User
+    from giljo_mcp.models.organizations import Organization
+    from giljo_mcp.tenant import TenantManager
+
+    tenant_key = TenantManager.generate_tenant_key()
+    async with db_manager.get_session_async() as session:
+        org = Organization(
+            name=f"Revoke Test Org {uuid4().hex[:6]}",
+            slug=f"revoke-org-{uuid4().hex[:8]}",
+            tenant_key=tenant_key,
+            is_active=True,
+        )
+        session.add(org)
+        await session.flush()
+
+        user = User(
+            id=str(uuid4()),
+            username=f"revoke_user_{uuid4().hex[:8]}",
+            email=f"revoke_{uuid4().hex[:8]}@example.com",
+            role="developer",
+            tenant_key=tenant_key,
+            is_active=True,
+            org_id=org.id,
+        )
+        session.add(user)
+        await session.commit()
+        return tenant_key, str(user.id)
+
+
+def _mint_access_jwt(*, tenant_key: str, user_id: str, aud: str | None = None) -> str:
+    """Issue an access JWT through JWTManager so it carries a real jti."""
+    from uuid import UUID as _UUID
+
+    from giljo_mcp.auth.jwt_manager import JWTManager
+
+    return JWTManager.create_access_token(
+        user_id=_UUID(user_id),
+        username="revoke_user",
+        role="developer",
+        tenant_key=tenant_key,
+        audience=aud,
+        scope="mcp:read mcp:write",
+    )
+
+
+class TestOAuthRevokeEndpoint:
+    """RFC 7009 /api/oauth/revoke endpoint (API-0022)."""
+
+    @pytest.mark.asyncio
+    async def test_missing_token_returns_400(self, api_client):
+        """RFC 7009 §2.1: token is REQUIRED; absent returns invalid_request."""
+        response = await api_client.post("/api/oauth/revoke", data={})
+        assert response.status_code == 400, response.text
+        body = response.json()
+        detail = body.get("detail", body.get("message", "")).lower()
+        assert "invalid_request" in detail or "token" in detail
+
+    @pytest.mark.asyncio
+    async def test_garbage_token_returns_200(self, api_client):
+        """RFC 7009 section 2.2: unknown/foreign tokens MUST still 200 (no leak)."""
+        response = await api_client.post(
+            "/api/oauth/revoke",
+            data={"token": "this-is-not-a-real-token"},
+        )
+        assert response.status_code == 200, response.text
+
+    @pytest.mark.asyncio
+    async def test_access_jwt_revoked_then_mcp_request_returns_401(self, api_client, db_manager, monkeypatch):
+        """Happy path: revoke an access JWT, subsequent /mcp request 401s.
+
+        Boundary test through TestClient: proves the jti makes it into
+        oauth_revoked_tokens AND that the MCP middleware enforces it.
+        """
+        from giljo_mcp.services.oauth_revocation_service import clear_revocation_cache
+
+        clear_revocation_cache()
+
+        tenant_key, user_id = await _seed_org_user(db_manager)
+        canonical_aud = "http://test/mcp"
+        monkeypatch.setenv("GILJO_MCP_CANONICAL_URI", canonical_aud)
+        token = _mint_access_jwt(tenant_key=tenant_key, user_id=user_id, aud=canonical_aud)
+
+        # No pre-revoke /mcp probe: the MCP SDK inner app needs an active
+        # session_manager (lifespan run()) that the test ASGITransport does
+        # not start, so requests that PASS auth crash inside the inner app.
+        # The post-revocation 401 below is asserted at the middleware layer
+        # — that's the layer the bug would live in (BE-5042 rule).
+
+        revoke_response = await api_client.post(
+            "/api/oauth/revoke",
+            data={"token": token, "token_type_hint": "access_token"},
+        )
+        assert revoke_response.status_code == 200, revoke_response.text
+
+        clear_revocation_cache()
+
+        post = await api_client.post(
+            "/mcp",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+                "Accept": "application/json, text/event-stream",
+            },
+            json={"jsonrpc": "2.0", "id": 2, "method": "tools/list"},
+        )
+        assert post.status_code == 401, f"post-revoke /mcp must 401, got {post.status_code}: {post.text[:200]}"
+        www_auth = post.headers.get("www-authenticate", "")
+        assert "Bearer" in www_auth and 'realm="MCP"' in www_auth, www_auth
+
+    @pytest.mark.asyncio
+    async def test_revoke_is_idempotent(self, api_client, db_manager):
+        """Already-revoked tokens revoke cleanly (200 OK, no duplicate row)."""
+        from sqlalchemy import select
+
+        from giljo_mcp.models.oauth import OAuthRevokedToken
+        from giljo_mcp.services.oauth_revocation_service import clear_revocation_cache
+
+        clear_revocation_cache()
+
+        tenant_key, user_id = await _seed_org_user(db_manager)
+        token = _mint_access_jwt(tenant_key=tenant_key, user_id=user_id, aud="http://test/mcp")
+
+        first = await api_client.post("/api/oauth/revoke", data={"token": token})
+        assert first.status_code == 200, first.text
+
+        second = await api_client.post("/api/oauth/revoke", data={"token": token})
+        assert second.status_code == 200, second.text
+
+        async with db_manager.get_session_async() as session:
+            result = await session.execute(select(OAuthRevokedToken).where(OAuthRevokedToken.tenant_key == tenant_key))
+            rows = result.scalars().all()
+        assert len(rows) == 1, f"expected single revocation row, got {len(rows)}"
+
+    @pytest.mark.asyncio
+    async def test_tenant_isolation_revoked_in_a_does_not_affect_b(self, api_client, db_manager, monkeypatch):
+        """CLAUDE.md tenant-isolation: revocation is tenant-scoped."""
+        from giljo_mcp.services.oauth_revocation_service import clear_revocation_cache
+
+        clear_revocation_cache()
+
+        canonical_aud = "http://test/mcp"
+        monkeypatch.setenv("GILJO_MCP_CANONICAL_URI", canonical_aud)
+
+        tenant_a, user_a = await _seed_org_user(db_manager)
+        tenant_b, user_b = await _seed_org_user(db_manager)
+        token_a = _mint_access_jwt(tenant_key=tenant_a, user_id=user_a, aud=canonical_aud)
+        token_b = _mint_access_jwt(tenant_key=tenant_b, user_id=user_b, aud=canonical_aud)
+
+        revoke_a = await api_client.post("/api/oauth/revoke", data={"token": token_a})
+        assert revoke_a.status_code == 200
+
+        clear_revocation_cache()
+
+        post_a = await api_client.post(
+            "/mcp",
+            headers={
+                "Authorization": f"Bearer {token_a}",
+                "Content-Type": "application/json",
+                "Accept": "application/json, text/event-stream",
+            },
+            json={"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
+        )
+        assert post_a.status_code == 401, post_a.text
+
+        # Tenant B's token must NOT be revoked. The /mcp inner app crashes
+        # in tests when auth passes (no session_manager lifespan), so we
+        # assert at the service layer instead. is_access_token_jti_revoked
+        # is the function the /mcp middleware actually calls; a False here
+        # means the middleware would let tenant B through.
+        from jwt import decode as _jwt_decode
+
+        from giljo_mcp.services.oauth_revocation_service import is_access_token_jti_revoked
+
+        jwt_b_payload = _jwt_decode(token_b, options={"verify_signature": False})
+        jti_b = jwt_b_payload["jti"]
+        async with db_manager.get_session_async() as _check_db:
+            assert await is_access_token_jti_revoked(_check_db, tenant_key=tenant_b, jti=jti_b) is False, (
+                "tenant B's jti was incorrectly marked revoked when tenant A's token was revoked"
+            )

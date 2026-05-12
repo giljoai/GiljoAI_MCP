@@ -16,6 +16,7 @@ Usage:
 """
 
 import argparse
+import os
 import shutil
 import subprocess
 import sys
@@ -274,7 +275,14 @@ def clear_caches():
 def empty_server_trash():
     section("Server drive trash")
 
-    trash = Path("/media/gildemo/Server/.Trash-1000")
+    # Optional: set LINUX_DEV_SERVER_TRASH to clear an extra mounted drive's Trash
+    # (developer-specific path; skipped silently when the env var is unset).
+    trash_path_env = os.environ.get("LINUX_DEV_SERVER_TRASH")
+    if not trash_path_env:
+        print("  LINUX_DEV_SERVER_TRASH not set — skipping mounted-drive trash cleanup")
+        return
+
+    trash = Path(trash_path_env)
     if trash.exists():
         for subdir in ["files", "info", "expunged"]:
             d = trash / subdir

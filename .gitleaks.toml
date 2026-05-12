@@ -29,11 +29,11 @@ keywords = ["MHTGiljo"]
 [[rules]]
 id = "personal-email-leak"
 description = "Personal email addresses that should never ship to public CE"
-# Catches patrik@giljo.ai and any *@gmail.com address.
-# Path allowlist below excludes private-only locations (handovers/, tests/saas/, etc.)
-# and the regexes allowlist permits intentional service accounts (noreply, infoteam, ...).
-regex = '''\b(patrik@giljo\.ai|[A-Za-z0-9._%+-]+@gmail\.com)\b'''
-keywords = ["patrik@giljo", "@gmail.com"]
+# Catches any @giljo.ai email (founder/admin/personal mailboxes) and any *@gmail.com address.
+# Path allowlist below excludes private-only locations (handovers/, tests/saas/, etc.).
+# The regexes allowlist permits intentional service accounts (noreply, support, etc.).
+regex = '''\b([A-Za-z0-9._%+-]+@giljo\.ai|[A-Za-z0-9._%+-]+@gmail\.com)\b'''
+keywords = ["@giljo.ai", "@gmail.com"]
 
 # ─── Allowlist for test fixtures, tools, and private-only paths ────────────
 [allowlist]
@@ -127,4 +127,6 @@ regexes = [
     '''Authorization: Bearer \$env:''',
     # Local dev URLs (not credentials)
     '''(localhost|127\.0\.0\.1):\d+''',
+    # Allowed @giljo.ai service accounts (intentional, not personal)
+    '''(noreply|no-reply|support|hello|team|info|infoteam|admin|sales|press|hr|partnerships|founders|founder|security|legal|abuse|postmaster|privacy|dpo|gdpr|contact|help)@giljo\.ai''',
 ]

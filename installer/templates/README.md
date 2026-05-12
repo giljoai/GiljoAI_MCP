@@ -99,7 +99,7 @@ Backend renders scripts with actual server URL before download:
 SERVER_URL="{{SERVER_URL}}"
 
 # Rendered (what user downloads):
-SERVER_URL="http://192.168.1.100:7272"
+SERVER_URL="http://192.0.2.10:7272"
 ```
 
 ## Environment Setup

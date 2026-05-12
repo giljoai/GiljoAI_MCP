@@ -14,6 +14,7 @@ Handover: 0846a (transport replacement), 0846b (security integration)
 """
 
 import inspect
+import json
 import logging
 from typing import Annotated, Any, Literal
 
@@ -254,7 +255,7 @@ async def create_project(
     series_number: int = 0,
     suffix: str = "",
     ctx: Context = None,
-) -> dict:
+) -> dict[str, Any]:
     """Create a new project bound to the active product.
 
     Args:
@@ -310,7 +311,7 @@ async def list_projects(
     mode: str = "",
     memory_limit: int = 0,
     ctx: Context = None,
-) -> dict:
+) -> dict[str, Any]:
     """List projects for the active product (v1.2.1 server-side filtering).
 
     Default returns only projects in active lifecycle. Four statuses are
@@ -438,7 +439,7 @@ async def update_project(
     series_number: int = 0,
     suffix: str = "",
     ctx: Context = None,
-) -> dict:
+) -> dict[str, Any]:
     """Update project metadata fields.
 
     Args:
@@ -480,7 +481,7 @@ async def update_project_mission(
     project_id: str,
     mission: str,
     ctx: Context = None,
-) -> dict:
+) -> dict[str, Any]:
     """Save orchestrator's mission plan to database."""
     return await _call_tool(
         ctx,
@@ -504,7 +505,7 @@ async def update_agent_mission(
     job_id: str,
     mission: str,
     ctx: Context = None,
-) -> dict:
+) -> dict[str, Any]:
     """Update an agent's mission/execution plan."""
     return await _call_tool(
         ctx,
@@ -529,7 +530,7 @@ async def update_agent_mission(
 async def get_orchestrator_instructions(
     job_id: str,
     ctx: Context = None,
-) -> dict:
+) -> dict[str, Any]:
     """Fetch context for orchestrator to CREATE mission plan."""
     return await _call_tool(ctx, "get_orchestrator_instructions", {"job_id": job_id})
 
@@ -578,7 +579,7 @@ async def send_message(
         ),
     ] = False,
     ctx: Context = None,
-) -> dict:
+) -> dict[str, Any]:
     """Send a message to one or more agents."""
     return await _call_tool(
         ctx,
@@ -610,7 +611,7 @@ async def receive_messages(
         Field(description="Filter by type: ['direct'], ['broadcast'], ['system']. Omit for all types."),
     ] = None,
     ctx: Context = None,
-) -> dict:
+) -> dict[str, Any]:
     """Receive pending messages with optional filtering. Auto-acknowledges and removes from queue."""
     kwargs: dict[str, Any] = {"limit": limit, "exclude_self": exclude_self, "exclude_progress": exclude_progress}
     if agent_id:
@@ -634,7 +635,7 @@ async def inspect_messages(
     ] = "",
     limit: Annotated[int, Field(description="Max messages to return. Default: 50.")] = 50,
     ctx: Context = None,
-) -> dict:
+) -> dict[str, Any]:
     """Inspect messages with optional filters (read-only)."""
     kwargs: dict[str, Any] = {}
     if agent_id:
@@ -674,7 +675,7 @@ async def create_task(
     ] = "",
     assigned_to: Annotated[str, Field(description="Optional assignee name.")] = "",
     ctx: Context = None,
-) -> dict:
+) -> dict[str, Any]:
     """Create a new task bound to the active product."""
     kwargs: dict[str, Any] = {"title": title, "description": description, "priority": priority}
     if task_type:
@@ -706,7 +707,7 @@ async def update_task(
     task_type: Annotated[str, Field(description="Taxonomy abbreviation (e.g. BE, FE). Empty string clears type.")] = "",
     due_date: Annotated[str, Field(description="ISO 8601 due date; empty string keeps current.")] = "",
     ctx: Context = None,
-) -> dict:
+) -> dict[str, Any]:
     """Update task metadata fields. Mirrors update_project."""
     params: dict[str, Any] = {"task_id": task_id}
     if title:
@@ -735,7 +736,7 @@ async def complete_task(
     task_id: Annotated[str, Field(description="Task UUID (required).")],
     completion_notes: Annotated[str, Field(description="Optional notes appended to the task's audit trail.")] = "",
     ctx: Context = None,
-) -> dict:
+) -> dict[str, Any]:
     """Mark a task completed with optional notes."""
     kwargs: dict[str, Any] = {"task_id": task_id}
     if completion_notes:
@@ -765,7 +766,7 @@ async def list_tasks(
     summary_only: Annotated[bool, Field(description="Alias for mode='summary'.")] = False,
     memory_limit: Annotated[int, Field(description="Truncate description in 'full' mode.")] = 0,
     ctx: Context = None,
-) -> dict:
+) -> dict[str, Any]:
     """List tasks for the current tenant."""
     kwargs: dict[str, Any] = {"mode": mode}
     if status:
@@ -806,7 +807,7 @@ async def request_approval(
         Field(description="Optional structured payload (deferred findings, etc). <= 16 KB serialized."),
     ] = None,
     ctx: Context = None,
-) -> dict:
+) -> dict[str, Any]:
     """Create a pending user approval. Atomic: insert row + flip status + broadcast."""
     kwargs: dict[str, Any] = {
         "job_id": job_id,
@@ -819,7 +820,7 @@ async def request_approval(
 
 
 @mcp.tool(description="Check MCP server health status")
-async def health_check(ctx: Context = None) -> dict:
+async def health_check(ctx: Context = None) -> dict[str, Any]:
     """Check MCP server health status."""
     accessor = _get_tool_accessor()
     return await accessor.health_check()
@@ -837,7 +838,7 @@ async def health_check(ctx: Context = None) -> dict:
 async def giljo_setup(
     platform: Literal["claude_code", "gemini_cli", "codex_cli", "generic"] = "claude_code",
     ctx: Context = None,
-) -> dict:
+) -> dict[str, Any]:
     """Install slash commands/skills for your CLI tool."""
     logger.info("giljo_setup called with platform=%s", platform)
 
@@ -876,7 +877,7 @@ async def generate_download_token(
     content_type: str,
     platform: str = "claude_code",
     ctx: Context = None,
-) -> dict:
+) -> dict[str, Any]:
     """Generate one-time download URL for agent templates/slash commands."""
     return await _call_tool(
         ctx,
@@ -897,7 +898,7 @@ async def generate_download_token(
 async def list_agent_templates(
     platform: str,
     ctx: Context = None,
-) -> dict:
+) -> dict[str, Any]:
     """Export agent templates for target CLI platform."""
     kwargs = {"platform": platform}
     result = await _call_tool(ctx, "list_agent_templates", kwargs)
@@ -948,7 +949,7 @@ async def get_pending_jobs(
         ),
     ],
     ctx: Context = None,
-) -> dict:
+) -> dict[str, Any]:
     """Get pending jobs for agent type."""
     return await _call_tool(ctx, "get_pending_jobs", {"agent_display_name": agent_display_name})
 
@@ -975,7 +976,7 @@ async def report_progress(
         ),
     ] = None,
     ctx: Context = None,
-) -> dict:
+) -> dict[str, Any]:
     """Report incremental progress."""
     kwargs: dict[str, Any] = {"job_id": job_id}
     if todo_items is not None:
@@ -1021,7 +1022,7 @@ async def complete_job(
         ),
     ] = False,
     ctx: Context = None,
-) -> dict:
+) -> dict[str, Any]:
     """Mark job as completed with results."""
     return await _call_tool(
         ctx,
@@ -1047,7 +1048,7 @@ async def complete_job(
 async def close_job(
     job_id: str,
     ctx: Context = None,
-) -> dict:
+) -> dict[str, Any]:
     """Accept completed work and close the job permanently."""
     return await _call_tool(ctx, "close_job", {"job_id": job_id})
 
@@ -1064,7 +1065,7 @@ async def reactivate_job(
     job_id: str,
     reason: str = "",
     ctx: Context = None,
-) -> dict:
+) -> dict[str, Any]:
     """Resume work on a completed job."""
     kwargs: dict[str, Any] = {"job_id": job_id}
     if reason:
@@ -1083,7 +1084,7 @@ async def dismiss_reactivation(
     job_id: str,
     reason: str = "",
     ctx: Context = None,
-) -> dict:
+) -> dict[str, Any]:
     """Acknowledge post-completion message without resuming."""
     kwargs: dict[str, Any] = {"job_id": job_id}
     if reason:
@@ -1118,7 +1119,7 @@ async def set_agent_status(
         ),
     ] = None,
     ctx: Context = None,
-) -> dict:
+) -> dict[str, Any]:
     """Set agent resting/blocked status."""
     return await _call_tool(
         ctx,
@@ -1151,7 +1152,7 @@ _PLACEHOLDER_JOB_IDS = {"unknown", "none", "null", "", "undefined", "placeholder
 async def get_agent_mission(
     job_id: str,
     ctx: Context = None,
-) -> dict:
+) -> dict[str, Any]:
     """Fetch agent-specific mission and context."""
     if job_id.strip().lower() in _PLACEHOLDER_JOB_IDS:
         return {
@@ -1218,7 +1219,7 @@ async def spawn_job(
         ),
     ] = "",
     ctx: Context = None,
-) -> dict:
+) -> dict[str, Any]:
     """Create specialist agent job for execution."""
     kwargs: dict[str, Any] = {
         "agent_display_name": agent_display_name,
@@ -1243,7 +1244,7 @@ async def spawn_job(
 async def get_agent_result(
     job_id: str,
     ctx: Context = None,
-) -> dict:
+) -> dict[str, Any]:
     """Fetch completion result of finished agent job."""
     return await _call_tool(ctx, "get_agent_result", {"job_id": job_id})
 
@@ -1259,7 +1260,7 @@ async def get_workflow_status(
     project_id: str,
     exclude_job_id: str = "",
     ctx: Context = None,
-) -> dict:
+) -> dict[str, Any]:
     """Monitor workflow progress across all project agents."""
     kwargs: dict[str, Any] = {"project_id": project_id}
     if exclude_job_id:
@@ -1303,7 +1304,7 @@ async def fetch_context(
     ] = None,
     output_format: Annotated[str, Field(description="Output format: 'structured' (default) or 'flat'.")] = "structured",
     ctx: Context = None,
-) -> dict:
+) -> dict[str, Any]:
     """Unified context fetcher by category with depth control."""
     if isinstance(categories, str):
         categories = [categories]
@@ -1367,7 +1368,7 @@ async def close_project_and_update_memory(
         ),
     ] = None,
     ctx: Context = None,
-) -> dict:
+) -> dict[str, Any]:
     """Close project and update 360 Memory."""
     kwargs: dict[str, Any] = {
         "project_id": project_id,
@@ -1448,7 +1449,7 @@ async def write_360_memory(
         ),
     ] = None,
     ctx: Context = None,
-) -> dict:
+) -> dict[str, Any]:
     """Write 360 memory entry for project completion/handover.
 
     DEPRECATED: do not use `action_required:` tag prefixes or write `action_required` 360 entries for new work. Create a follow-up task via `mcp__giljo_mcp__create_task` (or a project via `mcp__giljo_mcp__create_project` for multi-step work) and cite the returned ID in `decisions_made` at closeout.
@@ -1487,7 +1488,7 @@ async def submit_tuning_review(
     overall_summary: str = "",
     force: bool = False,
     ctx: Context = None,
-) -> dict:
+) -> dict[str, Any]:
     """Submit product context tuning proposals."""
     kwargs: dict[str, Any] = {"product_id": product_id, "proposals": proposals}
     if overall_summary:
@@ -1515,7 +1516,7 @@ async def get_vision_doc(
     product_id: str,
     chunk: int | None = None,
     ctx: Context = None,
-) -> dict:
+) -> dict[str, Any]:
     """Retrieve product's vision document."""
     kwargs: dict[str, Any] = {"product_id": product_id}
     if chunk is not None:
@@ -1558,7 +1559,7 @@ async def write_product_from_analysis(
     summary_33: str = "",
     summary_66: str = "",
     ctx: Context = None,
-) -> dict:
+) -> dict[str, Any]:
     """Write structured product fields from vision document analysis."""
     # Build kwargs with only non-empty values (merge-write semantics)
     kwargs: dict[str, Any] = {"product_id": product_id}
@@ -1618,6 +1619,135 @@ def _unauthenticated_response(scope: Scope, error: str, status_code: int = 401) 
         status_code=status_code,
         headers={"WWW-Authenticate": _build_www_authenticate_header(scope)},
     )
+
+
+# ---------------------------------------------------------------------------
+# API-0021j: MCP-Protocol-Version + Mcp-Session-Id transport-layer helpers
+#
+# Streamable HTTP spec requires:
+#   - Non-initialize requests with an unsupported MCP-Protocol-Version → 400
+#     (NOT 401 — clients use this to negotiate; auth is downstream of it).
+#   - Initialize responses carry an Mcp-Session-Id; subsequent requests echo
+#     it and the server MUST return 404 on unknown / expired / cross-tenant
+#     ids (matches SDK behavior at streamable_http.py:498).
+#
+# Single source of truth: import MCP_SPEC_VERSIONS_SUPPORTED from
+# api.endpoints.oauth — locked by tests/api/test_spec_conformance.py. The
+# frozenset below is a derived O(1) membership view, not a parallel constant.
+# ---------------------------------------------------------------------------
+
+from api.endpoints.oauth import MCP_SPEC_VERSIONS_SUPPORTED  # noqa: E402
+
+
+_SUPPORTED_VERSIONS: frozenset[str] = frozenset(MCP_SPEC_VERSIONS_SUPPORTED)
+_DEFAULT_SPEC_VERSION = "2025-03-26"
+_INITIALIZE_METHOD = "initialize"
+
+
+async def _read_full_body(receive: Receive) -> bytes:
+    """Drain the ASGI request body in full.
+
+    Returns the concatenated bytes. The middleware buffers the body once so the
+    JSON-RPC method can be peeked before the inner ASGI app is invoked; the
+    buffered bytes are then replayed via :func:`_replay_receive`.
+    """
+    chunks: list[bytes] = []
+    while True:
+        message = await receive()
+        if message["type"] == "http.disconnect":
+            break
+        if message["type"] != "http.request":
+            break
+        chunks.append(message.get("body", b""))
+        if not message.get("more_body", False):
+            break
+    return b"".join(chunks)
+
+
+def _replay_receive(body: bytes) -> Receive:
+    """Build a fresh ``receive`` that yields ``body`` once, then disconnect."""
+    sent = {"done": False}
+
+    async def _receive() -> dict:
+        if sent["done"]:
+            return {"type": "http.disconnect"}
+        sent["done"] = True
+        return {"type": "http.request", "body": body, "more_body": False}
+
+    return _receive
+
+
+def _peek_jsonrpc_method(body: bytes) -> str | None:
+    """Return the JSON-RPC ``method`` if the body decodes cleanly, else ``None``.
+
+    Malformed bodies are tolerated — the inner SDK will respond with the
+    canonical JSON-RPC error, and the middleware short-circuits no further
+    on its own. Header-version + session-id flows treat missing-method as
+    'not initialize' (the safe default).
+    """
+    if not body:
+        return None
+    try:
+        payload = json.loads(body)
+    except (ValueError, UnicodeDecodeError):
+        return None
+    if isinstance(payload, dict):
+        method = payload.get("method")
+        return method if isinstance(method, str) else None
+    return None
+
+
+def _unsupported_version_response(version: str) -> JSONResponse:
+    """Build the 400 response for an unsupported MCP-Protocol-Version header."""
+    return JSONResponse(
+        {
+            "error": "Unsupported MCP-Protocol-Version",
+            "requested": version,
+            "supported": list(MCP_SPEC_VERSIONS_SUPPORTED),
+        },
+        status_code=400,
+    )
+
+
+def _not_found_response(detail: str) -> JSONResponse:
+    """Build the 404 response for an invalid / expired / cross-tenant session id."""
+    return JSONResponse({"error": detail}, status_code=404)
+
+
+def _validate_protocol_version(request: StarletteRequest, method: str | None) -> JSONResponse | None:
+    """Phase 1 validator. Returns a 400 response if the header is unsupported, else ``None``.
+
+    Initialize requests are exempt because negotiation lives in JSON-RPC
+    params (spec 2025-06-18 §Transport). Missing header on non-initialize
+    SHOULD-defaults to 2025-03-26 — accepted with a debug log.
+    """
+    if method == _INITIALIZE_METHOD:
+        return None
+    version = request.headers.get("mcp-protocol-version")
+    if version is None:
+        logger.debug(
+            "No MCP-Protocol-Version header on %s; defaulting to %s per spec",
+            method or "<no-method>",
+            _DEFAULT_SPEC_VERSION,
+        )
+        return None
+    if version not in _SUPPORTED_VERSIONS:
+        logger.info("Rejecting unsupported MCP-Protocol-Version=%r on method=%r", version, method)
+        return _unsupported_version_response(version)
+    return None
+
+
+def _wrap_send_with_session_id(send: Send, session_id: str) -> Send:
+    """Return a Send that injects ``Mcp-Session-Id`` into the first response start frame."""
+
+    async def _send(message: dict) -> None:
+        if message["type"] == "http.response.start":
+            headers = list(message.get("headers", []))
+            headers.append((b"mcp-session-id", session_id.encode("ascii")))
+            message = {**message, "headers": headers}
+        await send(message)
+
+    return _send
 
 
 # ---------------------------------------------------------------------------
@@ -1714,7 +1844,22 @@ class MCPAuthMiddleware:
             await self.app(scope, receive, send)
             return
 
+        # API-0021j: buffer the JSON-RPC body once so the validator + session
+        # lifecycle can inspect `method` before auth runs. The buffered bytes
+        # are replayed downstream via _replay_receive so the inner SDK sees an
+        # unchanged stream.
+        buffered_body = await _read_full_body(receive)
+        receive = _replay_receive(buffered_body)
+        method = _peek_jsonrpc_method(buffered_body)
+
         request = StarletteRequest(scope, receive)
+
+        # API-0021j Phase 1: MCP-Protocol-Version header validation. MUST
+        # precede auth so unsupported clients receive 400, not 401.
+        version_error = _validate_protocol_version(request, method)
+        if version_error is not None:
+            await version_error(scope, receive, send)
+            return
 
         api_key_value: str | None = request.headers.get("x-api-key")
         bearer_token: str | None = None
@@ -1734,6 +1879,9 @@ class MCPAuthMiddleware:
         api_key_id: int | None = None
         auth_method: str | None = None
         token_scopes: list[str] | None = None
+        # API-0021j: captured during API-key auth so initialize responses can
+        # advertise Mcp-Session-Id without a second DB round-trip.
+        mcp_session_id: str | None = None
 
         # Path 1: JWT token (with audience binding per API-0021a).
         if bearer_token and not api_key_value:
@@ -1753,15 +1901,35 @@ class MCPAuthMiddleware:
                     token_scopes = ["mcp:read", "mcp:write"]
                 else:
                     token_scopes = [s for s in str(raw_scope).split() if s]
-                if "aud" not in payload:
-                    logger.warning(
-                        "Legacy aud-less token accepted on /mcp; client should rotate to aud-bound token (sub=%s)",
-                        payload.get("sub", "unknown"),
-                    )
+
+                # API-0022: RFC 7009 revocation enforcement. A token whose
+                # jti has been revoked in this tenant is treated as if it
+                # never existed (401 + WWW-Authenticate). Tokens minted
+                # before API-0022 lack jti — those rows can't be revoked
+                # server-side and roll off when they expire.
+                jti = payload.get("jti")
+                if jti:
+                    from api.app_state import state as _app_state
+
+                    if _app_state.db_manager is not None:
+                        from giljo_mcp.services import oauth_revocation_service as _revoke
+
+                        async with _app_state.db_manager.get_session_async() as _rev_db:
+                            if await _revoke.is_access_token_jti_revoked(_rev_db, tenant_key=tenant_key, jti=jti):
+                                logger.warning(
+                                    "Rejecting revoked JWT on /mcp: jti=%s tenant_key=%s",
+                                    jti,
+                                    tenant_key,
+                                )
+                                resp = _unauthenticated_response(scope, "Token revoked")
+                                await resp(scope, receive, send)
+                                return
             except JWTAudienceMismatchError as exc:
                 # Token presents a valid signature but for a different resource
-                # server. Reject outright — do NOT fall back to API-key path.
-                logger.warning("Rejecting JWT with foreign aud on /mcp: %s", exc)
+                # server, or carries no `aud` at all (API-0022: legacy aud-less
+                # tokens no longer accepted). Reject outright — do NOT fall
+                # back to API-key path.
+                logger.warning("Rejecting JWT on /mcp (audience): %s", exc)
                 resp = _unauthenticated_response(scope, "Invalid token audience")
                 await resp(scope, receive, send)
                 return
@@ -1791,6 +1959,7 @@ class MCPAuthMiddleware:
                         user_id = getattr(session, "user_id", None)
                         api_key_id = session.api_key_id
                         auth_method = "api_key"
+                        mcp_session_id = session.session_id
 
                         # Passive IP logging (non-blocking)
                         if api_key_id:
@@ -1839,7 +2008,104 @@ class MCPAuthMiddleware:
             except (OSError, RuntimeError, ValueError, TypeError, AttributeError, ImportError):
                 pass  # Fire-and-forget, non-blocking
 
+        # API-0021j Phase 2: Mcp-Session-Id lifecycle.
+        send = await self._apply_session_lifecycle(
+            scope=scope,
+            send=send,
+            request=request,
+            method=method,
+            tenant_key=tenant_key,
+            user_id=user_id,
+            auth_method=auth_method,
+            mcp_session_id=mcp_session_id,
+        )
+        if send is None:
+            # _apply_session_lifecycle already sent a 404; do not invoke inner app.
+            return
+
         await self.app(scope, receive, send)
+
+    async def _apply_session_lifecycle(
+        self,
+        *,
+        scope: Scope,
+        send: Send,
+        request: StarletteRequest,
+        method: str | None,
+        tenant_key: str,
+        user_id: str | None,
+        auth_method: str | None,
+        mcp_session_id: str | None,
+    ) -> Send | None:
+        """Resolve / validate the MCP session per API-0021j Phase 2.
+
+        Returns a (possibly wrapped) ``send`` to use for the inner ASGI app, or
+        ``None`` when the lifecycle has already emitted a 404 response (caller
+        must short-circuit). Tenant scoping is enforced by
+        :meth:`MCPSessionManager.get_session`.
+        """
+        if method == _INITIALIZE_METHOD:
+            session_id = mcp_session_id or await self._ensure_jwt_initialize_session(
+                tenant_key=tenant_key, user_id=user_id, auth_method=auth_method
+            )
+            if not session_id:
+                return send
+            return _wrap_send_with_session_id(send, session_id)
+
+        header_session_id = request.headers.get("mcp-session-id")
+        if not header_session_id:
+            # Post-initialize sessions may be ephemeral; spec uses SHOULD here.
+            logger.debug("Non-initialize request without Mcp-Session-Id; passthrough")
+            return send
+
+        from api.app_state import state
+        from api.endpoints.mcp_session import MCPSessionManager
+
+        if not state.db_manager:
+            logger.error("db_manager not available for MCP session validation")
+            await _not_found_response("Not Found: Invalid or expired session ID")(scope, request.receive, send)
+            return None
+
+        async with state.db_manager.get_session_async() as db:
+            session_mgr = MCPSessionManager(db)
+            session_row = await session_mgr.get_session(header_session_id, tenant_key=tenant_key)
+            if session_row is None:
+                logger.info(
+                    "Rejecting unknown / expired / cross-tenant Mcp-Session-Id=%s on tenant=%s",
+                    header_session_id,
+                    tenant_key,
+                )
+                await _not_found_response("Not Found: Invalid or expired session ID")(scope, request.receive, send)
+                return None
+            session_row.extend_expiration(MCPSessionManager.DEFAULT_SESSION_LIFETIME_HOURS)
+            await db.commit()
+        return send
+
+    async def _ensure_jwt_initialize_session(
+        self,
+        *,
+        tenant_key: str,
+        user_id: str | None,
+        auth_method: str | None,
+    ) -> str | None:
+        """Create / reuse an MCPSession on initialize over a JWT-authenticated request.
+
+        The API-key auth path already mints a session via ``get_or_create_session``;
+        for JWT callers we mint one explicitly so the initialize response can
+        advertise an Mcp-Session-Id. Returns the session_id, or ``None`` when
+        the DB is unavailable.
+        """
+        if auth_method != "jwt" or not user_id:
+            return None
+        from api.app_state import state
+        from api.endpoints.mcp_session import MCPSessionManager
+
+        if not state.db_manager:
+            return None
+        async with state.db_manager.get_session_async() as db:
+            session_mgr = MCPSessionManager(db)
+            session = await session_mgr.get_or_create_session_from_jwt(user_id=user_id, tenant_key=tenant_key)
+            return session.session_id
 
 
 # ---------------------------------------------------------------------------

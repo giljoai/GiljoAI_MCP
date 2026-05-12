@@ -52,7 +52,7 @@ Set the Playwright test base URL via environment variable:
 npm run test:e2e
 
 # Use custom URL
-PLAYWRIGHT_TEST_BASE_URL=http://10.1.0.164:7274 npm run test:e2e
+PLAYWRIGHT_TEST_BASE_URL=http://192.0.2.10:7274 npm run test:e2e
 ```
 
 ### Test User Credentials
@@ -89,7 +89,7 @@ npm run test:e2e -- tests/e2e/launch-button-staging-complete.spec.js -g "launch_
 
 ### Run Tests with Custom URL
 ```bash
-PLAYWRIGHT_TEST_BASE_URL=http://10.1.0.164:7274 npm run test:e2e
+PLAYWRIGHT_TEST_BASE_URL=http://192.0.2.10:7274 npm run test:e2e
 ```
 
 ### Run Tests in Debug Mode

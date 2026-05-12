@@ -10,17 +10,20 @@ Tests the failing-layer surface for the audience-binding fix: the MCP Bearer
 auth middleware (transport-layer wrapper around JWT verification) and the
 two new RFC 8414/9728 well-known endpoints.
 
-Test cases (named R1-R7 per the project mission):
+Test cases:
 - R1: existing API-key auth on /mcp still authenticates after JWT changes
-- R2: legacy aud-less JWT still authenticates on /mcp (transition window)
+- R2: legacy aud-less JWT is HARD-REJECTED at /mcp (API-0022 closed the window)
 - R3: new aud-bound JWT authenticates on /mcp
 - R4: JWT with wrong aud returns 401 + WWW-Authenticate header
 - R5: unauthenticated request to /mcp returns 401 + WWW-Authenticate header
 - R6: /.well-known/oauth-protected-resource returns 200 with spec-correct JSON
 - R7: root /.well-known/oauth-authorization-server mirrors /api/oauth/... body
+- R8 (API-0021b): protected-resource metadata scopes_supported correctness
+- R9 (API-0022): full FastAPI route layer rejects aud-less JWT at POST /mcp
 
-R1-R5 drive the MCPAuthMiddleware directly through ASGI to test the auth
-boundary in isolation. R6-R7 use the full FastAPI ASGI client.
+R1-R5 + R9 drive the MCP auth boundary. R1-R5 use the ASGI middleware directly
+in isolation; R9 uses the full FastAPI app client to prove the rejection
+surfaces correctly at the actual /mcp route. R6-R8 use the full FastAPI client.
 """
 
 from datetime import UTC, datetime, timedelta
@@ -196,19 +199,18 @@ class TestR1ApiKeyStillAuthenticates:
 
 
 # ---------------------------------------------------------------------------
-# R2: legacy aud-less JWT still authenticates (transition window)
+# R2: legacy aud-less JWT now hard-rejected (API-0022 closed the transition window)
 # ---------------------------------------------------------------------------
 
 
-class TestR2LegacyAudlessJwtAccepted:
-    """JWT without aud claim must still authenticate during the transition window."""
+class TestR2LegacyAudlessJwtRejected:
+    """JWT without aud claim is hard-rejected at the /mcp boundary (API-0022)."""
 
     @pytest.mark.asyncio
-    async def test_audless_jwt_authenticates_with_warning(
+    async def test_audless_jwt_returns_401_with_www_authenticate(
         self,
         jwt_env,
         mcp_canonical_uri_env,
-        caplog,
     ):
         from api.endpoints.mcp_sdk_server import MCPAuthMiddleware
         from giljo_mcp.tenant import TenantManager
@@ -218,17 +220,17 @@ class TestR2LegacyAudlessJwtAccepted:
 
         inner = _CapturingInnerApp()
         mw = MCPAuthMiddleware(app=inner)
+        status, headers, _body = await _drive_middleware(mw, headers=[(b"authorization", f"Bearer {token}".encode())])
 
-        with caplog.at_level("WARNING"):
-            status, _headers, _body = await _drive_middleware(
-                mw, headers=[(b"authorization", f"Bearer {token}".encode())]
-            )
+        assert status == 401, f"aud-less JWT must hard-reject, got {status}"
+        assert inner.called is False, "inner app must NOT be invoked for aud-less JWT"
 
-        assert status == 200, f"aud-less JWT returned {status}"
-        assert inner.called is True
-        assert inner.tenant_key_seen == tenant_key
-        deprecation_logged = any("Legacy aud-less token" in record.getMessage() for record in caplog.records)
-        assert deprecation_logged, "expected WARNING about legacy aud-less token"
+        www_auth = headers.get("www-authenticate", "")
+        assert www_auth, "WWW-Authenticate header missing on 401"
+        assert "Bearer" in www_auth and 'realm="MCP"' in www_auth
+        assert "/.well-known/oauth-protected-resource" in www_auth, (
+            f"resource_metadata pointer missing from WWW-Authenticate: {www_auth}"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -371,4 +373,46 @@ class TestR8ProtectedResourceScopesSupported:
         scopes = set(body.get("scopes_supported", []))
         assert scopes == {"mcp:read", "mcp:write"}, (
             f"scopes_supported must be exactly mcp:read+mcp:write, got: {sorted(scopes)}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# R9 (API-0022): full /mcp route hard-rejects aud-less JWT.
+# Mirrors R2 but goes through the real FastAPI app stack (TestClient) to
+# guarantee the rejection surfaces at the actual route boundary, not just
+# the unit-mounted middleware. Per BE-5042: test at the layer where the
+# bug would occur.
+# ---------------------------------------------------------------------------
+
+
+class TestR9AudlessJwtHardRejectedAtMcpRoute:
+    @pytest.mark.asyncio
+    async def test_audless_jwt_post_mcp_returns_401_with_www_authenticate(
+        self,
+        api_client,
+        jwt_env,
+    ):
+        from giljo_mcp.tenant import TenantManager
+
+        tenant_key = TenantManager.generate_tenant_key()
+        token = _make_jwt(aud=None, tenant_key=tenant_key)
+
+        response = await api_client.post(
+            "/mcp",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+                "Accept": "application/json, text/event-stream",
+            },
+            json={"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
+        )
+
+        assert response.status_code == 401, (
+            f"aud-less JWT must be hard-rejected at /mcp, got {response.status_code}: {response.text[:200]}"
+        )
+        www_auth = response.headers.get("www-authenticate", "")
+        assert www_auth, "WWW-Authenticate header missing on 401"
+        assert "Bearer" in www_auth and 'realm="MCP"' in www_auth, www_auth
+        assert "/.well-known/oauth-protected-resource" in www_auth, (
+            f"resource_metadata pointer missing from WWW-Authenticate: {www_auth}"
         )
