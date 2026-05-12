@@ -2933,7 +2933,34 @@ class UnifiedInstaller:
                             return True
 
                         if current_version and current_version not in known_old_revisions:
-                            # Unknown old revision — attempt reconcile and stamp
+                            # If `current_version` is a revision the alembic chain still
+                            # recognizes (baseline_v37, ce_0001..ce_XXXX), do NOT stamp it
+                            # backward. Doing so would force `alembic upgrade head` to
+                            # re-run migrations that already executed -- and any
+                            # non-idempotent step would fail. We bridge ONLY when
+                            # `current_version` is a legacy revision the chain no longer
+                            # contains. Mirrors startup.py:_check_and_stamp_migration_version.
+                            from pathlib import Path as _Path
+
+                            versions_dir = _Path(__file__).parent / "migrations" / "versions"
+                            known_modern_revisions: set[str] = {"baseline_v37"}
+                            if versions_dir.is_dir():
+                                for entry in versions_dir.glob("*.py"):
+                                    if entry.name == "__init__.py":
+                                        continue
+                                    # Alembic revision filenames are <rev_id>_<slug>.py;
+                                    # the full revision ID is the file stem.
+                                    known_modern_revisions.add(entry.stem)
+
+                            if current_version in known_modern_revisions:
+                                # Modern revision -- alembic upgrade head will handle it.
+                                self._print_info(
+                                    f"Database already at {current_version} - alembic will advance to head"
+                                )
+                                await db_manager.close_async()
+                                return True
+
+                            # Truly legacy revision the chain no longer recognizes.
                             self._print_info(f"Upgrading from unknown revision: {current_version} -> baseline_v37")
                             stamp_query = text("UPDATE alembic_version SET version_num = 'baseline_v37'")
                             await session.execute(stamp_query)

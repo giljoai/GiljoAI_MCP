@@ -4,6 +4,12 @@ All notable changes to this project are recorded here. This changelog follows th
 
 ## [Unreleased]
 
+## [1.2.5.1] — 2026-05-12
+
+### Fixed
+
+- **Fresh installations now reach the latest schema correctly.** The first-time installer was advancing the database to the latest migration head and then incorrectly rolling the version pointer backward, leaving fresh installs with a partially-applied schema. Existing installations were unaffected. New installations of v1.2.5 should upgrade to this hotfix.
+
 ## [1.2.5] — 2026-05-10
 
 ### Added
