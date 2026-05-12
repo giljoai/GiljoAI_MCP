@@ -4,6 +4,11 @@ All notable changes to this project are recorded here. This changelog follows th
 
 ## [Unreleased]
 
+## [1.2.5.2] — 2026-05-12
+
+### Fixed
+- Spawning agents, sending messages, and reporting progress could fail with a validation error after the action had already succeeded on the server. Orchestrators saw an error client-side while state had quietly landed in the database. Fixed at the integration boundary.
+
 ## [1.2.5.1] — 2026-05-12
 
 ### Fixed

@@ -25,7 +25,7 @@ PyJWT>=2.8.0                      # JWT token handling (using PyJWT instead of p
 email-validator>=2.1.0            # Required by Pydantic EmailStr (auth.py, users.py)
 
 # MCP SDK (Model Context Protocol)
-mcp>=1.23.0                 # MCP SDK (upgraded from 1.12.3 for CVE-2025-66416 DNS rebinding fix)
+mcp>=1.27.1,<1.28           # MCP SDK — upper bound: minor bumps require re-running tests/integration/test_mcp_wire_contract_dict_serialization.py (wire contract). Patch bumps allowed. CVE-2025-66416 DNS rebinding fix required >=1.27.1.
 
 # Core Utilities
 python-dotenv>=1.0.0        # Environment variable loading
@@ -49,7 +49,7 @@ nltk>=3.8                  # Natural language processing (tokenization, stopword
 resend>=2.30.0              # Transactional email via Resend API (SAAS-006)
 aiosmtplib>=3.0.0          # Async SMTP client for SmtpProvider (Mailpit/local capture, EMAIL_BACKEND=smtp)
 jinja2>=3.1.6                # Templating for Ops Panel HTML views (ops_panel/main.py); ~200 KB total SaaS overhead on CE
-sentry-sdk[fastapi]>=2.0.0   # Backend error tracking for SaaS/Demo (INF-5063); init gated by GILJO_MODE in api/observability/sentry_init.py
+sentry-sdk[fastapi]>=2.59.0   # Backend error tracking for SaaS/Demo (INF-5063); init gated by GILJO_MODE in api/observability/sentry_init.py
 
 # Platform-Specific
 # pywin32 removed in Handover 0394 - no usage found in codebase
