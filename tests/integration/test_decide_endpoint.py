@@ -26,7 +26,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.endpoints.approvals import get_user_approval_service
 from api.endpoints.approvals import router as approvals_router
-from giljo_mcp.auth.dependencies import get_current_active_user
+from api.exception_handlers import register_exception_handlers
+from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from giljo_mcp.models import User
 from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from giljo_mcp.models.organizations import Organization
@@ -398,3 +399,74 @@ async def test_list_requires_auth_dependency(db_manager, db_session, pending_app
     assert _depends_on_auth(list_route.dependant), (
         "AUTH GATE MISSING: list endpoint does not inject get_current_active_user"
     )
+
+
+# ---- BE-5061: real 401 round-trip with structured envelope ----
+
+
+async def test_decide_unauthenticated_returns_401_canonical_envelope(db_manager, db_session):
+    """POST /api/approvals/{id}/decide with NO auth returns 401 + canonical envelope.
+
+    This is the failing-layer regression for BE-5061: the prior cleanup of
+    ``detail=str(exc)`` could regress the wire shape of approval error responses.
+    This test mounts a fresh app WITHOUT overriding ``get_current_active_user``
+    so the real auth dependency runs end-to-end and emits the canonical envelope
+    via ``api.exception_handlers``.
+    """
+    app = FastAPI()
+    register_exception_handlers(app)
+    app.include_router(approvals_router, prefix="/api/approvals")
+
+    async def _override_db_session():
+        async with db_manager.get_session_async() as session:
+            yield session
+
+    app.dependency_overrides[get_db_session] = _override_db_session
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        resp = await client.post(
+            f"/api/approvals/{uuid4()}/decide",
+            json={"option_id": "approve"},
+        )
+
+    assert resp.status_code == 401, f"expected 401, got {resp.status_code}: {resp.text}"
+    body = resp.json()
+    assert set(body.keys()) >= {"error_code", "message", "timestamp"}, (
+        f"401 envelope missing canonical keys; got keys={sorted(body.keys())}"
+    )
+    assert body["error_code"] == "HTTP_ERROR"
+    assert isinstance(body["message"], str) and body["message"]
+    assert isinstance(body["timestamp"], str)
+
+
+async def test_decide_already_decided_returns_structured_error_envelope(
+    db_manager, db_session, test_user, pending_approval
+):
+    """409 already-decided response carries the structured error envelope.
+
+    Regression for BE-5061: prior code emitted ``detail=str(exc)`` which the
+    legacy ``StarletteHTTPException`` handler wraps as
+    ``{error_code: HTTP_ERROR, message: <str>}`` -- losing the specific code.
+    The cleanup must produce ``APPROVAL_ALREADY_DECIDED`` at the response top
+    level so the frontend's ``parseErrorResponse`` can branch on it.
+    """
+    app = _build_app(db_manager, db_session, user=test_user)
+    register_exception_handlers(app)
+    approval_id = pending_approval["approval"].id
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        first = await client.post(
+            f"/api/approvals/{approval_id}/decide",
+            json={"option_id": "approve"},
+        )
+        assert first.status_code == 200
+        second = await client.post(
+            f"/api/approvals/{approval_id}/decide",
+            json={"option_id": "approve"},
+        )
+
+    assert second.status_code == 409, f"expected 409, got {second.status_code}: {second.text}"
+    body = second.json()
+    assert body["error_code"] == "APPROVAL_ALREADY_DECIDED", f"expected structured error code, got body={body!r}"
+    assert body.get("message")
+    assert "timestamp" in body

@@ -92,7 +92,11 @@ async def list_approvals(
     if status_filter != "pending":
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Only status='pending' is supported (got {status_filter!r})",
+            detail={
+                "error_code": "APPROVAL_STATUS_UNSUPPORTED",
+                "message": "Only status='pending' is supported.",
+                "requested_status": status_filter,
+            },
         )
     try:
         rows, total = await service.list_pending(
@@ -101,7 +105,14 @@ async def list_approvals(
             offset=offset,
         )
     except ValidationError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "error_code": "APPROVAL_LIST_VALIDATION_ERROR",
+                "message": exc.message,
+                **exc.context,
+            },
+        ) from exc
 
     items = [UserApprovalRead.model_validate(row) for row in rows]
     return ApprovalListResponse(
@@ -137,13 +148,33 @@ async def decide_approval(
             user_id=str(current_user.id),
         )
     except ResourceNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "error_code": "APPROVAL_NOT_FOUND",
+                "message": exc.message,
+                **exc.context,
+            },
+        ) from exc
     except ValidationError as exc:
-        message = str(exc)
         # Already-decided is the conflict case; option-not-in-options is 422.
-        if "is not pending" in message:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=message) from exc
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=message) from exc
+        if "is not pending" in exc.message:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "error_code": "APPROVAL_ALREADY_DECIDED",
+                    "message": exc.message,
+                    **exc.context,
+                },
+            ) from exc
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "error_code": "APPROVAL_OPTION_INVALID",
+                "message": exc.message,
+                **exc.context,
+            },
+        ) from exc
 
     return ApprovalDecideResponse(
         approval_id=decided.id,

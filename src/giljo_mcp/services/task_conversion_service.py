@@ -42,6 +42,7 @@ from giljo_mcp.exceptions import (
     ValidationError,
 )
 from giljo_mcp.models import Project, Task
+from giljo_mcp.repositories.project_repository import ProjectRepository
 from giljo_mcp.repositories.task_repository import TaskRepository
 from giljo_mcp.schemas.service_responses import ConversionResult
 from giljo_mcp.tenant import TenantManager
@@ -80,6 +81,7 @@ class TaskConversionService:
         self.tenant_manager = tenant_manager
         self._session = session  # Store for test transaction isolation
         self._repo = TaskRepository()
+        self._project_repo = ProjectRepository()
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
     def _get_session(self):
@@ -235,6 +237,14 @@ class TaskConversionService:
             existing_active_project.status = ProjectStatus.INACTIVE
             existing_active_project.updated_at = datetime.now(UTC)
 
+        # Auto-assign series_number to satisfy uq_project_taxonomy_active.
+        # The partial unique index uses NULLS NOT DISTINCT, so two projects with
+        # all-NULL taxonomy under the same (tenant_key, product_id) collide. Mirror
+        # ProjectService.create_project's auto-series logic so untaxonomied
+        # task→project conversions get a monotonically increasing series_number.
+        await self._project_repo.lock_rows_for_series(session, tenant_key, active_product.id, None)
+        series_number = await self._project_repo.get_next_series_number(session, tenant_key, active_product.id, None)
+
         # Create project
         final_project_name = project_name or task.title
         new_project = Project(
@@ -244,6 +254,7 @@ class TaskConversionService:
             product_id=active_product.id,
             tenant_key=tenant_key,
             status=ProjectStatus.INACTIVE,  # Projects start inactive, user activates when ready
+            series_number=series_number,
         )
 
         await self._repo.add_project(session, new_project)
