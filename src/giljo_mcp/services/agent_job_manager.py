@@ -26,6 +26,7 @@ Design Philosophy:
 
 import logging
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
@@ -168,6 +169,7 @@ class AgentJobManager:
                     spawned_by=spawned_by,
                     tool_type=tool_type,
                     agent_name=agent_name,
+                    started_at=datetime.now(UTC),  # IMP-5036 task a8d7dac0
                 )
 
                 job, execution = await repo.create_job_and_execution_pair(session, job, execution)
@@ -229,6 +231,7 @@ class AgentJobManager:
                     spawned_by=spawned_by,
                     agent_name=agent_display_name.title(),
                     tool_type="universal",
+                    started_at=datetime.now(UTC),  # IMP-5036 task a8d7dac0
                 )
 
                 try:

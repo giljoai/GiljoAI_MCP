@@ -187,6 +187,8 @@
 </template>
 
 <script setup>
+// eslint-allow giljo-internal/no-manual-api-url-composition
+// (sanctioned: builds a "you should be at this URL" string shown to the user when hostname mismatch is detected — not the HTTP client base. See ADR-001)
 import { ref, computed, onMounted, shallowRef } from 'vue'
 import AppAlert from '@/components/ui/AppAlert.vue'
 import ForgotPasswordPin from '@/components/ForgotPasswordPin.vue'

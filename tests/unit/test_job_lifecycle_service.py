@@ -146,6 +146,62 @@ class TestSpawnJob:
                 tenant_key=TENANT_KEY,
             )
 
+    @pytest.mark.asyncio
+    async def test_spawn_sets_agent_execution_started_at(self, monkeypatch):
+        """IMP-5036 task a8d7dac0: AgentExecution.started_at MUST be non-NULL
+        after spawn. Repository queries that downstream-read order_by(started_at)
+        and func.max(started_at) silently break on NULL rows; the spawn path
+        is the single chokepoint that guarantees the invariant.
+        """
+        from datetime import UTC, datetime
+
+        from giljo_mcp.services import job_lifecycle_service as jls_module
+
+        project = _make_project(status="active")
+        session = _make_session()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = project
+        session.execute = AsyncMock(return_value=mock_result)
+
+        captured: dict = {}
+
+        class _FakeRepo:
+            async def persist_job_and_execution(self, **kwargs):
+                captured["execution"] = kwargs["agent_execution"]
+                captured["job"] = kwargs["agent_job"]
+                return kwargs["agent_job"], kwargs["agent_execution"]
+
+        monkeypatch.setattr(jls_module, "AgentCompletionRepository", _FakeRepo)
+
+        service = _make_service(session)
+        before = datetime.now(UTC)
+        await service._create_job_and_execution_records(
+            session=session,
+            job_id="job-001",
+            agent_id="agent-001",
+            project=project,
+            project_id=PROJECT_ID,
+            tenant_key=TENANT_KEY,
+            mission="Test mission",
+            agent_display_name="impl-1",
+            agent_name="implementer",
+            parent_job_id=None,
+            phase=None,
+            resolved_template_id=None,
+            metadata_dict={},
+        )
+        after = datetime.now(UTC)
+
+        execution = captured["execution"]
+        assert execution.started_at is not None, (
+            "AgentExecution.started_at must be set at spawn (closes BE-staging-lock NULL gap)"
+        )
+        # Bound the timestamp to the spawn window so a future regression that
+        # snapshots a stale timestamp also fails.
+        assert before <= execution.started_at <= after, (
+            f"started_at {execution.started_at} outside spawn window [{before}, {after}]"
+        )
+
 
 # ---------------------------------------------------------------------------
 # _build_predecessor_context tests

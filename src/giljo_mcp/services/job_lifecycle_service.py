@@ -718,6 +718,11 @@ do not act on them during staging. Complete the full staging sequence
         )
 
         # AgentExecution: Executor instance (WHO) -- changes on succession
+        # IMP-5036 task a8d7dac0: started_at is the canonical spawn-time stamp.
+        # Setting it at insert closes the BE-staging-lock NULL-after-spawn gap;
+        # downstream order_by(started_at.desc()) and func.max(started_at) queries
+        # across repositories assume non-NULL. Status remains 'waiting' until the
+        # agent's first report_progress; started_at marks "row exists in DB".
         agent_execution = AgentExecution(
             agent_id=agent_id,
             job_id=job_id,
@@ -726,6 +731,7 @@ do not act on them during staging. Complete the full staging sequence
             agent_name=agent_name,
             status="waiting",  # Execution status: waiting, working, blocked, complete, etc.
             spawned_by=parent_job_id,  # Points to parent's agent_id (executor)
+            started_at=datetime.now(UTC),
         )
 
         repo = AgentCompletionRepository()

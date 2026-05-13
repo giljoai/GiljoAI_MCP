@@ -34,6 +34,10 @@ export function createAuthGuard({ setupService, configService }) {
 
     const mode = (() => {
       if (setupState?.mode) return setupState.mode
+      // ADR-002 fallback: only fires when setupService.checkEnhancedStatus()
+      // is unreachable (network error above). The authoritative source is
+      // always setupState.mode; configService.getGiljoMode() can race on
+      // first paint and defaults to 'ce', so it's the last-resort path.
       try { return configService.getGiljoMode() } catch { return 'ce' }
     })()
     const isPublicLandingMode = mode !== 'ce'

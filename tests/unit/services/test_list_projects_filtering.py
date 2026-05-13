@@ -800,15 +800,41 @@ class TestStatusSqlPushdown:
             assert pushed in ("active", "inactive")
 
     @pytest.mark.asyncio
-    async def test_no_status_filter_does_not_push_status(self):
-        """When status is omitted, inner list_projects must be called without
-        a status (the default lifecycle filter is applied in Python afterwards).
+    async def test_no_status_filter_pushes_lifecycle_exclusion_to_sql(self):
+        """IMP-5036 task 9257a74c: when status is omitted and include_completed
+        is False (default agent view), the inner list_projects call must receive
+        the active-status complement set so the repo emits a SQL IN clause
+        instead of pulling lifecycle-finished rows just to drop them in Python.
         """
+        from giljo_mcp.domain.project_status import LIFECYCLE_FINISHED_STATUSES, ProjectStatus
+
         service = _make_service(_TENANT_A)
         items = [_make_item(project_id="a", status="active")]
         _, list_proj_mock = await _call_with_items(service, items)
         kwargs = list_proj_mock.call_args.kwargs
-        assert kwargs.get("status") is None, "When no status filter requested, inner call must not receive a status"
+        pushed = kwargs.get("status")
+        assert isinstance(pushed, list), (
+            f"Default view must push the active-status complement to SQL; got status={pushed!r}"
+        )
+        active_complement = {s.value for s in ProjectStatus} - {s.value for s in LIFECYCLE_FINISHED_STATUSES}
+        assert set(pushed) == active_complement, (
+            f"Pushed status set must equal active-status complement; got {set(pushed)!r} vs {active_complement!r}"
+        )
+
+    @pytest.mark.asyncio
+    async def test_include_completed_does_not_push_status(self):
+        """IMP-5036 task 9257a74c: when include_completed=True is passed (caller
+        wants archived buckets too), inner list_projects must receive status=None
+        so the repo's bare-tenant path with include_cancelled=True returns all
+        non-deleted rows.
+        """
+        service = _make_service(_TENANT_A)
+        items = [_make_item(project_id="a", status="completed")]
+        _, list_proj_mock = await _call_with_items(service, items, include_completed=True)
+        kwargs = list_proj_mock.call_args.kwargs
+        assert kwargs.get("status") is None, (
+            f"include_completed=True must not push a status filter; got {kwargs.get('status')!r}"
+        )
 
     @pytest.mark.asyncio
     async def test_repo_accepts_status_list(self):
@@ -847,9 +873,9 @@ class TestStatusSqlPushdown:
                 captured["sql"] = str(compiled)
 
                 class _R:
-                    def scalars(self_inner):
+                    def scalars(self):
                         class _S:
-                            def all(self_innermost):
+                            def all(self):
                                 return []
 
                         return _S()
@@ -1388,3 +1414,34 @@ async def _call_with_items_real_build(service: ProjectService, items, **kwargs):
         mock_product_svc.return_value.get_active_product = AsyncMock(return_value=mock_product)
         result = await service.list_projects_for_mcp(tenant_key=_TENANT_A, **kwargs)
     return result, list_proj_mock
+
+
+# ---------------------------------------------------------------------------
+# IMP-5036 task 696cf625 — payload-size instrumentation
+# ---------------------------------------------------------------------------
+
+
+class TestPayloadSizeInstrumentation:
+    @pytest.mark.asyncio
+    async def test_payload_size_logged_with_breakdown(self, caplog):
+        """list_projects_for_mcp must emit an INFO log line per call with
+        total payload bytes, per-row top contributing field, and field-byte
+        counts. This is the post-strip 63K-overflow forensic signal.
+        """
+        import logging
+
+        service = _make_service(_TENANT_A)
+        items = [
+            _make_item(project_id="a", status="active", series_number=1),
+            _make_item(project_id="b", status="active", series_number=2),
+        ]
+        with caplog.at_level(logging.INFO, logger="giljo_mcp.services.project_service.ProjectService"):
+            await _call_with_items(service, items)
+
+        matching = [r for r in caplog.records if "list_projects payload size" in r.getMessage()]
+        assert matching, "Expected an INFO log line with 'list_projects payload size'"
+        msg = matching[-1].getMessage()
+        assert "total_bytes=" in msg, f"Log line missing total_bytes signal: {msg!r}"
+        assert "rows=2" in msg, f"Log line should reflect 2 rows: {msg!r}"
+        assert "breakdown=" in msg, f"Log line missing per-row breakdown: {msg!r}"
+        assert "top_field" in msg, f"Log line missing top_field key: {msg!r}"

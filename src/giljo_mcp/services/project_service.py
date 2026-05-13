@@ -1026,6 +1026,21 @@ class ProjectService:
             ``mode`` wins over numeric ``depth`` when both are passed; numeric
             ``depth`` stays as a back-compat path. ``memory_limit`` (default 5,
             cap 50) tunes audit; forensic ignores the cap unless overridden.
+
+        Legacy ``status_filter`` kwarg (kept for back-compat with pre-v1.2.1
+        callers) has narrower exclusion semantics than the new ``status``
+        read-side kwarg. ``status_filter`` is validated against
+        ``_VALID_STATUS_FILTERS``, which is derived from
+        ``_DOMAIN_VALID_UPDATE_STATUSES`` plus the ``"all"`` sentinel — this
+        deliberately **excludes ``terminated`` and ``deleted``** because those
+        are lifecycle-only terminal states never set via update_project. A
+        legacy caller passing ``status_filter="terminated"`` or
+        ``status_filter="deleted"`` will hit ``ValidationError``. To query
+        terminated/deleted projects, use the new ``status`` kwarg (validated
+        against the broader ``_VALID_FILTER_STATUSES`` read-side set). The
+        ``status_filter="all"`` sentinel sets ``include_completed=True`` to
+        preserve pre-v1.2.1 archived-visible behavior; it does NOT include
+        terminated/deleted. New code MUST use ``status`` directly.
         """
         # ----- Legacy status_filter back-compat -----
         # Existing callers pass status_filter ("all" | status). When the new
@@ -1133,40 +1148,38 @@ class ProjectService:
                 context={"tenant_key": effective_tenant_key, "operation": "list_projects"},
             )
 
-        # ----- Seq 161: SQL pushdown for the status filter -----
+        # ----- Seq 161 + IMP-5036 task 9257a74c: SQL pushdown for status + product scope -----
         # When the agent passes status=..., push it to SQL via the repo's IN
-        # clause instead of fetching every row and filtering in Python. The
-        # lifecycle-finished default (when status_list is None and
-        # include_completed=False) still happens post-fetch because it depends
-        # on the LIFECYCLE_FINISHED_STATUSES constant living in this layer.
+        # clause. When status is unset, push the lifecycle-finished exclusion
+        # (default) to SQL as well by passing the complement set explicitly.
+        # product_id scoping likewise pushes to SQL via the repo's product_id
+        # clause instead of post-fetch Python filtering.
         if status_list is not None:
             inner_status: str | list[str] = status_list[0] if len(status_list) == 1 else status_list
-            all_projects = await self.list_projects(
-                status=inner_status,
-                tenant_key=effective_tenant_key,
-                include_cancelled=True,
-            )
+        elif include_completed:
+            # Caller explicitly wants archived buckets too -- pass None so the
+            # repo's bare-tenant path keeps cancelled+completed visible
+            # (include_cancelled=True below).
+            inner_status = None  # type: ignore[assignment]
         else:
-            all_projects = await self.list_projects(
-                status=None,
-                tenant_key=effective_tenant_key,
-                include_cancelled=True,
-            )
+            # Default agent view: exclude lifecycle-finished states at the SQL
+            # boundary (completed, cancelled, terminated, deleted, etc.).
+            inner_status = sorted({s.value for s in ProjectStatus} - {s.value for s in LIFECYCLE_FINISHED_STATUSES})
 
-        # Active product scoping (existing behavior)
-        product_projects = [p for p in all_projects if p.product_id == active_product.id]
+        product_projects = await self.list_projects(
+            status=inner_status,
+            tenant_key=effective_tenant_key,
+            include_cancelled=True,
+            product_id=active_product.id,
+        )
 
-        # Apply filters in Python (post-fetch). This keeps the REST path's
-        # ProjectService.list_projects defaults untouched while the MCP path
-        # gets the full v1.2.1 contract. Performance is acceptable: this query
-        # is bounded by projects-per-product (small N).
+        # Apply remaining filters in Python (post-fetch). Status and product
+        # scoping are now SQL-side; only the v1.2.1 cross-cutting predicates
+        # (hidden, project_type, taxonomy_alias_prefix, date ranges) remain
+        # in-memory because they slice across enum-typed and computed columns
+        # that don't all live in a single index.
         filtered: list = []
         for p in product_projects:
-            # Status: pushed to SQL when status_list is set; only the default
-            # lifecycle exclusion remains as a post-fetch filter.
-            if status_list is None and not include_completed and p.status in LIFECYCLE_FINISHED_STATUSES:
-                continue
-
             # Hidden filter (None = both)
             if hidden is not None and bool(p.hidden) != bool(hidden):
                 continue
@@ -1217,7 +1230,61 @@ class ProjectService:
         }
         if mode is not None:
             response["mode"] = mode
+
+        # IMP-5036 task 696cf625: surface the post-strip payload-size signal
+        # for the historical 63K-overflow culprit hunt. Per-row breakdown of
+        # the largest contributing field (description/mission/memory_entries/etc.)
+        # lands at INFO so dashboards/log scrapers can chart it.
+        self._log_payload_size_breakdown(projects_out, effective_depth, mode)
+
         return response
+
+    def _log_payload_size_breakdown(
+        self,
+        projects_out: list[dict[str, Any]],
+        depth: int,
+        mode: str | None,
+    ) -> None:
+        """Log per-row JSON payload size and the field contributing the most.
+
+        Emits a single INFO log per list_projects_for_mcp call with:
+        - total payload size (bytes, JSON-encoded)
+        - count of rows
+        - top field per row by serialized byte count
+        - the row's project_id and taxonomy_alias for triage
+
+        Defensive try/except guards JSON serialization at the system boundary
+        (log emission) so instrumentation never breaks the request.
+        """
+        import json
+
+        try:
+            total_bytes = len(json.dumps(projects_out, default=str))
+            per_row: list[dict[str, Any]] = []
+            for row in projects_out:
+                field_sizes: dict[str, int] = {}
+                for k, v in row.items():
+                    field_sizes[k] = len(json.dumps(v, default=str))
+                top_field = max(field_sizes, key=field_sizes.get) if field_sizes else None
+                per_row.append(
+                    {
+                        "project_id": row.get("project_id"),
+                        "taxonomy_alias": row.get("taxonomy_alias"),
+                        "row_bytes": sum(field_sizes.values()),
+                        "top_field": top_field,
+                        "top_field_bytes": field_sizes.get(top_field, 0) if top_field else 0,
+                    }
+                )
+            self._logger.info(
+                "list_projects payload size: total_bytes=%d rows=%d depth=%d mode=%s breakdown=%s",
+                total_bytes,
+                len(projects_out),
+                depth,
+                mode,
+                per_row,
+            )
+        except (TypeError, ValueError) as exc:
+            self._logger.warning("list_projects payload-size instrumentation failed: %s", exc)
 
     async def _build_mcp_project_list(
         self,

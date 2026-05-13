@@ -1,3 +1,5 @@
+// eslint-allow giljo-internal/no-manual-api-url-composition
+// (sanctioned: returns literal MCP-server URL string for AI-tool config files, not frontend HTTP base — see ADR-001)
 /**
  * Shared MCP configuration generation composable (Handover 0855d)
  *
@@ -62,6 +64,11 @@ export function detectPlatform() {
  * @returns {string} e.g. "https://demo.giljo.ai" or "http://localhost:7272"
  */
 export function buildServerUrl(hostnameOrConfig, port) {
+  // ADR-001 does NOT apply here: this function returns a literal MCP-server URL
+  // string for AI-tool config files (e.g. `claude mcp add ...` snippets shown to
+  // the user), not the frontend's own HTTP client base. Manual protocol/host/port
+  // composition is the correct behavior — the eslint rule
+  // `no-manual-api-url-composition` allowlists this file by path.
   // Path 1+2: backendConfig object passed in.
   if (hostnameOrConfig && typeof hostnameOrConfig === 'object') {
     const cfg = hostnameOrConfig

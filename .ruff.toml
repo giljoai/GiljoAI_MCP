@@ -374,6 +374,9 @@ inline-quotes = "double"
 "src/giljo_mcp/services/protocol_sections/agent_lifecycle.py" = [
     "S608",   # False positive — f-string builds agent protocol prompt, not SQL
 ]
+"src/giljo_mcp/tools/project_closeout.py" = [
+    "BLE001", # Broad exception OK — defensive read of optional settings; failure must not block closeout
+]
 
 # --- Installation files (transient code, users run once) ---
 "bootstrap.py" = ["ALL"]

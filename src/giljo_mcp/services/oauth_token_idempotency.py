@@ -23,7 +23,7 @@ second; the connector UI flashed "Something went wrong" before reading the
 first response. Auth0/Okta/AWS Cognito all implement a short idempotency
 window for confidential clients to absorb honest retries — this is parity.
 
-TODO: replace with Redis/DB-backed cache when SaaS goes multi-worker —
+TODO(INF-5074): replace with Redis/DB-backed cache when SaaS goes multi-worker —
 the current single-worker assumption breaks under uvicorn --workers > 1.
 """
 

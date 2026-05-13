@@ -140,6 +140,7 @@ ignore = ["E501", "PERF203", "PERF401"]
 "installer/**" = ["BLE001"]
 "api/app.py" = ["BLE001", "E402"]
 "src/giljo_mcp/services/orchestration_service.py" = ["BLE001"]
+"src/giljo_mcp/tools/project_closeout.py" = ["BLE001"]
 "tests/manual/**" = ["E402"]
 "migrations/env.py" = ["E402"]
 "src/giljo_mcp/services/protocol_sections/agent_lifecycle.py" = ["S608"]
@@ -318,6 +319,8 @@ markers = [
     "security: marks tests as security-related tests",
     "deprecated: marks tests for deprecated functionality (Handover 0116)",
     "smoke: Smoke tests (integration workflows validating critical paths, exempt from coverage thresholds)",
+    "blocking: blocking tests — failure breaks CI (Tier-1, every push)",
+    "informational: informational tests — failure logged but does not break CI (Tier-2, tag-only)",
 ]
 
 [tool.bandit]

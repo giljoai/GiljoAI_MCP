@@ -27,6 +27,11 @@ import jwt
 import pytest
 
 
+# Tier-1 blocking: auth-token verification is a security-critical path.
+# A regression here breaks silent-refresh and admits expired tokens.
+pytestmark = pytest.mark.blocking
+
+
 @pytest.fixture(autouse=True)
 def set_jwt_secret(monkeypatch):
     """Ensure JWT_SECRET is set for all tests in this module."""

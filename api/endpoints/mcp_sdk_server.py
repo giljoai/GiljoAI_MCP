@@ -821,7 +821,18 @@ async def list_tasks(
         "Used at HITL gates (closeout with deferred findings, ambiguous decisions). "
         "Replaces the prose user_approval_required boolean. "
         "options is a list of {id, label} dicts presented to the user. "
-        "Returns {approval_id, status}. Tenant-scoped."
+        "Returns {approval_id, status}. Tenant-scoped. "
+        "UI surface: the dashboard shows a passive 'needs input' pill (informational, "
+        "NOT a clickable global banner). The actual decide buttons render inside the "
+        "project's CloseoutModal via the ApprovalCard component -- users frequently miss "
+        "this and respond verbally to the agent instead. "
+        "Clearing awaiting_user: ONLY POST /api/approvals/{id}/decide clears the gate "
+        "(ApprovalCard calls this). set_agent_status accepts only blocked/idle/sleeping "
+        "-- it cannot transition out of awaiting_user. report_progress does not auto-wake "
+        "from awaiting_user either. If the user responds verbally, guide them to open "
+        "CloseoutModal and click the ApprovalCard option, or to POST to the decide "
+        "endpoint directly. The MCP server is passive and will not clear the gate from "
+        "conversation alone."
     ),
 )
 async def request_approval(

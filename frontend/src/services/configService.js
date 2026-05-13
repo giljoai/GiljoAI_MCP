@@ -131,31 +131,10 @@ class ConfigService {
     }
   }
 
-  /**
-   * Get API base URL
-   * @returns {string} API base URL
-   */
-  getApiBaseUrl() {
-    if (!this.config) {
-      throw new Error('Config not loaded. Call fetchConfig() first.')
-    }
-
-    const { host, port } = this.config.api
-    const protocol = this.config.api?.protocol || (window.location.protocol === 'https:' ? 'https' : 'http')
-    return `${protocol}://${host}:${port}`
-  }
-
-  /**
-   * Get WebSocket URL
-   * @returns {string} WebSocket URL
-   */
-  getWebSocketUrl() {
-    if (!this.config) {
-      throw new Error('Config not loaded. Call fetchConfig() first.')
-    }
-
-    return this.config.websocket.url
-  }
+  // Note: getApiBaseUrl() and getWebSocketUrl() were removed (IMP-0013 #7).
+  // ADR-001: all URL composition flows through getApiBaseUrl() / getWsBaseUrl()
+  // from @/composables/useApiUrl, which reads from this same configService.config
+  // but returns the host-relative form when appropriate.
 
   /**
    * Get deployment mode

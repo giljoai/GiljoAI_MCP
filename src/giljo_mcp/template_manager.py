@@ -240,8 +240,7 @@ Based on your discoveries, create missions that reference:
 ✅ ALWAYS: "Update CLAUDE.md to:
   1. Fix SQL patterns from session_20240112.md (lines 45-67)
   2. Add vLLM config from docs/deployment/vllm_setup.md
-  3. Remove deprecated Ollama references (search found 12 instances)
-  4. Success: All tests pass, config validates"
+  3. Success: All tests pass, config validates"
 
 **Step 5: Spawn Worker Agents**
 Use ensure_agent() to create specialized workers:

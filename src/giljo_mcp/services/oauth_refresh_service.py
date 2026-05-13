@@ -53,7 +53,7 @@ logger = logging.getLogger(__name__)
 # existing reuse-detection alarm INSIDE the window — that's the whole point:
 # concurrent retries from the same client are not malicious replays.
 #
-# TODO: replace with Redis/DB-backed cache when SaaS goes multi-worker —
+# TODO(INF-5074): replace with Redis/DB-backed cache when SaaS goes multi-worker —
 # the current single-worker assumption breaks under uvicorn --workers > 1.
 OAUTH_REFRESH_IDEMPOTENCY_WINDOW_SECONDS = int(os.environ.get("OAUTH_REFRESH_IDEMPOTENCY_WINDOW_SECONDS", "5"))
 _REFRESH_IDEMPOTENCY_CACHE_MAX_ENTRIES = 1000

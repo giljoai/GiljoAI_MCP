@@ -238,6 +238,8 @@
 </template>
 
 <script setup>
+// eslint-allow giljo-internal/no-manual-api-url-composition
+// (sanctioned: server-URL string is rendered for the user in a setup guide / inline UI, not used as the frontend HTTP client base — see ADR-001)
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import AppAlert from '@/components/ui/AppAlert.vue'
 import RecentProjectsList from '@/components/dashboard/RecentProjectsList.vue'

@@ -158,6 +158,16 @@ apiClient.interceptors.response.use(
 
     // Handle 401 Unauthorized with silent refresh
     if (error.response?.status === 401 && !originalRequest?._retry) {
+      // IMP-0013 #9: route-meta opt-out. Call sites can pass
+      //   axios(url, { meta: { requiresAuth: false } })
+      // to suppress the auto-redirect-to-/login behavior. Used by guard-like
+      // probes (e.g. trial-status checks) that legitimately 401 for anon users
+      // and must NOT bounce the browser. The implicit registration-order
+      // contract is documented in saas/composables/useTrialGuard.js.
+      if (originalRequest?.meta?.requiresAuth === false) {
+        return Promise.reject(error)
+      }
+
       // Don't attempt refresh for auth endpoints themselves
       if (
         originalRequest?.url?.includes('/api/auth/refresh') ||

@@ -20,6 +20,9 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 INSTALL_SH = REPO_ROOT / "scripts" / "install.sh"
 
+_GIT_BASH_WIN = Path("C:/Program Files/Git/bin/bash.exe")
+_BASH_UNAVAILABLE = sys.platform == "win32" and not _GIT_BASH_WIN.exists()
+
 
 class TestInstallShExists:
     """Verify the installer script file exists and is non-empty."""
@@ -247,16 +250,10 @@ class TestInstallShUpdateMode:
 class TestInstallShSyntax:
     """Validate Bash syntax if bash is available."""
 
+    @pytest.mark.skipif(_BASH_UNAVAILABLE, reason="bash not found on Windows (Git Bash absent)")
     def test_bash_syntax_check(self):
         """Use bash -n to check for syntax errors."""
-        if sys.platform == "win32":
-            # Try Git Bash on Windows
-            git_bash = Path("C:/Program Files/Git/bin/bash.exe")
-            if not git_bash.exists():
-                pytest.skip("bash not found on Windows")
-            bash_cmd = str(git_bash)
-        else:
-            bash_cmd = "bash"
+        bash_cmd = str(_GIT_BASH_WIN) if sys.platform == "win32" else "bash"
 
         result = subprocess.run(
             [bash_cmd, "-n", str(INSTALL_SH)],

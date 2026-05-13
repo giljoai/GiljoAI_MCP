@@ -196,7 +196,9 @@ class TestSlashCommandsZipInstallScriptRendering:
         with zipfile.ZipFile(io.BytesIO(response.content)) as zf:
             names = zf.namelist()
             if "install.sh" not in names:
-                pytest.skip("install.sh template absent from installer/templates - not a URL-composition defect")
+                pytest.fail(
+                    "install.sh template absent from installer/templates - not a URL-composition defect", pytrace=False
+                )
             content = zf.read("install.sh").decode("utf-8")
         assert expected in content, (
             f"Shape {shape}: expected {expected} inside install.sh, not found. First 400 chars: {content[:400]}"
@@ -217,7 +219,9 @@ class TestInstallScriptEndpoint:
             "/api/download/install-script.sh?script_type=slash-commands", headers=headers
         )
         if response.status_code == 500:
-            pytest.skip("install-script template missing in installer/templates - not a URL-composition defect")
+            pytest.fail(
+                "install-script template missing in installer/templates - not a URL-composition defect", pytrace=False
+            )
         assert response.status_code == 200, f"Shape {shape}: {response.status_code} {response.text[:200]}"
         body = response.content.decode("utf-8")
         assert expected in body, (
@@ -234,7 +238,7 @@ class TestInstallScriptEndpoint:
             "/api/download/install-script.ps1?script_type=slash-commands", headers=headers
         )
         if response.status_code == 500:
-            pytest.skip("install-script .ps1 template missing - not a URL-composition defect")
+            pytest.fail("install-script .ps1 template missing - not a URL-composition defect", pytrace=False)
         assert response.status_code == 200, f"Shape {shape}: {response.status_code}"
         body = response.content.decode("utf-8")
         assert expected in body, (

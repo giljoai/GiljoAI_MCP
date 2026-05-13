@@ -2,6 +2,11 @@ import js from '@eslint/js'
 import pluginVue from 'eslint-plugin-vue'
 import vueParser from 'vue-eslint-parser'
 import globals from 'globals'
+import { createRequire } from 'node:module'
+
+// Local plugin (IMP-0013 Phase 4) — not published to npm.
+const requireCjs = createRequire(import.meta.url)
+const giljoInternal = requireCjs('./eslint-rules/index.cjs')
 
 export default [
   {
@@ -52,6 +57,19 @@ export default [
       'prefer-template': 'error',
       'prefer-arrow-callback': 'error',
       'no-var': 'error',
+      // IMP-0013 Phase 4: anti-pattern rules
+      'giljo-internal/no-manual-api-url-composition': 'error',
+      'giljo-internal/no-vite-ignore-saas-import': 'error',
+      'giljo-internal/vue-router-install-after-routes': 'error',
+      'giljo-internal/axios-interceptor-route-meta-aware': 'error',
+      'giljo-internal/no-speculative-layout-fallback': 'error',
+      // Hygiene rules — warn level
+      'giljo-internal/no-orphaned-exports': 'warn',
+      'giljo-internal/no-stale-todos': 'warn',
+      'giljo-internal/no-scattered-mode-checks': 'warn',
+    },
+    plugins: {
+      'giljo-internal': giljoInternal,
     },
   },
   {
@@ -92,9 +110,18 @@ export default [
       'prefer-template': 'error',
       'prefer-arrow-callback': 'error',
       'no-var': 'error',
+      'giljo-internal/no-manual-api-url-composition': 'error',
+      'giljo-internal/no-vite-ignore-saas-import': 'error',
+      'giljo-internal/vue-router-install-after-routes': 'error',
+      'giljo-internal/axios-interceptor-route-meta-aware': 'error',
+      'giljo-internal/no-speculative-layout-fallback': 'error',
+      'giljo-internal/no-orphaned-exports': 'warn',
+      'giljo-internal/no-stale-todos': 'warn',
+      'giljo-internal/no-scattered-mode-checks': 'warn',
     },
     plugins: {
       vue: pluginVue,
+      'giljo-internal': giljoInternal,
     },
   },
   {

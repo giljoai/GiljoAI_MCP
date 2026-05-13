@@ -104,14 +104,9 @@ class TestInstallPs1Structure:
         assert "Elastic License 2.0" in self.content
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="PowerShell syntax check only runs on Windows")
 class TestInstallPs1Syntax:
     """Validate PowerShell syntax if PowerShell is available."""
-
-    @pytest.fixture(autouse=True)
-    def _check_powershell(self):
-        """Skip if PowerShell is not available on this system."""
-        if sys.platform != "win32":
-            pytest.skip("PowerShell syntax check only runs on Windows")
 
     def test_powershell_parses_without_errors(self):
         """Use PowerShell's parser to check for syntax errors."""

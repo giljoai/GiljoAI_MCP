@@ -57,7 +57,7 @@ All notable changes to this project are recorded here. This changelog follows th
 
 ### Fixed
 
-- **Dashboard project list returned stale status values.** The `list_projects` tool now correctly filters across all eight project statuses, and a project that changes status reflects in the list within one poll cycle. Regression tests added. (IMP-5026)
+- **Dashboard project list returned stale status values.** The `list_projects` tool now correctly filters across all six project statuses, and a project that changes status reflects in the list within one poll cycle. Regression tests added. (IMP-5026)
 - **`create_project` MCP tool: type validation restored.** Unknown `project_type` values now raise `ValidationError` with the structured `valid_types` list (abbreviation, label, color) in the error context. Omitted `project_type` returns the same hint in the success response. (IMP-5027)
 - **System-update banner copy.** Bell-icon notification dropped the redundant "re-run `/giljo_setup`" line (the skills-drift banner already covers that). Both the bell notification and the dashboard update banner now say "restart your server" instead of the older `python update.py` wording.
 
@@ -79,7 +79,7 @@ All notable changes to this project are recorded here. This changelog follows th
 
 ### Added
 
-- **Project status as a typed enum.** Eight statuses (`active`, `inactive`, `staging`, `paused`, `completed`, `cancelled`, `terminated`, `archived`) now live in one place — no more drift between backend services, frontend stores, and database CHECK constraints. (BE-5039)
+- **Project status as a typed enum.** Six statuses (`inactive`, `active`, `completed`, `cancelled`, `terminated`, `deleted`) now live in one place — no more drift between backend services, frontend stores, and database CHECK constraints. (BE-5039)
 - **New REST endpoint `GET /api/v1/project-statuses/`** exposes the canonical list with labels, color tokens, and lifecycle flags. The frontend reads from this, never from a hardcoded array.
 - **Version-consistency check (`scripts/check_version_consistency.py`).** `VERSION` is the single source of truth; `pyproject.toml`, `frontend/package.json`, `package-lock.json`, `__init__.py` fallback, and the latest `CHANGELOG.md` entry must all match. Wired into pre-commit and the release pipeline.
 

@@ -177,7 +177,7 @@ class AuthService:
                 extra={"identifier": username, "user_id": user.id, "reason": "inactive_account"},
             )
             raise AuthorizationError(
-                message="User account is inactive", context={"username": username, "user_id": user.id}
+                message="User account is inactive", context={"identifier": username, "user_id": user.id}
             )
 
         # Generate JWT token

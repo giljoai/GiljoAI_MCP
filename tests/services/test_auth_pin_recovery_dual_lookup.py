@@ -15,7 +15,6 @@ Also exercises the new AuthRepository helper
 `get_user_by_username_or_email` that encapsulates the pattern.
 """
 
-import os
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from uuid import uuid4
@@ -25,31 +24,23 @@ import pytest
 import pytest_asyncio
 from fastapi import HTTPException
 
-
-# Snapshot DATABASE_URL before importing api.* (which sets it to the
-# production config via api/__init__.py -> create_app()). Restoring
-# immediately after import keeps the test fixtures pointed at giljo_mcp_test.
-_db_url_before = os.environ.get("DATABASE_URL")
-
-from api.endpoints.auth_models import (  # noqa: E402
+# IMP-5036 task 6c4c893b: DATABASE_URL snapshot/restore dance removed.
+# Audit seq 97 (api/__init__.py import-time DATABASE_URL mutation) was
+# closed by BE-5040 (commit dc378c07a): load_dotenv() moved out of module
+# scope into the FastAPI lifespan, so importing api.endpoints.* no longer
+# mutates os.environ. Standard imports are sufficient.
+from api.endpoints.auth_models import (
     CheckFirstLoginRequest,
     PinPasswordResetRequest,
 )
-from api.endpoints.auth_pin_recovery import (  # noqa: E402
+from api.endpoints.auth_pin_recovery import (
     VerifyPinRequest,
     check_first_login,
     verify_pin,
     verify_pin_and_reset_password,
 )
-
-
-if _db_url_before is None:
-    os.environ.pop("DATABASE_URL", None)
-else:
-    os.environ["DATABASE_URL"] = _db_url_before
-
-from giljo_mcp.models.auth import User  # noqa: E402
-from giljo_mcp.repositories.auth_repository import AuthRepository  # noqa: E402
+from giljo_mcp.models.auth import User
+from giljo_mcp.repositories.auth_repository import AuthRepository
 
 
 # ----------------------------------------------------------------------------

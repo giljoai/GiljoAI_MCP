@@ -209,7 +209,7 @@ async def _resolve_git_commits(
         settings_svc = SettingsService(session, tenant_key)
         git_settings = await settings_svc.get_setting_value("integrations", "git_integration", {})
         git_integration_enabled = git_settings.get("enabled", False)
-    except Exception as _exc:  # noqa: BLE001
+    except Exception as _exc:
         logger.debug("Settings read skipped: %s", _exc)
 
     git_warning: str | None = None
