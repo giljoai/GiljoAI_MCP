@@ -12,14 +12,19 @@
   >
     <v-card v-draggable class="smooth-border decision-modal-card">
       <div id="decision-modal-title" class="dlg-header dlg-header--primary">
-        <v-icon class="dlg-icon" icon="mdi-clipboard-check-outline" />
-        <span class="dlg-title">Decision Required</span>
+        <v-icon
+          class="dlg-icon"
+          :icon="decided ? 'mdi-check-circle-outline' : 'mdi-clipboard-check-outline'"
+        />
+        <span class="dlg-title">
+          {{ decided ? 'Orchestrator unlocked' : 'Decision Required' }}
+        </span>
         <v-btn
           icon
           variant="text"
           size="small"
           class="dlg-close"
-          :aria-label="'Close decision dialog'"
+          :aria-label="'Close dialog'"
           @click="handleCancel"
         >
           <v-icon icon="mdi-close" size="18" />
@@ -29,24 +34,44 @@
       <v-divider />
 
       <div class="decision-modal-body">
-        <!-- Render the ApprovalCard ONLY when the approval row is present.
-             We deliberately do NOT show a spinner in the null branch:
-             - After the user decides, the store removes the approval row
-               optimistically. If we showed a spinner here, it would flash
-               between "click option" and "dialog finishes its close
-               transition", making the user think the orchestrator is
-               still doing something. The user should leave this dialog. -->
+        <!-- State 1: pre-decision — render ApprovalCard with the option buttons -->
         <ApprovalCard
-          v-if="approval"
+          v-if="!decided && approval"
           :approval="approval"
           data-testid="decision-modal-card"
           @decided="handleDecided"
         />
+
+        <!-- State 2: post-decision — static confirmation text.
+             No spinner, no fetch, no waiting. Plain text in a div.
+             User clicks Close and goes back to the orchestrator chat. -->
+        <p
+          v-else-if="decided"
+          class="decision-modal-confirmation"
+          data-testid="decision-modal-confirmation"
+        >
+          Your choice has been sent to the orchestrator. Please tell it to read
+          its message and proceed.
+        </p>
       </div>
 
       <div class="dlg-footer">
         <v-spacer />
-        <v-btn variant="text" :aria-label="'Cancel'" @click="handleCancel">
+        <v-btn
+          v-if="decided"
+          color="primary"
+          variant="flat"
+          data-testid="decision-modal-close"
+          @click="handleCancel"
+        >
+          Close
+        </v-btn>
+        <v-btn
+          v-else
+          variant="text"
+          :aria-label="'Cancel'"
+          @click="handleCancel"
+        >
           Cancel
         </v-btn>
       </div>
@@ -55,7 +80,7 @@
 </template>
 
 <script setup>
-import { computed, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useDisplay } from 'vuetify'
 import ApprovalCard from '@/components/orchestration/ApprovalCard.vue'
 import { useApprovalsStore } from '@/stores/useApprovalsStore'
@@ -71,21 +96,26 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['close', 'approval-decided'])
+const emit = defineEmits(['close'])
 
 const approvalsStore = useApprovalsStore()
 const { mobile } = useDisplay()
 const isMobile = computed(() => mobile.value)
+
+const decided = ref(false)
 
 const approval = computed(() => {
   if (!props.orchestratorJobId) return null
   return approvalsStore.findByJobId(props.orchestratorJobId)
 })
 
+// Reset local state every time the dialog opens, so a future approval doesn't
+// land on a stale "decided" confirmation from a prior cycle.
 watch(
   () => props.show,
   (open) => {
     if (open) {
+      decided.value = false
       approvalsStore.fetchPending().catch(() => {})
     }
   },
@@ -95,8 +125,10 @@ function handleCancel() {
   emit('close')
 }
 
-function handleDecided(payload) {
-  emit('approval-decided', payload)
+function handleDecided() {
+  // ApprovalCard already POSTed to /decide and the store optimistically removed
+  // the row. Flip local state so the body renders the static confirmation text.
+  decided.value = true
 }
 </script>
 
@@ -112,4 +144,10 @@ function handleDecided(payload) {
   gap: 12px;
 }
 
+.decision-modal-confirmation {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.92);
+}
 </style>

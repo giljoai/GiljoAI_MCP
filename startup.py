@@ -1592,12 +1592,26 @@ def run_startup(
             if needs_install:
                 print_info("Installing frontend dependencies (npm ci)...")
                 subprocess.run([npm_cmd, "ci"], cwd=str(frontend_dir), check=True)
+            # Clean rebuild: nuke previous dist/ and Vite transform cache so
+            # `git pull` updates to .vue/.js sources are guaranteed to land
+            # in the new bundle on user upgrades. Without this, stale content-
+            # hashed chunks can linger in dist/ alongside the new ones, and
+            # (rarely) Vite can reuse a cached transform that no longer
+            # matches source. ~2s extra; worth it for bulletproof upgrades.
+            dist_dir = frontend_dir / "dist"
+            vite_cache_dir = frontend_dir / "node_modules" / ".vite"
+            for stale in (dist_dir, vite_cache_dir):
+                if stale.exists():
+                    try:
+                        shutil.rmtree(stale)
+                    except OSError as exc:
+                        print_warning(f"Could not remove {stale}: {exc}")
             build_result = subprocess.run(
                 [npm_cmd, "run", "build"],
                 cwd=str(frontend_dir),
                 capture_output=True,
                 text=True,
-                timeout=120,
+                timeout=180,
                 check=False,
             )
             if build_result.returncode == 0:
