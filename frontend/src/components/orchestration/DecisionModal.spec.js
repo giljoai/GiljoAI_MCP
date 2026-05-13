@@ -54,10 +54,12 @@ describe('DecisionModal.vue', () => {
     expect(wrapper.text()).toContain('Approve the Protected Zone edit?')
   })
 
-  it('renders a loading message when no approval is in the store yet', () => {
+  it('renders a quiet loading state (spinner only) when no approval is in the store yet', () => {
     const wrapper = mountModal()
     expect(wrapper.find('[data-testid="decision-modal-card"]').exists()).toBe(false)
-    expect(wrapper.text()).toContain("Loading the orchestrator's request")
+    // No verbose copy that invites the user to wait around -- just a spinner.
+    expect(wrapper.find('.decision-modal-loading').exists()).toBe(true)
+    expect(wrapper.text()).not.toContain('Loading')
   })
 
   it('emits "close" when the Cancel button is clicked', async () => {

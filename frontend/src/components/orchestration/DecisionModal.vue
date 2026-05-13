@@ -35,8 +35,8 @@
           @decided="handleDecided"
         />
 
-        <div v-else class="decision-modal-loading text-body-2 text-muted-a11y">
-          Loading the orchestrator's request…
+        <div v-else class="decision-modal-loading">
+          <v-progress-circular indeterminate size="28" width="3" color="primary" />
         </div>
       </div>
 

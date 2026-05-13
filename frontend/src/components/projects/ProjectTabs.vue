@@ -360,10 +360,7 @@
           <span class="dlg-title">Orchestrator unlocked</span>
         </div>
         <v-card-text class="pa-4 text-body-2">
-          Your decision was sent to the orchestrator's inbox and the
-          <code>awaiting_user</code> gate is cleared. Open the orchestrator
-          chat and tell it to proceed (or simply type "continue") so it
-          processes the message and resumes the project.
+          Your choice has been sent to the orchestrator. Please tell it to read its message and proceed.
         </v-card-text>
         <div class="dlg-footer">
           <v-spacer />
