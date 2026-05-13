@@ -711,7 +711,7 @@ async def update_task(
     description: Annotated[str, Field(description="New description; empty string keeps current.")] = "",
     status: Annotated[
         str,
-        Field(description="New status: pending|in_progress|completed|blocked|cancelled|converted."),
+        Field(description="New status: pending|in_progress|completed|blocked|cancelled."),
     ] = "",
     priority: Annotated[str, Field(description="New priority: low|medium|high|critical.")] = "",
     task_type: Annotated[str, Field(description="Taxonomy abbreviation (e.g. BE, FE). Empty string clears type.")] = "",

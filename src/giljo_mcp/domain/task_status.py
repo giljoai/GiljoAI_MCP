@@ -44,8 +44,7 @@ class TaskStatusMeta:
     is_lifecycle_finished
         Members of :data:`TASK_LIFECYCLE_FINISHED_STATUSES`. Tasks in
         these states have ``completed_at`` set (``completed`` /
-        ``cancelled``) or are terminal conversion records
-        (``converted``).
+        ``cancelled``).
     """
 
     label: str
@@ -70,7 +69,6 @@ class TaskStatus(enum.StrEnum):
     COMPLETED = "completed"
     BLOCKED = "blocked"
     CANCELLED = "cancelled"
-    CONVERTED = "converted"
 
     @property
     def meta(self) -> TaskStatusMeta:
@@ -99,7 +97,6 @@ class TaskStatus(enum.StrEnum):
 #   blocked     -> color-agent-analyzer    (#e07872, coral 5.11:1)
 #   cancelled   -> color-text-muted        (intentional same as pending --
 #                  terminal/inert state, mirrors badge component note)
-#   converted   -> color-agent-reviewer    (#ac80cc, lavender 4.84:1)
 TASK_STATUS_META: dict[TaskStatus, TaskStatusMeta] = {
     TaskStatus.PENDING: TaskStatusMeta(
         label="Pending",
@@ -124,11 +121,6 @@ TASK_STATUS_META: dict[TaskStatus, TaskStatusMeta] = {
     TaskStatus.CANCELLED: TaskStatusMeta(
         label="Cancelled",
         color_token="color-text-muted",
-        is_lifecycle_finished=True,
-    ),
-    TaskStatus.CONVERTED: TaskStatusMeta(
-        label="Converted",
-        color_token="color-agent-reviewer",
         is_lifecycle_finished=True,
     ),
 }

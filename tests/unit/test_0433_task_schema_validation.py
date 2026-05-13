@@ -179,7 +179,7 @@ def test_task_create_invalid_priority_rejected():
 
 def test_task_create_valid_status_values():
     """TaskCreate accepts all valid status values (0962d)."""
-    valid_statuses = ["pending", "in_progress", "completed", "blocked", "cancelled", "converted"]
+    valid_statuses = ["pending", "in_progress", "completed", "blocked", "cancelled"]
     for status in valid_statuses:
         task = TaskCreate(title="T", product_id="p", status=status)
         assert task.status == status

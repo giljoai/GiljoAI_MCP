@@ -16,7 +16,7 @@
               <div><span class="font-weight-medium">title (required):</span> Free text</div>
               <div class="mt-1"><span class="font-weight-medium">description (recommended):</span> Free text</div>
               <div class="mt-1"><span class="font-weight-medium">status (optional):</span></div>
-              <div class="ml-2 text-caption">pending · in_progress · completed · blocked · cancelled · converted</div>
+              <div class="ml-2 text-caption">pending · in_progress · completed · blocked · cancelled</div>
               <div class="mt-1"><span class="font-weight-medium">priority (optional):</span></div>
               <div class="ml-2 text-caption">low · medium · high · critical</div>
               <div class="mt-1"><span class="font-weight-medium">task_type (optional):</span></div>
@@ -681,7 +681,6 @@ function getStatusColor(status) {
     completed: '#5ec48e',
     blocked: '#e07872',
     cancelled: '#8895a8',
-    converted: '#ac80cc',
   }
   return colors[status] || 'grey'
 }
@@ -693,7 +692,6 @@ function getStatusIcon(status) {
     completed: 'mdi-check-circle',
     blocked: 'mdi-block-helper',
     cancelled: 'mdi-cancel',
-    converted: 'mdi-folder-arrow-right',
   }
   return icons[status] || 'mdi-help'
 }

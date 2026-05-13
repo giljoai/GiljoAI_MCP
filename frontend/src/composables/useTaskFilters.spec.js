@@ -234,7 +234,7 @@ describe('useTaskFilters', () => {
   })
 
   describe('statusSelectOptions', () => {
-    it('exposes the six canonical task statuses (mirrors BE TaskUpdate enum)', () => {
+    it('exposes the five canonical task statuses (mirrors BE TaskUpdate enum)', () => {
       const { statusSelectOptions } = useTaskFilters(tasks)
       const values = statusSelectOptions.value.map((o) => o.value)
       expect(values).toEqual([
@@ -243,7 +243,6 @@ describe('useTaskFilters', () => {
         'completed',
         'blocked',
         'cancelled',
-        'converted',
       ])
     })
   })

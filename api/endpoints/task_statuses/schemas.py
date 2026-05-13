@@ -24,7 +24,7 @@ class TaskStatusResponse(BaseModel):
     color_token: str = Field(..., description="CSS custom property name (no hex literal). Resolves at runtime.")
     is_lifecycle_finished: bool = Field(
         ...,
-        description="True for COMPLETED, CANCELLED, CONVERTED -- terminal states with no further progress.",
+        description="True for COMPLETED and CANCELLED -- terminal states with no further progress.",
     )
 
     model_config = {"from_attributes": True}

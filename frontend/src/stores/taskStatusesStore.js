@@ -2,8 +2,8 @@
  * taskStatusesStore — single source of task-status metadata for the
  * frontend (FE-5041 Phase 2).
  *
- * The canonical six task statuses (pending, in_progress, completed,
- * blocked, cancelled, converted) are declared once in the backend
+ * The canonical five task statuses (pending, in_progress, completed,
+ * blocked, cancelled) are declared once in the backend
  * `TaskStatus` enum. The frontend mirrors them by fetching
  * `GET /api/v1/task-statuses/` exactly once per session and caching
  * the response in this Pinia store.

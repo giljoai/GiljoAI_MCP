@@ -53,7 +53,7 @@ Route by what the user wants to read:
 1. List tasks with filters: `list_tasks` with `mode="summary"`, `task_type=...`, `filters=...`. Returns one row per task with: `id`, `title`, `status`, `priority`, `task_type` (embedded block), `series_number`, `subseries`, `taxonomy_alias` (e.g. `BE-0017`), `hidden`, `due_date`, `created_at`.
 2. Read a task deeply: `fetch_context` with `product_id` and `categories=["tasks"]`. Returns full task bodies with the same taxonomy fields.
 3. Filter parameters (pass as `filters={}` dict):
-   - `status`: pending | in_progress | completed | blocked | cancelled | converted
+   - `status`: pending | in_progress | completed | blocked | cancelled
    - `priority`: low | medium | high | critical
    - `task_type`: taxonomy abbreviation (e.g. `"BE"`, `"FE"`, `"INF"`)
    - `hidden`: true | false — omit by default (returns BOTH; agents see all). Dashboard filters `hidden=false`; `/gil_get` does NOT so agents reorder/sort across the full backlog.

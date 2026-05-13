@@ -32,7 +32,7 @@ Cheap discovery. Pick a mode by how much detail you need.
 - `task_type` — taxonomy abbreviation (e.g. `"BE"`, `"FE"`, `"INF"`).
   Filters tasks with that type.
 - `filters` (dict, all optional):
-  - `status`: pending | in_progress | completed | blocked | cancelled | converted
+  - `status`: pending | in_progress | completed | blocked | cancelled
   - `priority`: low | medium | high | critical
   - `hidden`: true | false — omit to get BOTH (default for agents; dashboard
     UI filters hidden=false). Tasks remain searchable here regardless of UI state.

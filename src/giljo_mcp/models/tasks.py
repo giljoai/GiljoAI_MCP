@@ -46,7 +46,6 @@ class Task(Base):
 
     Handover 0072: Task Integration
     - project_id: Now nullable to support unassigned tasks
-    - status: Added "converted" state for task-to-project conversions
 
     Handover 0433: Task Product Binding (Security Enhancement)
     - product_id: Now required (NOT NULL) for tenant isolation
@@ -104,7 +103,7 @@ class Task(Base):
         nullable=True,
         comment="Single-letter subseries suffix (e.g., 'a' in BE-0001a)",
     )
-    status = Column(String(50), default="pending")  # pending, in_progress, completed, blocked, cancelled, converted
+    status = Column(String(50), default="pending")  # pending, in_progress, completed, blocked, cancelled
     priority = Column(String(20), default="medium")  # low, medium, high, critical
     # FE-5046: per-row UI declutter flag (mirrors Project.hidden). Does NOT
     # affect default visibility -- agents see hidden and non-hidden alike.

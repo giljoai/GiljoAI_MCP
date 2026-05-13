@@ -269,9 +269,8 @@ class TaskConversionService:
         await self._repo.add_project(session, new_project)
         await self._repo.flush(session)  # Get project ID without committing
 
-        # Mark task as converted and completed
+        # Mark task as converted (FK only; row is deleted at end of this flow)
         task.converted_to_project_id = new_project.id
-        task.status = "completed"  # Mark as completed, not 'converted'
 
         # Handle subtasks if requested
         if include_subtasks:

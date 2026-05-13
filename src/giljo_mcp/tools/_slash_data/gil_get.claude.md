@@ -59,7 +59,7 @@ Route by what the user wants to read:
 1. **List tasks with filters** → `mcp__giljo_mcp__list_tasks(mode="summary", task_type=..., filters=...)`. Returns one row per task with: `id`, `title`, `status`, `priority`, `task_type` (embedded block id+abbreviation+label+color), `series_number`, `subseries`, `taxonomy_alias` (e.g. `BE-0017`), `hidden`, `due_date`, `created_at`. Use `mode="summary"` unless the user specifically needs description bodies.
 2. **Read a task deeply** → `mcp__giljo_mcp__fetch_context(product_id=..., categories=["tasks"])`. Returns full task bodies with the same taxonomy fields as `list_tasks`. Use when the user wants task descriptions for a project or a filtered set.
 3. **Filter parameters** (pass as `filters={}` dict):
-   - `status`: `pending` | `in_progress` | `completed` | `blocked` | `cancelled` | `converted`
+   - `status`: `pending` | `in_progress` | `completed` | `blocked` | `cancelled`
    - `priority`: `low` | `medium` | `high` | `critical`
    - `task_type`: taxonomy abbreviation (e.g. `"BE"`, `"FE"`, `"INF"`) — filters to tasks with that type
    - `hidden`: omit by default (returns BOTH hidden and visible — agents see all). Pass `true` to only get hidden tasks; `false` to only get visible ones. The dashboard filters `hidden=false` by default but `/gil_get` does NOT (so agents can still reorder/sort across the full backlog).

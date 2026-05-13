@@ -34,8 +34,8 @@
   --color-agent-implementer: #6db3e4;     // matches $color-agent-implementor
   --color-agent-analyzer: #e07872;        // matches $color-agent-analyzer
   // FE-5041: additional agent-color mirrors used by TaskStatus metadata
-  // (completed -> researcher mint, converted -> reviewer lavender). Kept in
-  // lockstep with the SCSS tokens in design-tokens.scss.
+  // (completed -> researcher mint). Kept in lockstep with the SCSS tokens
+  // in design-tokens.scss.
   --color-agent-researcher: #5ec48e;      // matches $color-agent-researcher
   --color-agent-reviewer: #ac80cc;        // matches $color-agent-reviewer
 

@@ -6,7 +6,7 @@
 """Unit tests for ``giljo_mcp.domain.task_status`` (FE-5041 Phase 1).
 
 Mirrors the BE-5039 ``test_project_status_enum`` shape verbatim. Asserts
-the canonical six members, the metadata structure, derived sets, and
+the canonical five members, the metadata structure, derived sets, and
 ``str``-mixin equality used by legacy callers.
 """
 
@@ -26,7 +26,7 @@ from giljo_mcp.domain.task_status import (
 # ----------------------------------------------------------------------
 
 
-def test_enum_has_exactly_six_members() -> None:
+def test_enum_has_exactly_five_members() -> None:
     """Canonical task statuses match the legacy free-form list verbatim."""
 
     assert {s.value for s in TaskStatus} == {
@@ -35,7 +35,6 @@ def test_enum_has_exactly_six_members() -> None:
         "completed",
         "blocked",
         "cancelled",
-        "converted",
     }
 
 
@@ -48,7 +47,6 @@ def test_enum_declaration_order_is_canonical() -> None:
         "completed",
         "blocked",
         "cancelled",
-        "converted",
     ]
 
 
@@ -65,7 +63,7 @@ def test_enum_supports_membership_via_string() -> None:
 
     assert "completed" in TASK_LIFECYCLE_FINISHED_STATUSES
     assert "cancelled" in TASK_LIFECYCLE_FINISHED_STATUSES
-    assert "converted" in TASK_LIFECYCLE_FINISHED_STATUSES
+    assert "converted" not in TASK_LIFECYCLE_FINISHED_STATUSES
     assert "pending" not in TASK_LIFECYCLE_FINISHED_STATUSES
     assert "in_progress" not in TASK_LIFECYCLE_FINISHED_STATUSES
 
@@ -114,17 +112,15 @@ def test_label_is_non_empty_human_readable() -> None:
 
 
 def test_lifecycle_finished_set_matches_service_semantics() -> None:
-    """The trio of statuses that block further progress in TaskService.
+    """The pair of statuses that block further progress in TaskService.
 
     ``completed`` + ``cancelled`` set ``completed_at`` (see
-    ``task_service._change_status_impl``); ``converted`` is the terminal
-    state for task-to-project conversions.
+    ``task_service._change_status_impl``).
     """
 
     assert {s.value for s in TASK_LIFECYCLE_FINISHED_STATUSES} == {
         "completed",
         "cancelled",
-        "converted",
     }
 
 
@@ -152,7 +148,6 @@ def test_member_meta_property_returns_registered_metadata() -> None:
 def test_is_lifecycle_finished_property() -> None:
     assert TaskStatus.COMPLETED.is_lifecycle_finished is True
     assert TaskStatus.CANCELLED.is_lifecycle_finished is True
-    assert TaskStatus.CONVERTED.is_lifecycle_finished is True
     assert TaskStatus.PENDING.is_lifecycle_finished is False
     assert TaskStatus.IN_PROGRESS.is_lifecycle_finished is False
     assert TaskStatus.BLOCKED.is_lifecycle_finished is False

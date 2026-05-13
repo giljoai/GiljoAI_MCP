@@ -21,7 +21,7 @@
  */
 import { ref, computed } from 'vue'
 
-// Canonical six task statuses (backend `TaskUpdate` schema). Order matches
+// Canonical five task statuses (backend `TaskUpdate` schema). Order matches
 // declaration order in `api/schemas/task.py`. Once tasks gain a /
 // `/api/v1/task-statuses/` SSOT (parity with BE-5039 for projects), this
 // list should be replaced by a store-driven one and this hardcoded copy
@@ -32,7 +32,6 @@ const TASK_STATUS_OPTIONS = [
   { title: 'Completed', value: 'completed' },
   { title: 'Blocked', value: 'blocked' },
   { title: 'Cancelled', value: 'cancelled' },
-  { title: 'Converted', value: 'converted' },
 ]
 
 export function useTaskFilters(tasks, { taxonomyTypes = ref([]) } = {}) {
