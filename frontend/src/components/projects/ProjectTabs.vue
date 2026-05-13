@@ -154,13 +154,22 @@
       v-else-if="activeTab === 'jobs' && orchestratorCloseoutBlocked"
       class="action-buttons-row"
     >
-      <div class="closeout-decision-banner smooth-border" data-testid="closeout-decision-banner">
+      <button
+        type="button"
+        class="closeout-decision-banner closeout-decision-banner--clickable smooth-border"
+        data-testid="closeout-decision-banner"
+        aria-label="Open closeout decision dialog"
+        @click="openCloseoutModal"
+      >
         <v-icon icon="mdi-clipboard-check-outline" size="20" class="closeout-decision-icon" />
         <div class="closeout-decision-content">
           <span class="closeout-decision-title">Decision Required</span>
-          <span class="closeout-decision-desc">Review deferred findings before project closure</span>
+          <span class="closeout-decision-desc">
+            Check in with the orchestrator in chat to review the deferred findings, then click here to approve, reject, or defer.
+          </span>
         </div>
-      </div>
+        <v-icon icon="mdi-chevron-right" size="20" class="closeout-decision-chevron" />
+      </button>
     </div>
 
     <!-- State B: All agents terminal, project NOT done -> closeout button -->
@@ -1022,8 +1031,34 @@ async function handleLaunchJobs() {
   --smooth-border-color: rgba($color-status-warning, 0.30);
 }
 
+.closeout-decision-banner--clickable {
+  width: 100%;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  transition: background 120ms ease, filter 120ms ease;
+}
+
+.closeout-decision-banner--clickable:hover,
+.closeout-decision-banner--clickable:focus-visible {
+  background: rgba($color-status-warning, 0.18);
+  filter: brightness(1.05);
+}
+
+.closeout-decision-banner--clickable:focus-visible {
+  outline: 2px solid $color-status-warning;
+  outline-offset: 2px;
+}
+
 .closeout-decision-icon {
   color: $color-status-warning;
+  flex-shrink: 0;
+}
+
+.closeout-decision-chevron {
+  color: $color-status-warning;
+  margin-left: auto;
   flex-shrink: 0;
 }
 
@@ -1031,6 +1066,8 @@ async function handleLaunchJobs() {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  flex: 1;
+  min-width: 0;
 }
 
 .closeout-decision-title {

@@ -614,7 +614,7 @@ export const api = {
   // List endpoint (GET /api/approvals) is added by the backend implementer in
   // the same phase; consumed here by useApprovalsStore for the dashboard inbox.
   approvals: {
-    listPending: (params) => apiClient.get('/api/approvals', { params: { status: 'pending', ...(params || {}) } }),
+    listPending: (params) => apiClient.get('/api/approvals/', { params: { status: 'pending', ...(params || {}) } }),
     decide: (approvalId, optionId) =>
       apiClient.post(`/api/approvals/${approvalId}/decide`, { option_id: optionId }),
   },

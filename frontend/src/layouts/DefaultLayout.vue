@@ -17,7 +17,6 @@
       <!-- SAAS-023: Account Deletion Banner (loaded dynamically, absent in CE) -->
       <component :is="AccountDeletionBannerComponent" v-if="AccountDeletionBannerComponent" />
       <SystemStatusBanner />
-      <ApprovalBanner />
       <router-view :key="$route.path" :current-user="currentUser" />
     </v-main>
 
@@ -48,8 +47,6 @@ import ToastManager from '@/components/ToastManager.vue'
 import { defineAsyncComponent } from 'vue'
 const LicensingDialog = defineAsyncComponent(() => import('@/components/LicensingDialog.vue'))
 import SystemStatusBanner from '@/components/system/SystemStatusBanner.vue'
-import ApprovalBanner from '@/components/orchestration/ApprovalBanner.vue'
-import { useApprovalsStore } from '@/stores/useApprovalsStore'
 import setupService from '@/services/setupService'
 import configService from '@/services/configService'
 
@@ -68,7 +65,6 @@ const projectStatusesStore = useProjectStatusesStore()
 const taskStatusesStore = useTaskStatusesStore()
 const wsStore = useWebSocketStore()
 const messageStore = useMessageStore()
-const approvalsStore = useApprovalsStore()
 
 const drawer = ref(true)
 const rail = ref(false)
@@ -207,13 +203,6 @@ onMounted(async () => {
 
       // Load initial data (remove legacy /api/v1/agents call)
       await Promise.all([messageStore.fetchMessages()])
-
-      // Hydrate pending user-approvals so the global ApprovalBanner shows
-      // any awaiting_user gates that pre-dated this session. Subsequent
-      // deltas arrive via agentEventRoutes → approvalsStore.handleStatusEvent.
-      approvalsStore.fetchPending().catch((err) => {
-        console.warn('[DefaultLayout] Failed to hydrate pending approvals:', err?.message)
-      })
     } catch (error) {
       console.error('[DefaultLayout] Failed to initialize WebSocket:', error)
     }
