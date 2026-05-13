@@ -103,7 +103,12 @@ describe('ApprovalCard.vue (FE-5017 Phase C)', () => {
     expect(api.approvals.decide).toHaveBeenCalledWith(baseApproval.id, 'continue')
   })
 
-  it('removes the approval from the store after a successful decide', async () => {
+  it('leaves the approval row in the store after decide (WS event handles removal)', async () => {
+    // Regression: previously the store removed the row optimistically inside
+    // decide(), which caused ApprovalCard to unmount before its 'decided'
+    // emit could reach the parent dialog. Removal is now WS-driven so the
+    // emit chain completes cleanly. The row clears a beat later via
+    // handleStatusEvent when the backend broadcasts the resume.
     api.approvals.decide.mockResolvedValueOnce({
       data: {
         approval_id: baseApproval.id,
@@ -121,7 +126,7 @@ describe('ApprovalCard.vue (FE-5017 Phase C)', () => {
     await wrapper.find('[data-testid="approval-option-continue"]').trigger('click')
     await flushPromises()
 
-    expect(store.approvalsById.has(baseApproval.id)).toBe(false)
+    expect(store.approvalsById.has(baseApproval.id)).toBe(true)
   })
 
   it('emits "decided" with the chosen option on success', async () => {

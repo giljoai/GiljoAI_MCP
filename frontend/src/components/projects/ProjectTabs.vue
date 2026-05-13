@@ -334,14 +334,18 @@
       @continue="handleContinueWorking"
     />
 
-    <!-- HITL Decision Modal — single focused dialog that handles BOTH the
-         decision UI (option buttons) AND the post-decision confirmation
-         ("Orchestrator unlocked, tell it to proceed") via an internal state
-         swap. One v-dialog, no stacking races, no follow-up popup. -->
+    <!-- HITL Decision Modal — pre-decision only. Hosts ApprovalCard. -->
     <DecisionModal
       :show="showDecisionModal"
       :orchestrator-job-id="orchestratorJobId"
       @close="showDecisionModal = false"
+      @approval-decided="handleApprovalDecided"
+    />
+
+    <!-- Post-decision confirmation: dumb static popup, no logic. -->
+    <OrchestratorUnlockedPopup
+      :show="showOrchestratorUnlocked"
+      @close="showOrchestratorUnlocked = false"
     />
   </v-container>
 </template>
@@ -364,6 +368,7 @@ import LaunchTab from './LaunchTab.vue'
 import JobsTab from './JobsTab.vue'
 import CloseoutModal from '@/components/orchestration/CloseoutModal.vue'
 import DecisionModal from '@/components/orchestration/DecisionModal.vue'
+import OrchestratorUnlockedPopup from '@/components/orchestration/OrchestratorUnlockedPopup.vue'
 import { DEFAULT_PROJECT_TYPE_COLOR } from '@/utils/constants'
 
 const { copy: clipboardCopy } = useClipboard()
@@ -494,9 +499,15 @@ const loadingStageProject = ref(false)
 const executionMode = ref(props.project?.execution_mode || 'multi_terminal')
 const showGeminiNotice = ref(false)
 const showDecisionModal = ref(false)
+const showOrchestratorUnlocked = ref(false)
 
 function openDecisionModal() {
   showDecisionModal.value = true
+}
+
+function handleApprovalDecided() {
+  showDecisionModal.value = false
+  showOrchestratorUnlocked.value = true
 }
 const isGeminiMode = computed(() => executionMode.value === 'gemini_cli')
 

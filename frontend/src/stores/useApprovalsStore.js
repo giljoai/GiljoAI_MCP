@@ -103,7 +103,16 @@ export const useApprovalsStore = defineStore('approvals', () => {
       throw new Error('approvalId and optionId are required')
     }
     const res = await api.approvals.decide(approvalId, optionId)
-    removeApproval(approvalId)
+    // Intentionally do NOT removeApproval here. The server broadcasts a
+    // resume event via WebSocket and handleStatusEvent clears the row a
+    // beat later. Removing inside decide() makes any consumer using v-if
+    // on the row (e.g. ApprovalCard inside DecisionModal) unmount before
+    // its 'decided' emit can propagate to its parent — the message reaches
+    // the parent's listener in the SAME synchronous tick, but the v-if
+    // having already flipped to false in the parent can cause the parent
+    // to also tear down its dialog before reacting. Leaving the row in
+    // the store lets the parent handle the emit cleanly and trigger its
+    // own state change first, then the WS event cleans up the store.
     return res?.data
   }
 
