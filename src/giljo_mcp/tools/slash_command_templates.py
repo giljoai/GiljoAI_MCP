@@ -25,7 +25,7 @@ from pathlib import Path
 
 # Semver for the skills/commands package. Bumped when slash command templates change.
 # Referenced by health_check so the frontend can compare installed vs available.
-SKILLS_VERSION = "1.1.12"
+SKILLS_VERSION = "1.1.13"
 
 _DATA_DIR = Path(__file__).resolve().parent / "_slash_data"
 
@@ -118,7 +118,10 @@ description: "Add, update, or read tasks and projects in the GiljoAI dashboard. 
 - **Update project**: if the user wants to update/modify/change an existing project, first call `mcp__giljo_mcp__list_projects` to find it, then call `mcp__giljo_mcp__update_project` with the new values
 
 ## Task parameters
-- `title` (required), `description` (optional), `priority` (low|medium|high|critical, default: medium), `category` (frontend|backend|database|infra|docs|general, default: general)
+- `title` (required), `description` (optional), `priority` (low|medium|high|critical, default: medium)
+- `task_type` (optional, e.g. `BE`, `FE`, `INF`) — taxonomy abbreviation. Must match a configured `taxonomy_types` row; unknown values are rejected with a `valid_types` hint. Replaces the legacy `category` field. When set, the backend auto-assigns a `series_number` from the shared task+project counter (BE-5065) and exposes `taxonomy_alias` like `BE-0017` on the response.
+- Tasks created without `task_type` have empty `taxonomy_alias` and no serial. They can still be converted to a project later, which assigns a serial at conversion time.
+- Tasks returned by `list_tasks` carry: `taxonomy_alias`, `series_number`, `subseries`, embedded `task_type` (id+abbreviation+label+color), and `hidden` (UI declutter flag — does not affect agent visibility). Use `taxonomy_alias` for re-ordering / priority sorting requests.
 
 ## Project parameters
 - `name` (required), `description` (optional — generate from context if missing), `project_type` (optional — must match a pre-configured type), `series_number` (optional int 1-9999 — auto-assigned if omitted), `suffix` (optional single letter a-z for sub-series)
@@ -304,7 +307,10 @@ prompt = '''
 - Update project: if the user wants to update/modify/change an existing project, first call list_projects to find it, then call update_project with the new values
 
 ## Task parameters
-- title (required), description (optional), priority (low|medium|high|critical, default: medium), category (frontend|backend|database|infra|docs|general, default: general)
+- title (required), description (optional), priority (low|medium|high|critical, default: medium)
+- task_type (optional, e.g. BE, FE, INF) -- taxonomy abbreviation. Must match a configured taxonomy_types row; unknown values are rejected with a valid_types hint. Replaces the legacy category field. When set, the backend auto-assigns a series_number from the shared task+project counter (BE-5065) and exposes taxonomy_alias like BE-0017 on the response.
+- Tasks created without task_type have empty taxonomy_alias and no serial. They can still be converted to a project later, which assigns a serial at conversion time.
+- Tasks returned by list_tasks carry: taxonomy_alias, series_number, subseries, embedded task_type (id+abbreviation+label+color), and hidden (UI declutter flag -- does not affect agent visibility). Use taxonomy_alias for re-ordering / priority sorting requests.
 
 ## Project parameters
 - name (required), description (optional — generate from context if missing), project_type (optional — label e.g. "Frontend" OR abbreviation e.g. "FE", "TST"), series_number (optional int 1-9999 — auto-assigned if omitted), suffix (optional single letter a-z for sub-series)
@@ -379,7 +385,10 @@ description: "Add, update, or read tasks and projects in the GiljoAI dashboard. 
 - **Update project**: if the user wants to update/modify/change an existing project, first call `list_projects` to find it, then call `update_project` with the new values
 
 ## Task parameters
-- `title` (required), `description` (optional), `priority` (low|medium|high|critical, default: medium), `category` (frontend|backend|database|infra|docs|general, default: general)
+- `title` (required), `description` (optional), `priority` (low|medium|high|critical, default: medium)
+- `task_type` (optional, e.g. `BE`, `FE`, `INF`) — taxonomy abbreviation. Must match a configured `taxonomy_types` row; unknown values are rejected with a `valid_types` hint. Replaces the legacy `category` field. When set, the backend auto-assigns a `series_number` from the shared task+project counter (BE-5065) and exposes `taxonomy_alias` like `BE-0017` on the response.
+- Tasks created without `task_type` have empty `taxonomy_alias` and no serial. They can still be converted to a project later, which assigns a serial at conversion time.
+- Tasks returned by `list_tasks` carry: `taxonomy_alias`, `series_number`, `subseries`, embedded `task_type` (id+abbreviation+label+color), and `hidden` (UI declutter flag — does not affect agent visibility). Use `taxonomy_alias` for re-ordering / priority sorting requests.
 
 ## Project parameters
 - `name` (required), `description` (optional — generate from context if missing), `project_type` (optional — must match a pre-configured type), `series_number` (optional int 1-9999 — auto-assigned if omitted), `suffix` (optional single letter a-z for sub-series)

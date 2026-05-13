@@ -77,12 +77,18 @@ def task_to_response(task: Task) -> TaskResponse:
         TaskResponse schema (Handover 0076: removed assignment fields)
     """
     task_type_abbr = task.task_type.abbreviation if task.task_type else None
+    task_type_color = task.task_type.color if task.task_type else None
     return TaskResponse(
         id=task.id,
         title=task.title,
         description=task.description,
         task_type=task_type_abbr,
         task_type_id=task.task_type_id,
+        task_type_color=task_type_color,
+        series_number=task.series_number,
+        subseries=task.subseries,
+        taxonomy_alias=task.taxonomy_alias or None,
+        hidden=bool(task.hidden),
         status=task.status,
         priority=task.priority,
         product_id=task.product_id,
@@ -209,6 +215,22 @@ async def create_task(
         resolved = await taxonomy.validate(task_create.task_type, current_user.tenant_key)
         task_type_id = resolved.id
 
+    # FE-5046 follow-up: series_number plumbed through REST. If task is typed
+    # and the user did NOT pass an explicit series_number, auto-assign from
+    # the shared task+project counter (BE-5065) so taxonomy_alias populates
+    # for the new row.
+    series_number = task_create.series_number
+    if task_type_id and series_number is None:
+        from giljo_mcp.repositories.project_repository import ProjectRepository
+
+        project_repo = ProjectRepository()
+        await project_repo.lock_rows_for_series_shared(
+            db, current_user.tenant_key, task_create.product_id, task_type_id
+        )
+        series_number = await project_repo.get_next_series_number_shared(
+            db, current_user.tenant_key, task_create.product_id, task_type_id
+        )
+
     task = Task(
         tenant_key=current_user.tenant_key,
         product_id=task_create.product_id,
@@ -217,6 +239,7 @@ async def create_task(
         title=task_create.title,
         description=task_create.description,
         task_type_id=task_type_id,
+        series_number=series_number,
         status=task_create.status or "pending",
         priority=task_create.priority or "medium",
         estimated_effort=task_create.estimated_effort,

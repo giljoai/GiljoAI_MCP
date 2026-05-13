@@ -27,6 +27,7 @@ const DEFAULT_TASK = () => ({
   status: 'pending',
   priority: 'medium',
   task_type: null,
+  series_number: null,
   due_date: null,
 })
 

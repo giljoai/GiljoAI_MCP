@@ -195,12 +195,13 @@
 
           <!-- Serial Column (FE-5046: tinted taxonomy_alias badge replaces
                the old standalone Type column; color tint comes from
-               item.task_type.color so the type+serial are visually paired). -->
+               item.task_type_color (REST) or item.task_type.color (MCP shape)
+               so the type+serial are visually paired). -->
           <template v-slot:item.taxonomy_alias="{ item }">
             <span
               v-if="item.taxonomy_alias"
               class="taxonomy-badge"
-              :style="taxonomyBadgeStyle(item.task_type?.color || DEFAULT_PROJECT_TYPE_COLOR)"
+              :style="taxonomyBadgeStyle(item.task_type_color || item.task_type?.color || DEFAULT_PROJECT_TYPE_COLOR)"
             >
               {{ item.taxonomy_alias }}
             </span>
@@ -349,11 +350,27 @@
                 />
               </v-col>
               <v-col cols="6">
+                <!-- Edit mode: read-only alias (uq_task_taxonomy_active makes
+                     re-keying risky).  Create mode: editable optional series
+                     number; blank = backend auto-assigns from the shared
+                     task+project counter (BE-5065). -->
                 <v-text-field
+                  v-if="editingTask"
                   :model-value="currentTask.taxonomy_alias || '—'"
                   label="Serial"
                   variant="outlined"
                   readonly
+                  data-test="edit-task-serial"
+                />
+                <v-text-field
+                  v-else
+                  v-model.number="currentTask.series_number"
+                  label="Serial (optional)"
+                  placeholder="auto"
+                  type="number"
+                  min="1"
+                  max="9999"
+                  variant="outlined"
                   data-test="edit-task-serial"
                 />
               </v-col>

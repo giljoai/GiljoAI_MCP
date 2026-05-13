@@ -25,14 +25,17 @@ Cheap discovery. Pick a mode by how much detail you need.
 
 ### list_tasks
 - `mcp__giljo_mcp__list_tasks(mode="summary", task_type=None, filters={})` —
-  one row per task: id, title, status, priority, category, created_at.
+  one row per task: id, title, status, priority, task_type (embedded block),
+  series_number, subseries, taxonomy_alias (e.g. `BE-0017`), hidden,
+  due_date, created_at.
 - `mode="full"` — adds description bodies. Avoid unless user wants the prose.
-- `task_type` — project-type prefix string (e.g. `"BE"`, `"FE"`). Filters tasks
-  linked to that project type.
+- `task_type` — taxonomy abbreviation (e.g. `"BE"`, `"FE"`, `"INF"`).
+  Filters tasks with that type.
 - `filters` (dict, all optional):
   - `status`: pending | in_progress | completed | blocked | cancelled | converted
   - `priority`: low | medium | high | critical
-  - `category`: frontend | backend | database | infra | docs | general
+  - `hidden`: true | false — omit to get BOTH (default for agents; dashboard
+    UI filters hidden=false). Tasks remain searchable here regardless of UI state.
 
 ### fetch_context
 - `mcp__giljo_mcp__fetch_context(product_id=..., project_id=..., categories=["project"])`

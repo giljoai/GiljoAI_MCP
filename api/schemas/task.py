@@ -39,6 +39,15 @@ class TaskCreate(BaseModel):
         max_length=4,
         description="Taxonomy type abbreviation (e.g. BE, FE, INF). Replaces the legacy category field.",
     )
+    series_number: int | None = Field(
+        None,
+        ge=1,
+        le=9999,
+        description=(
+            "Optional explicit series number. If omitted and task_type is set, the "
+            "backend auto-assigns from the shared task+project counter (BE-5065)."
+        ),
+    )
     product_id: str = Field(..., description="Product ID (required - Handover 0433)")
     project_id: str | None = Field(None, description="Associated project ID")
     parent_task_id: str | None = Field(None, description="Parent task ID for hierarchy")
@@ -77,6 +86,10 @@ class TaskUpdate(BaseModel):
     parent_task_id: str | None = Field(None, description="Parent task ID for hierarchy changes")
     product_id: str | None = Field(None, description="Update product scope")
     project_id: str | None = Field(None, description="Update associated project")
+    hidden: bool | None = Field(
+        None,
+        description="Toggle the per-row UI declutter flag (FE-5046). Does NOT affect default list visibility for agents.",
+    )
     completion_notes: str | None = Field(
         None,
         description=(
@@ -137,6 +150,26 @@ class TaskResponse(BaseModel):
     description: str | None = Field(None, description="Task description")
     task_type: str | None = Field(None, description="Taxonomy type abbreviation (BE, FE, INF, ...)")
     task_type_id: str | None = Field(None, description="FK to taxonomy_types row")
+    task_type_color: str | None = Field(
+        None,
+        description="Hex color from taxonomy_types.color (FE renders type+serial badge tint).",
+    )
+    series_number: int | None = Field(
+        None,
+        description="Sequential number within task_type (e.g. 17 in BE-0017). Null for untyped tasks.",
+    )
+    subseries: str | None = Field(
+        None,
+        description="Single-letter subseries suffix (e.g. 'a' in BE-0017a). Null when not used.",
+    )
+    taxonomy_alias: str | None = Field(
+        None,
+        description="Composed alias 'TYPE-NNNN[suffix]' (e.g. 'BE-0017a'). Empty string for untyped tasks.",
+    )
+    hidden: bool = Field(
+        default=False,
+        description="Per-row UI declutter flag (FE-5046). Default-list dashboard filters hidden=false.",
+    )
     status: str = Field(..., description="Task status")
     priority: str = Field(..., description="Task priority")
     product_id: str | None = Field(None, description="Product ID for isolation")

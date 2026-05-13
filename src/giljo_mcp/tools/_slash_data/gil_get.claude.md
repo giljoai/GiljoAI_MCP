@@ -56,13 +56,13 @@ Route by what the user wants to read:
 - A bare list of task UUIDs
 
 **Tool sequence (cheap-first):**
-1. **List tasks with filters** → `mcp__giljo_mcp__list_tasks(mode="summary", task_type=..., filters=...)`. Returns one row per task: id, title, status, priority, category, created_at. Use `mode="summary"` unless the user specifically needs description bodies.
-2. **Read a task deeply** → `mcp__giljo_mcp__fetch_context(product_id=..., categories=["tasks"])`. Returns full task bodies. Use when the user wants task descriptions for a project or a filtered set.
+1. **List tasks with filters** → `mcp__giljo_mcp__list_tasks(mode="summary", task_type=..., filters=...)`. Returns one row per task with: `id`, `title`, `status`, `priority`, `task_type` (embedded block id+abbreviation+label+color), `series_number`, `subseries`, `taxonomy_alias` (e.g. `BE-0017`), `hidden`, `due_date`, `created_at`. Use `mode="summary"` unless the user specifically needs description bodies.
+2. **Read a task deeply** → `mcp__giljo_mcp__fetch_context(product_id=..., categories=["tasks"])`. Returns full task bodies with the same taxonomy fields as `list_tasks`. Use when the user wants task descriptions for a project or a filtered set.
 3. **Filter parameters** (pass as `filters={}` dict):
    - `status`: `pending` | `in_progress` | `completed` | `blocked` | `cancelled` | `converted`
    - `priority`: `low` | `medium` | `high` | `critical`
-   - `category`: `frontend` | `backend` | `database` | `infra` | `docs` | `general`
-   - `task_type`: project-type prefix string (e.g. `"BE"`, `"FE"`) — filters to tasks linked to that project type
+   - `task_type`: taxonomy abbreviation (e.g. `"BE"`, `"FE"`, `"INF"`) — filters to tasks with that type
+   - `hidden`: omit by default (returns BOTH hidden and visible — agents see all). Pass `true` to only get hidden tasks; `false` to only get visible ones. The dashboard filters `hidden=false` by default but `/gil_get` does NOT (so agents can still reorder/sort across the full backlog).
 
 **`task_type` vs `mode`:**
 - `task_type` filters which tasks are returned (by project-type association)
