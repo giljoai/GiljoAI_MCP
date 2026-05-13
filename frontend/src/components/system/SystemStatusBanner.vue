@@ -111,9 +111,9 @@ const updateMessage = computed(() => {
 const skillsDriftCopy = computed(() => {
   const version = currentSkillsVersion.value ?? 'latest'
   if (editionMode.value === 'ce') {
-    return `Skills updated to v${version}. Run /giljo_setup then git pull to install.`
+    return `Skills updated to v${version}. Update with git pull, restart server and run giljo_setup MCP command.`
   }
-  return `Skills updated to v${version}. Run /giljo_setup to install.`
+  return `Skills updated to v${version}. Run giljo_setup MCP command to install.`
 })
 
 async function fetchSystemStatus() {
