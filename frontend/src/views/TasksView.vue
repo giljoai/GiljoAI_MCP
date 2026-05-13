@@ -140,6 +140,7 @@
 
           <!-- Priority Column - Inline Dropdown (0870h: tinted pills) -->
           <template v-slot:item.priority="{ item }">
+            <div class="d-flex justify-center">
             <v-select
               :model-value="item.priority"
               :items="priorityOptions"
@@ -170,6 +171,7 @@
                 </v-list-item>
               </template>
             </v-select>
+            </div>
           </template>
 
           <!-- Title Column (0870h: brand-colored title, muted description) -->
@@ -545,15 +547,18 @@ const errorMessage = ref('')
 // Table headers (FE-5046: Serial column folds in the old Type column —
 // taxonomy alias + type color tint render together as a single badge
 // before the Title column).
+// Widths sized to the widest realistic content (e.g. "INFRA9999" / "S5MW"
+// for Serial), not to the column heading. align:'center' keeps header text
+// centred over centred-cell content (badges, pills, action icons).
 const headers = [
-  { title: 'Status', key: 'status', width: '130', align: 'center' },
-  { title: 'Priority', key: 'priority', width: '95' },
-  { title: 'Serial', key: 'taxonomy_alias', width: '90', align: 'center' },
+  { title: 'Status', key: 'status', width: '110', align: 'center' },
+  { title: 'Priority', key: 'priority', width: '70', align: 'center', cellProps: { class: 'col-priority' } },
+  { title: 'Serial', key: 'taxonomy_alias', width: '105', align: 'center', cellProps: { class: 'col-serial' } },
   { title: 'Task', key: 'title', maxWidth: '340' },
-  { title: 'Created', key: 'created_at', width: '150' },
-  { title: 'Due Date', key: 'due_date', width: '110' },
+  { title: 'Created', key: 'created_at', width: '150', align: 'start' },
+  { title: 'Due Date', key: 'due_date', width: '110', align: 'start' },
   { title: 'Convert', key: 'convert', width: '60', align: 'center', sortable: false },
-  { title: 'Actions', key: 'actions', sortable: false, width: '80' },
+  { title: 'Actions', key: 'actions', sortable: false, width: '70', align: 'center' },
 ]
 
 // Filter options
@@ -969,6 +974,20 @@ onMounted(async () => {
   font-family: 'IBM Plex Mono', monospace;
   font-size: 0.62rem;
   font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Tighten cell padding on the badge columns so narrow widths actually fit
+   the badge instead of being eaten by Vuetify's default 16px L/R td padding. */
+:deep(.col-priority),
+:deep(.col-serial) {
+  padding-left: 4px !important;
+  padding-right: 4px !important;
+}
+
+/* Center the priority pill's hit-area under the centered header. */
+:deep(.col-priority) .inline-select .v-field__input {
+  justify-content: center;
 }
 
 /* Match Status badge font to Priority pill size (cosmetic parity). */
