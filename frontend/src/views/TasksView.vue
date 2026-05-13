@@ -193,25 +193,18 @@
             <span class="date-cell">{{ formatDateWithTime(item.created_at) }}</span>
           </template>
 
-          <!-- Type Column - Inline Taxonomy Type dropdown (re-tag a task) -->
-          <template v-slot:item.task_type="{ item }">
-            <div class="d-flex justify-center">
-              <v-select
-                :model-value="item.task_type"
-                :items="taskTypeOptions"
-                variant="plain"
-                density="compact"
-                hide-details
-                class="inline-select inline-select-no-arrow"
-                @update:model-value="
-                  (newType) => updateTaskField(item, 'task_type', newType)
-                "
-              >
-                <template v-slot:selection="{ item: typeItem }">
-                  <span class="task-type-pill">{{ typeItem.value || '—' }}</span>
-                </template>
-              </v-select>
-            </div>
+          <!-- Serial Column (FE-5046: tinted taxonomy_alias badge replaces
+               the old standalone Type column; color tint comes from
+               item.task_type.color so the type+serial are visually paired). -->
+          <template v-slot:item.taxonomy_alias="{ item }">
+            <span
+              v-if="item.taxonomy_alias"
+              class="taxonomy-badge"
+              :style="taxonomyBadgeStyle(item.task_type?.color || DEFAULT_PROJECT_TYPE_COLOR)"
+            >
+              {{ item.taxonomy_alias }}
+            </span>
+            <span v-else class="date-cell--empty">—</span>
           </template>
 
           <!-- Due Date Column - Inline Calendar Picker -->
@@ -295,6 +288,14 @@
                   <v-list-item-title>Mark Complete</v-list-item-title>
                 </v-list-item>
 
+                <!-- FE-5046: Hide/Show toggle (mirrors ProjectsView pattern) -->
+                <v-list-item data-test="task-hide-action" @click="toggleHidden(item)">
+                  <template v-slot:prepend>
+                    <v-icon>{{ item.hidden ? 'mdi-eye' : 'mdi-eye-off' }}</v-icon>
+                  </template>
+                  <v-list-item-title>{{ item.hidden ? 'Show' : 'Hide' }}</v-list-item-title>
+                </v-list-item>
+
                 <v-divider />
 
                 <v-list-item @click="deleteTask(item)">
@@ -333,11 +334,37 @@
 
         <v-card-text>
           <v-form ref="taskForm">
+            <!-- FE-5046: Type → Serial (read-only) → Title field order.
+                 Serial is display-only because uq_task_taxonomy_active
+                 makes editable serials risky (out of scope here). -->
+            <v-row>
+              <v-col cols="6">
+                <v-select
+                  v-model="currentTask.task_type"
+                  :items="taskTypeOptions"
+                  label="Type"
+                  variant="outlined"
+                  clearable
+                  data-test="edit-task-type"
+                />
+              </v-col>
+              <v-col cols="6">
+                <v-text-field
+                  :model-value="currentTask.taxonomy_alias || '—'"
+                  label="Serial"
+                  variant="outlined"
+                  readonly
+                  data-test="edit-task-serial"
+                />
+              </v-col>
+            </v-row>
+
             <v-text-field
               v-model="currentTask.title"
               label="Task Title"
               variant="outlined"
               :rules="[(v) => !!v || 'Title is required']"
+              data-test="edit-task-title"
             />
 
             <v-textarea
@@ -362,18 +389,6 @@
                   :items="priorityOptions"
                   label="Priority"
                   variant="outlined"
-                />
-              </v-col>
-            </v-row>
-
-            <v-row>
-              <v-col cols="6">
-                <v-select
-                  v-model="currentTask.task_type"
-                  :items="taskTypeOptions"
-                  label="Type"
-                  variant="outlined"
-                  clearable
                 />
               </v-col>
             </v-row>
@@ -486,11 +501,14 @@ import BaseDialog from '@/components/common/BaseDialog.vue'
 import { useTaskFilters } from '@/composables/useTaskFilters'
 import { useFormatDate } from '@/composables/useFormatDate'
 import { useTaskCrud } from '@/composables/useTaskCrud'
+import { taxonomyBadgeStyle, DEFAULT_PROJECT_TYPE_COLOR } from '@/utils/taxonomyBadge'
+import { useToast } from '@/composables/useToast'
 
 // Stores
 const taskStore = useTaskStore()
 const productStore = useProductStore()
 const { formatDateWithTime } = useFormatDate()
+const { showToast } = useToast()
 // Template ref for form validation (must stay in view — template ref)
 const taskForm = ref(null)
 
@@ -507,13 +525,15 @@ const currentDeletingTask = ref(null)
 const successMessage = ref('')
 const errorMessage = ref('')
 
-// Table headers
+// Table headers (FE-5046: Serial column folds in the old Type column —
+// taxonomy alias + type color tint render together as a single badge
+// before the Title column).
 const headers = [
   { title: 'Status', key: 'status', width: '130', align: 'center' },
   { title: 'Priority', key: 'priority', width: '95' },
-  { title: 'Task', key: 'title', maxWidth: '400' },
+  { title: 'Serial', key: 'taxonomy_alias', width: '90', align: 'center' },
+  { title: 'Task', key: 'title', maxWidth: '340' },
   { title: 'Created', key: 'created_at', width: '150' },
-  { title: 'Type', key: 'task_type', width: '90', align: 'center' },
   { title: 'Due Date', key: 'due_date', width: '110' },
   { title: 'Convert', key: 'convert', width: '60', align: 'center', sortable: false },
   { title: 'Actions', key: 'actions', sortable: false, width: '80' },
@@ -716,11 +736,28 @@ async function confirmDelete() {
 }
 
 async function fetchTasks() {
-  const params = {}
+  // FE-5046: default dashboard list excludes hidden tasks. The skills
+  // (/gil_get, /gil_add) and any future "Show hidden" toggle keep using
+  // the unfiltered list_tasks surface and must NOT pass hidden:false.
+  const params = { hidden: false }
   if (productStore.currentProductId) {
     params.product_id = productStore.currentProductId
   }
   await taskStore.fetchTasks(params)
+}
+
+// FE-5046: Hide/Show toggle in the actions menu — mirrors ProjectsView.
+async function toggleHidden(task) {
+  try {
+    await taskStore.updateTask(task.id, { hidden: !task.hidden })
+    showToast({
+      message: task.hidden ? `"${task.title}" is now visible` : `"${task.title}" hidden`,
+      type: 'success',
+    })
+  } catch (error) {
+    console.error('[TASKS] Failed to toggle hidden:', error)
+    showToast({ message: 'Failed to update task visibility', type: 'error' })
+  }
 }
 
 async function fetchTaxonomyTypes() {
@@ -904,20 +941,17 @@ onMounted(async () => {
   overflow: hidden;
 }
 
-/* Type pill (taxonomy abbreviation in the inline Type column) */
-.task-type-pill {
-  display: inline-block;
+/* FE-5046: Tinted square taxonomy badge — mirrors .project-id-badge
+   in ProjectsView. Color is supplied inline via taxonomyBadgeStyle()
+   so each row tints to its task_type color. */
+.taxonomy-badge {
+  display: inline-flex;
+  align-items: center;
   padding: 2px 8px;
-  border-radius: $border-radius-pill;
-  font-size: 0.62rem;
-  font-weight: 500;
-  background: rgba(255, 255, 255, 0.05);
-  color: $color-text-secondary;
-  cursor: pointer;
-}
-
-.task-type-pill:hover {
-  background: rgba(255, 255, 255, 0.08);
+  border-radius: $border-radius-sharp;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
 /* 0870h: row action buttons — color/hover via global .icon-interactive */

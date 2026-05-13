@@ -308,7 +308,13 @@ async def test_update_task_no_fields_returns_noop(db_session, two_tenant_service
 
 
 async def test_list_tasks_summary_mode_returns_compact_rows(db_session, two_tenant_service_setup):
-    """Summary mode: id, title, status, priority, type, due_date, created_at only."""
+    """Summary mode carries at minimum the core identity + taxonomy parity fields.
+
+    FE-5046 expanded the summary projection to mirror Project parity (added
+    taxonomy_alias, series_number, subseries, hidden, embedded task_type
+    block); keep the assertion as a subset check so additional fields don't
+    regress the suite.
+    """
     await _create_seed_task(db_session, two_tenant_service_setup)
     tenant_a = two_tenant_service_setup["tenant_a"]
     task_service_a = two_tenant_service_setup["task_service_a"]
@@ -322,7 +328,7 @@ async def test_list_tasks_summary_mode_returns_compact_rows(db_session, two_tena
     assert len(response["tasks"]) >= 1
     row = response["tasks"][0]
     expected_keys = {"task_id", "title", "status", "priority", "task_type", "due_date", "created_at"}
-    assert expected_keys.issuperset(set(row.keys()) - {"id"})
+    assert expected_keys.issubset(set(row.keys()))
 
 
 async def test_list_tasks_filters_by_status(db_session, two_tenant_service_setup):
@@ -416,3 +422,118 @@ async def test_list_tasks_is_tenant_scoped(db_session, two_tenant_service_setup)
     ids = {t["task_id"] for t in response["tasks"]}
     assert a_task_id in ids
     assert b["task_id"] not in ids
+
+
+# ---------------------------------------------------------------------------
+# FE-5046: Task UI parity -- hidden field + taxonomy projection
+# ---------------------------------------------------------------------------
+
+
+async def test_task_hidden_defaults_to_false_on_create(db_session, two_tenant_service_setup):
+    """New tasks must have hidden=False unless explicitly set."""
+    task_id = await _create_seed_task(db_session, two_tenant_service_setup)
+    tenant_a = two_tenant_service_setup["tenant_a"]
+    task_service_a = two_tenant_service_setup["task_service_a"]
+
+    response = await task_service_a.list_tasks_for_mcp(tenant_key=tenant_a, mode="full")
+    row = next(r for r in response["tasks"] if r["task_id"] == task_id)
+    assert row["hidden"] is False
+
+
+async def test_update_task_hidden_round_trip_via_allowlist(db_session, two_tenant_service_setup):
+    """Toggling hidden through update_task_for_mcp must persist."""
+    task_id = await _create_seed_task(db_session, two_tenant_service_setup)
+    tenant_a = two_tenant_service_setup["tenant_a"]
+    task_service_a = two_tenant_service_setup["task_service_a"]
+
+    result = await task_service_a.update_task_for_mcp(
+        task_id=task_id,
+        tenant_key=tenant_a,
+        hidden=True,
+    )
+    assert "hidden" in result["updated_fields"]
+
+    response = await task_service_a.list_tasks_for_mcp(tenant_key=tenant_a, mode="summary")
+    row = next(r for r in response["tasks"] if r["task_id"] == task_id)
+    assert row["hidden"] is True
+
+    # Flip back
+    await task_service_a.update_task_for_mcp(task_id=task_id, tenant_key=tenant_a, hidden=False)
+    response = await task_service_a.list_tasks_for_mcp(tenant_key=tenant_a, mode="summary")
+    row = next(r for r in response["tasks"] if r["task_id"] == task_id)
+    assert row["hidden"] is False
+
+
+async def test_update_task_hidden_rejects_non_bool(db_session, two_tenant_service_setup):
+    task_id = await _create_seed_task(db_session, two_tenant_service_setup)
+    tenant_a = two_tenant_service_setup["tenant_a"]
+    task_service_a = two_tenant_service_setup["task_service_a"]
+
+    with pytest.raises(ValidationError):
+        await task_service_a.update_task_for_mcp(
+            task_id=task_id,
+            tenant_key=tenant_a,
+            hidden="yes",  # type: ignore[arg-type]
+        )
+
+
+async def test_list_tasks_hidden_filter_semantics(db_session, two_tenant_service_setup):
+    """hidden=None returns both; hidden=True/False filters explicitly."""
+    visible_id = await _create_seed_task(db_session, two_tenant_service_setup)
+    hidden_id = await _create_seed_task(db_session, two_tenant_service_setup)
+
+    tenant_a = two_tenant_service_setup["tenant_a"]
+    task_service_a = two_tenant_service_setup["task_service_a"]
+
+    await task_service_a.update_task_for_mcp(
+        task_id=hidden_id,
+        tenant_key=tenant_a,
+        hidden=True,
+    )
+
+    # Default: both visible
+    both = await task_service_a.list_tasks_for_mcp(tenant_key=tenant_a, mode="summary")
+    both_ids = {r["task_id"] for r in both["tasks"]}
+    assert visible_id in both_ids
+    assert hidden_id in both_ids
+
+    only_hidden = await task_service_a.list_tasks_for_mcp(tenant_key=tenant_a, mode="summary", hidden=True)
+    h_ids = {r["task_id"] for r in only_hidden["tasks"]}
+    assert hidden_id in h_ids
+    assert visible_id not in h_ids
+
+    only_visible = await task_service_a.list_tasks_for_mcp(tenant_key=tenant_a, mode="summary", hidden=False)
+    v_ids = {r["task_id"] for r in only_visible["tasks"]}
+    assert visible_id in v_ids
+    assert hidden_id not in v_ids
+
+
+async def test_list_tasks_summary_row_has_taxonomy_parity_fields(db_session, two_tenant_service_setup):
+    """Summary row must expose taxonomy_alias, series_number, subseries,
+    embedded task_type block, and hidden -- the FE-5046 parity contract."""
+    await _create_seed_task(db_session, two_tenant_service_setup)
+    tenant_a = two_tenant_service_setup["tenant_a"]
+    task_service_a = two_tenant_service_setup["task_service_a"]
+
+    response = await task_service_a.list_tasks_for_mcp(tenant_key=tenant_a, mode="summary")
+    row = response["tasks"][0]
+    required = {"taxonomy_alias", "series_number", "subseries", "task_type", "hidden"}
+    assert required.issubset(row.keys()), f"Missing keys: {required - set(row.keys())}"
+    # task_type must be the embedded block when present (BE seed has type)
+    assert isinstance(row["task_type"], dict)
+    assert {"id", "abbreviation", "label", "color"}.issubset(row["task_type"].keys())
+    assert row["task_type"]["abbreviation"] == "BE"
+    # taxonomy_alias is a non-empty BE-NNNN string for typed seed tasks
+    assert row["taxonomy_alias"].startswith("BE-")
+    assert isinstance(row["series_number"], int)
+
+
+async def test_list_tasks_full_row_has_taxonomy_parity_fields(db_session, two_tenant_service_setup):
+    await _create_seed_task(db_session, two_tenant_service_setup)
+    tenant_a = two_tenant_service_setup["tenant_a"]
+    task_service_a = two_tenant_service_setup["task_service_a"]
+
+    response = await task_service_a.list_tasks_for_mcp(tenant_key=tenant_a, mode="full")
+    row = response["tasks"][0]
+    required = {"taxonomy_alias", "series_number", "subseries", "task_type", "hidden"}
+    assert required.issubset(row.keys()), f"Missing keys: {required - set(row.keys())}"

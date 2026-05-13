@@ -20,6 +20,8 @@ import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import TasksView from '@/views/TasksView.vue'
+import api from '@/services/api'
+import { useTaskStore } from '@/stores/tasks'
 
 // Mock API
 vi.mock('@/services/api', () => ({
@@ -203,6 +205,26 @@ describe('TasksView - Table Headers', () => {
     expect(headerKeys).toContain('title')
     expect(headerKeys).toContain('actions')
   })
+
+  // FE-5046: Type+Serial parity with ProjectsView
+  it('exposes a taxonomy_alias (Serial) column and no standalone task_type column', async () => {
+    const wrapper = mount(TasksView, {
+      global: { plugins: [vuetify] },
+    })
+    await flushPromises()
+    const headerKeys = wrapper.vm.headers.map((h) => h.key)
+    expect(headerKeys).toContain('taxonomy_alias')
+    expect(headerKeys).not.toContain('task_type')
+  })
+
+  it('renders Serial column BEFORE Title column', async () => {
+    const wrapper = mount(TasksView, {
+      global: { plugins: [vuetify] },
+    })
+    await flushPromises()
+    const keys = wrapper.vm.headers.map((h) => h.key)
+    expect(keys.indexOf('taxonomy_alias')).toBeLessThan(keys.indexOf('title'))
+  })
 })
 
 describe('TasksView - Filter Controls', () => {
@@ -234,5 +256,110 @@ describe('TasksView - Filter Controls', () => {
 
     await flushPromises()
     expect(wrapper.text()).toContain('New Task')
+  })
+})
+
+// FE-5046: Task UI parity with ProjectsView — Type+Serial badge, edit
+// modal field order, hide/show action, default hidden:false filter.
+describe('TasksView - FE-5046 task parity', () => {
+  let vuetify
+
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    vuetify = createVuetify({ components, directives })
+    vi.clearAllMocks()
+  })
+
+  // The v-data-table is globally stubbed as <div><slot/></div> in
+  // tests/setup.js, so item.* scoped slots don't render their own
+  // markup. We assert taxonomy parity at the data layer (store +
+  // headers) and verify the badge-style helper independently.
+  it('exposes taxonomy_alias on hydrated task records (typed task)', async () => {
+    api.tasks.list.mockResolvedValueOnce({
+      data: [
+        {
+          id: 't1',
+          title: 'Wire BE serializer',
+          description: '',
+          status: 'pending',
+          priority: 'medium',
+          product_id: 'p1',
+          taxonomy_alias: 'BE-0017',
+          series_number: 17,
+          subseries: null,
+          task_type: { abbreviation: 'BE', color: '#6DB3E4' },
+          hidden: false,
+        },
+      ],
+    })
+    mount(TasksView, { global: { plugins: [vuetify] } })
+    await flushPromises()
+    const store = useTaskStore()
+    expect(store.tasks).toHaveLength(1)
+    expect(store.tasks[0].taxonomy_alias).toBe('BE-0017')
+    expect(store.tasks[0].task_type?.color).toBe('#6DB3E4')
+  })
+
+  it('keeps taxonomy_alias null for untyped (legacy) tasks', async () => {
+    api.tasks.list.mockResolvedValueOnce({
+      data: [
+        {
+          id: 't2',
+          title: 'Legacy untyped',
+          description: '',
+          status: 'pending',
+          priority: 'low',
+          product_id: 'p1',
+          taxonomy_alias: null,
+          task_type: null,
+          hidden: false,
+        },
+      ],
+    })
+    mount(TasksView, { global: { plugins: [vuetify] } })
+    await flushPromises()
+    const store = useTaskStore()
+    expect(store.tasks[0].taxonomy_alias).toBeNull()
+    expect(store.tasks[0].task_type).toBeNull()
+  })
+
+  it('Edit modal renders fields in order: Type → Serial → Title', async () => {
+    const wrapper = mount(TasksView, { global: { plugins: [vuetify] } })
+    await flushPromises()
+    // The edit-task data-test attributes mark the three fields. We
+    // assert DOM order via outerHTML index lookup since the global
+    // setup stubs v-text-field/v-select as flat inputs.
+    const html = wrapper.html()
+    const typeIdx = html.indexOf('data-test="edit-task-type"')
+    const serialIdx = html.indexOf('data-test="edit-task-serial"')
+    const titleIdx = html.indexOf('data-test="edit-task-title"')
+    expect(typeIdx).toBeGreaterThan(-1)
+    expect(serialIdx).toBeGreaterThan(-1)
+    expect(titleIdx).toBeGreaterThan(-1)
+    expect(typeIdx).toBeLessThan(serialIdx)
+    expect(serialIdx).toBeLessThan(titleIdx)
+  })
+
+  it('default fetchTasks call passes hidden: false to api.tasks.list', async () => {
+    api.tasks.list.mockClear()
+    const wrapper = mount(TasksView, { global: { plugins: [vuetify] } })
+    await flushPromises()
+    expect(wrapper.exists()).toBe(true)
+    // First call is the onMounted fetch; assert hidden:false made it through.
+    expect(api.tasks.list).toHaveBeenCalled()
+    const lastCallArg = api.tasks.list.mock.calls.at(-1)?.[0]
+    expect(lastCallArg).toBeDefined()
+    expect(lastCallArg.hidden).toBe(false)
+  })
+
+  it('toggleHidden calls taskStore.updateTask with flipped hidden flag', async () => {
+    const wrapper = mount(TasksView, { global: { plugins: [vuetify] } })
+    await flushPromises()
+    const store = useTaskStore()
+    const spy = vi.spyOn(store, 'updateTask').mockResolvedValue({})
+    await wrapper.vm.toggleHidden({ id: 'task-99', title: 'X', hidden: false })
+    expect(spy).toHaveBeenCalledWith('task-99', { hidden: true })
+    await wrapper.vm.toggleHidden({ id: 'task-99', title: 'X', hidden: true })
+    expect(spy).toHaveBeenLastCalledWith('task-99', { hidden: false })
   })
 })

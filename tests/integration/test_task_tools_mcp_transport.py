@@ -435,6 +435,100 @@ async def test_list_tasks_is_tenant_scoped_across_two_tenants(
     )
 
 
+# ---------------------------------------------------------------------------
+# FE-5046: Task UI parity -- hidden + taxonomy fields via the wrapper
+# ---------------------------------------------------------------------------
+
+
+async def test_list_tasks_summary_includes_taxonomy_and_hidden_fields(task_mcp_client, db_session, primary_tenant_key):
+    """Wrapper-level shape check for FE-5046 parity contract."""
+    new_client, _switch = task_mcp_client
+    await _create_seed_task(new_client, db_session, primary_tenant_key)
+
+    async with new_client() as session:
+        result = await session.call_tool("list_tasks", {"mode": "summary"})
+
+    assert result.isError is False, _error_text(result)
+    payload = _payload(result)
+    row = payload["tasks"][0]
+    for key in ("taxonomy_alias", "series_number", "subseries", "task_type", "hidden"):
+        assert key in row, f"FE-5046: summary row missing '{key}'"
+    assert isinstance(row["task_type"], dict)
+    assert row["task_type"]["abbreviation"] == "BE"
+    assert row["hidden"] is False
+
+
+async def test_list_tasks_full_includes_taxonomy_and_hidden_fields(task_mcp_client, db_session, primary_tenant_key):
+    new_client, _switch = task_mcp_client
+    await _create_seed_task(new_client, db_session, primary_tenant_key)
+
+    async with new_client() as session:
+        result = await session.call_tool("list_tasks", {"mode": "full"})
+
+    assert result.isError is False, _error_text(result)
+    payload = _payload(result)
+    row = payload["tasks"][0]
+    for key in ("taxonomy_alias", "series_number", "subseries", "task_type", "hidden"):
+        assert key in row, f"FE-5046: full row missing '{key}'"
+
+
+async def test_update_task_hidden_via_wrapper(task_mcp_client, db_session, primary_tenant_key):
+    new_client, _switch = task_mcp_client
+    task_id = await _create_seed_task(new_client, db_session, primary_tenant_key)
+
+    async with new_client() as session:
+        result = await session.call_tool(
+            "update_task",
+            {"task_id": task_id, "hidden": "true"},
+        )
+    assert result.isError is False, _error_text(result)
+    payload = _payload(result)
+    assert "hidden" in payload["updated_fields"]
+
+    async with new_client() as session:
+        list_result = await session.call_tool("list_tasks", {"mode": "summary"})
+    rows = _payload(list_result)["tasks"]
+    row = next(r for r in rows if r["task_id"] == task_id)
+    assert row["hidden"] is True
+
+
+async def test_list_tasks_hidden_filter_via_wrapper(task_mcp_client, db_session, primary_tenant_key):
+    new_client, _switch = task_mcp_client
+    visible_id = await _create_seed_task(new_client, db_session, primary_tenant_key)
+
+    async with new_client() as session:
+        h_create = await session.call_tool(
+            "create_task",
+            {"title": "hidden task", "description": "x", "task_type": "BE"},
+        )
+    assert h_create.isError is False, _error_text(h_create)
+    hidden_id = _payload(h_create)["task_id"]
+
+    async with new_client() as session:
+        await session.call_tool("update_task", {"task_id": hidden_id, "hidden": "true"})
+
+    # No filter -> both visible (default contract)
+    async with new_client() as session:
+        both = await session.call_tool("list_tasks", {"mode": "summary"})
+    ids_both = {r["task_id"] for r in _payload(both)["tasks"]}
+    assert visible_id in ids_both
+    assert hidden_id in ids_both
+
+    # hidden=true -> only hidden
+    async with new_client() as session:
+        only_hidden = await session.call_tool("list_tasks", {"mode": "summary", "hidden": "true"})
+    ids_h = {r["task_id"] for r in _payload(only_hidden)["tasks"]}
+    assert hidden_id in ids_h
+    assert visible_id not in ids_h
+
+    # hidden=false -> only visible
+    async with new_client() as session:
+        only_visible = await session.call_tool("list_tasks", {"mode": "summary", "hidden": "false"})
+    ids_v = {r["task_id"] for r in _payload(only_visible)["tasks"]}
+    assert visible_id in ids_v
+    assert hidden_id not in ids_v
+
+
 # Suppress unused-import warning: random/datetime are kept for future
 # parameterization; keep them imported so contributors don't re-add them.
 _ = random

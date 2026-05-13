@@ -77,6 +77,8 @@ _ALLOWED_TASK_UPDATE_FIELDS: frozenset[str] = frozenset(
         "project_id",
         "parent_task_id",
         "converted_to_project_id",
+        # FE-5046: UI declutter flag, mirrors Project.hidden write path.
+        "hidden",
     }
 )
 
@@ -100,6 +102,7 @@ class TaskService:
         db_manager: DatabaseManager = None,
         tenant_manager: TenantManager = None,
         session: AsyncSession | None = None,
+        websocket_manager: Any | None = None,
     ):
         """
         Initialize TaskService with database and tenant management.
@@ -108,10 +111,12 @@ class TaskService:
             db_manager: Database manager for async database operations
             tenant_manager: Tenant manager for multi-tenancy support
             session: Optional AsyncSession for test transaction isolation (Handover 0324)
+            websocket_manager: Optional WS manager for task:updated broadcasts (FE-5046)
         """
         self.db_manager = db_manager
         self.tenant_manager = tenant_manager
         self._session = session  # Store for test transaction isolation
+        self._websocket_manager = websocket_manager
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         self._repo = TaskRepository()
         self._conversion = TaskConversionService(db_manager, tenant_manager, session)
@@ -612,6 +617,25 @@ class TaskService:
 
         self._logger.info(f"Updated task {task_id}: {updated_fields}")
 
+        # FE-5046: broadcast WS event so subscribed clients (FE task list)
+        # see the change without a refresh. Non-critical: failures are logged
+        # but never block the write path.
+        ws = self._websocket_manager
+        if ws and updated_fields:
+            try:
+                await ws.broadcast_to_tenant(
+                    tenant_key=tenant_key,
+                    event_type="task:updated",
+                    data={
+                        "task_id": task_id,
+                        "updated_fields": list(updated_fields),
+                        "hidden": bool(getattr(task, "hidden", False)),
+                        "status": task.status,
+                    },
+                )
+            except (RuntimeError, ValueError, OSError) as ws_error:
+                self._logger.warning(f"Failed to broadcast task:updated event: {ws_error}")
+
         return TaskUpdateResult(task_id=task_id, updated_fields=updated_fields)
 
     # ============================================================================
@@ -959,6 +983,7 @@ class TaskService:
         project_id: str | None = None,
         estimated_effort: float | None = None,
         actual_effort: float | None = None,
+        hidden: bool | None = None,
     ) -> dict[str, Any]:
         """Update a task via the MCP surface. Phase C; mirrors update_project.
 
@@ -1002,6 +1027,13 @@ class TaskService:
             update_kwargs["estimated_effort"] = estimated_effort
         if actual_effort is not None:
             update_kwargs["actual_effort"] = actual_effort
+        if hidden is not None:
+            if not isinstance(hidden, bool):
+                raise ValidationError(
+                    message="hidden must be a boolean",
+                    context={"operation": "update_task_for_mcp", "task_id": task_id},
+                )
+            update_kwargs["hidden"] = hidden
 
         if task_type is not None:
             if task_type == "":
@@ -1081,20 +1113,26 @@ class TaskService:
         due_before: Any = None,
         summary_only: bool | None = None,
         memory_limit: int | None = None,
+        hidden: bool | None = None,
     ) -> dict[str, Any]:
         """List tasks for the current tenant with summary/full projection modes.
 
         Phase D of agent-parity. Two modes only:
 
         - ``summary``: id, title, status, priority, task_type, due_date,
-          created_at — keeps the response under ~80 lines for a typical
-          ~50-task corpus.
+          created_at, taxonomy_alias, series_number, subseries, hidden,
+          embedded task_type block — keeps the response under ~80 lines for a
+          typical ~50-task corpus.
         - ``full``: every column on Task plus an embedded task_type block.
           ``memory_limit`` truncates description if set.
 
-        Filters: status, priority, task_type (abbreviation), due_before.
+        Filters: status, priority, task_type (abbreviation), due_before, hidden.
         Every query filters by tenant_key; cross-tenant tasks are never
         visible.
+
+        FE-5046: The 'hidden' field is per-row UI declutter and does NOT
+        affect default visibility -- agents see hidden and non-hidden alike.
+        Pass hidden=true|false to filter explicitly when needed (rare).
         """
         effective_tenant_key = tenant_key or self.tenant_manager.get_current_tenant()
         if not effective_tenant_key:
@@ -1129,6 +1167,7 @@ class TaskService:
                 priority=priority,
                 task_type_id=task_type_id,
                 due_before=due_before,
+                hidden=hidden,
             )
         else:
             async with self._get_session() as session:
@@ -1139,6 +1178,7 @@ class TaskService:
                     priority=priority,
                     task_type_id=task_type_id,
                     due_before=due_before,
+                    hidden=hidden,
                 )
 
         if mode == "summary":
@@ -1223,6 +1263,7 @@ class TaskService:
         priority: str | None,
         task_type_id: str | None,
         due_before: Any,
+        hidden: bool | None = None,
     ) -> list[Task]:
         stmt = (
             select(Task)
@@ -1238,24 +1279,43 @@ class TaskService:
             stmt = stmt.where(Task.task_type_id == task_type_id)
         if due_before is not None:
             stmt = stmt.where(Task.due_date < due_before)
+        if hidden is not None:
+            stmt = stmt.where(Task.hidden == hidden)
 
         result = await session.execute(stmt)
         return list(result.scalars().all())
 
     @staticmethod
-    def _task_to_summary_row(task: Task) -> dict[str, Any]:
+    def _task_type_block(task: Task) -> dict[str, Any] | None:
+        if not task.task_type:
+            return None
+        return {
+            "id": task.task_type.id,
+            "abbreviation": task.task_type.abbreviation,
+            "label": task.task_type.label,
+            "color": task.task_type.color,
+        }
+
+    @classmethod
+    def _task_to_summary_row(cls, task: Task) -> dict[str, Any]:
+        # FE-5046: summary now mirrors Project parity -- taxonomy_alias,
+        # series_number, subseries, embedded task_type block, hidden.
         return {
             "task_id": str(task.id),
             "title": task.title,
             "status": task.status,
             "priority": task.priority,
-            "task_type": task.task_type.abbreviation if task.task_type else None,
+            "task_type": cls._task_type_block(task),
+            "taxonomy_alias": task.taxonomy_alias or "",
+            "series_number": task.series_number,
+            "subseries": task.subseries,
+            "hidden": bool(task.hidden),
             "due_date": task.due_date.isoformat() if task.due_date else None,
             "created_at": task.created_at.isoformat() if task.created_at else None,
         }
 
-    @staticmethod
-    def _task_to_full_row(task: Task, *, memory_limit: int | None) -> dict[str, Any]:
+    @classmethod
+    def _task_to_full_row(cls, task: Task, *, memory_limit: int | None) -> dict[str, Any]:
         description = task.description or ""
         if memory_limit and len(description) > memory_limit:
             description = description[:memory_limit] + "..."
@@ -1265,16 +1325,11 @@ class TaskService:
             "description": description,
             "status": task.status,
             "priority": task.priority,
-            "task_type": (
-                {
-                    "id": task.task_type.id,
-                    "abbreviation": task.task_type.abbreviation,
-                    "label": task.task_type.label,
-                    "color": task.task_type.color,
-                }
-                if task.task_type
-                else None
-            ),
+            "task_type": cls._task_type_block(task),
+            "taxonomy_alias": task.taxonomy_alias or "",
+            "series_number": task.series_number,
+            "subseries": task.subseries,
+            "hidden": bool(task.hidden),
             "task_type_id": task.task_type_id,
             "product_id": task.product_id,
             "project_id": task.project_id,

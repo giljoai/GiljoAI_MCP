@@ -106,6 +106,15 @@ class Task(Base):
     )
     status = Column(String(50), default="pending")  # pending, in_progress, completed, blocked, cancelled, converted
     priority = Column(String(20), default="medium")  # low, medium, high, critical
+    # FE-5046: per-row UI declutter flag (mirrors Project.hidden). Does NOT
+    # affect default visibility -- agents see hidden and non-hidden alike.
+    hidden = Column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text("false"),
+        comment="Whether task is hidden from default list view (UI declutter only)",
+    )
     estimated_effort = Column(Float, nullable=True)  # Hours
     actual_effort = Column(Float, nullable=True)  # Hours
     created_at = Column(DateTime(timezone=True), server_default=func.now())

@@ -716,6 +716,9 @@ async def update_task(
     priority: Annotated[str, Field(description="New priority: low|medium|high|critical.")] = "",
     task_type: Annotated[str, Field(description="Taxonomy abbreviation (e.g. BE, FE). Empty string clears type.")] = "",
     due_date: Annotated[str, Field(description="ISO 8601 due date; empty string keeps current.")] = "",
+    hidden: Annotated[
+        str, Field(description="Per-row UI declutter flag: 'true'/'false'/'' (empty keeps current).")
+    ] = "",
     ctx: Context = None,
 ) -> dict[str, Any]:
     """Update task metadata fields. Mirrors update_project."""
@@ -732,6 +735,12 @@ async def update_task(
         params["task_type"] = task_type
     if due_date:
         params["due_date"] = due_date
+    if hidden != "":
+        h = str(hidden).lower()
+        if h in ("true", "1", "yes"):
+            params["hidden"] = True
+        elif h in ("false", "0", "no"):
+            params["hidden"] = False
     return await _call_tool(ctx, "update_task", params)
 
 
@@ -757,10 +766,14 @@ async def complete_task(
 @mcp.tool(
     description=(
         "List tasks for the current tenant. Two projection modes: "
-        "'summary' (id, title, status, priority, task_type, due_date, created_at) "
-        "and 'full' (every column plus embedded task_type block; description "
-        "is truncated to memory_limit chars when set). "
-        "Filters: status, priority, task_type (abbreviation), due_before. "
+        "'summary' (id, title, status, priority, task_type, taxonomy_alias, "
+        "series_number, subseries, hidden, due_date, created_at) and 'full' "
+        "(every column plus embedded task_type block; description is "
+        "truncated to memory_limit chars when set). "
+        "Filters: status, priority, task_type (abbreviation), due_before, hidden. "
+        "The 'hidden' field is per-row UI declutter and does NOT affect "
+        "default visibility -- agents see hidden and non-hidden alike. "
+        "Pass hidden=true|false to filter explicitly when needed (rare). "
         "Every query is tenant-scoped."
     ),
 )
@@ -773,6 +786,7 @@ async def list_tasks(
     priority: Annotated[str, Field(description="Filter by priority (low/medium/high/critical).")] = "",
     task_type: Annotated[str, Field(description="Filter by taxonomy abbreviation (e.g. 'BE').")] = "",
     due_before: Annotated[str, Field(description="ISO date; tasks with due_date < value.")] = "",
+    hidden: Annotated[str, Field(description="'true'/'false'/'' (empty = no filter, default).")] = "",
     summary_only: Annotated[bool, Field(description="Alias for mode='summary'.")] = False,
     memory_limit: Annotated[int, Field(description="Truncate description in 'full' mode.")] = 0,
     ctx: Context = None,
@@ -787,6 +801,12 @@ async def list_tasks(
         kwargs["task_type"] = task_type
     if due_before:
         kwargs["due_before"] = due_before
+    if hidden != "":
+        h = str(hidden).lower()
+        if h in ("true", "1", "yes"):
+            kwargs["hidden"] = True
+        elif h in ("false", "0", "no"):
+            kwargs["hidden"] = False
     if summary_only:
         kwargs["summary_only"] = True
     if memory_limit:

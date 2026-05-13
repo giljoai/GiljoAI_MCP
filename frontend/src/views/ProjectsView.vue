@@ -132,7 +132,7 @@
             <span
               v-if="item.taxonomy_alias"
               class="project-id-badge"
-              :style="projectIdBadgeStyle(item.project_type?.color || DEFAULT_PROJECT_TYPE_COLOR)"
+              :style="taxonomyBadgeStyle(item.project_type?.color || DEFAULT_PROJECT_TYPE_COLOR)"
             >
               {{ item.taxonomy_alias }}
             </span>
@@ -421,6 +421,7 @@ import BaseDialog from '@/components/common/BaseDialog.vue'
 import ProjectCreateEditDialog from '@/components/projects/ProjectCreateEditDialog.vue'
 import ProjectDeletedDialog from '@/components/projects/ProjectDeletedDialog.vue'
 import { DEFAULT_PROJECT_TYPE_COLOR } from '@/utils/constants'
+import { taxonomyBadgeStyle } from '@/utils/taxonomyBadge'
 import api from '@/services/api'
 import { useFormatDate } from '@/composables/useFormatDate'
 import { useToast } from '@/composables/useToast'
@@ -581,14 +582,6 @@ function getRowProps({ item }) {
     props.class = 'cancelled-row'
   }
   return props
-}
-
-/* 0870h: tinted square badge style for project taxonomy IDs */
-function projectIdBadgeStyle(color) {
-  return {
-    backgroundColor: `${color}26`,
-    color: color,
-  }
 }
 
 // Status dot colors — traced to design-tokens.scss

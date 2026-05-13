@@ -61,7 +61,11 @@ class ToolAccessor:
             test_session=test_session,
             websocket_manager=websocket_manager,  # Fix: Pass WebSocket manager for mission updates
         )
-        self._task_service = TaskService(db_manager, tenant_manager)
+        self._task_service = TaskService(
+            db_manager,
+            tenant_manager,
+            websocket_manager=websocket_manager,
+        )
         self._message_service = MessageService(
             db_manager,
             tenant_manager,
@@ -375,6 +379,7 @@ class ToolAccessor:
         project_id: str | None = None,
         estimated_effort: float | None = None,
         actual_effort: float | None = None,
+        hidden: bool | None = None,
     ) -> dict[str, Any]:
         """Update one or more task fields. Phase C; TaskService-routed."""
         return await self._task_service.update_task_for_mcp(
@@ -389,6 +394,7 @@ class ToolAccessor:
             project_id=project_id,
             estimated_effort=estimated_effort,
             actual_effort=actual_effort,
+            hidden=hidden,
         )
 
     async def complete_task(
@@ -414,6 +420,7 @@ class ToolAccessor:
         due_before: Any = None,
         summary_only: bool | None = None,
         memory_limit: int | None = None,
+        hidden: bool | None = None,
     ) -> dict[str, Any]:
         """List tasks for the current tenant. Phase D; summary/full modes."""
         return await self._task_service.list_tasks_for_mcp(
@@ -423,6 +430,7 @@ class ToolAccessor:
             priority=priority,
             task_type=task_type,
             due_before=due_before,
+            hidden=hidden,
             summary_only=summary_only,
             memory_limit=memory_limit,
         )

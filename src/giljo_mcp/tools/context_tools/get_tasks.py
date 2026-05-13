@@ -61,6 +61,11 @@ async def _query(
                 "status": task.status,
                 "priority": task.priority,
                 "task_type": type_abbr,
+                # FE-5046: parity with list_tasks summary projection.
+                "taxonomy_alias": task.taxonomy_alias or "",
+                "series_number": task.series_number,
+                "subseries": task.subseries,
+                "hidden": bool(task.hidden),
                 "due_date": task.due_date.isoformat() if task.due_date else None,
                 "created_at": task.created_at.isoformat() if task.created_at else None,
             }
