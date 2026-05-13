@@ -188,6 +188,83 @@ async def test_mark_decided_unknown_id_raises_not_found(approval_service, test_t
 
 
 @pytest.mark.asyncio
+async def test_mark_decided_notifies_orchestrator_via_inbox(
+    db_manager, db_session, approval_seed, test_tenant_key, test_user
+):
+    """Regression: decide() must post a system message to the awaiting agent's
+    inbox so the agent learns the chosen option on its next receive_messages().
+
+    Before this fix the gate cleared server-side but the agent had no semantic
+    channel to discover which option the user picked — users were forced to
+    relay the decision verbally in chat. The inbox message is the explicit
+    loop-closure path.
+    """
+    ws = MagicMock()
+    ws.broadcast_to_tenant = AsyncMock()
+    routing = MagicMock()
+    routing.send_message = AsyncMock()
+    service = UserApprovalService(
+        db_manager=db_manager,
+        tenant_manager=TenantManager(),
+        websocket_manager=ws,
+        test_session=db_session,
+        message_routing_service=routing,
+    )
+
+    pending = await _create_pending_approval(service, approval_seed, test_tenant_key)
+    await service.mark_decided(
+        tenant_key=test_tenant_key,
+        approval_id=pending.id,
+        option_id="rework",
+        user_id=str(test_user.id),
+    )
+
+    routing.send_message.assert_awaited_once()
+    call_kwargs = routing.send_message.await_args.kwargs
+    assert call_kwargs["to_agents"] == [approval_seed["execution"].agent_display_name]
+    assert call_kwargs["project_id"] == approval_seed["project"].id
+    assert call_kwargs["tenant_key"] == test_tenant_key
+    assert call_kwargs["from_agent"] == "user"
+    assert "rework" in call_kwargs["content"].lower() or "send back for rework" in call_kwargs["content"].lower()
+    assert "please decide" in call_kwargs["content"]
+
+
+@pytest.mark.asyncio
+async def test_mark_decided_survives_inbox_delivery_failure(
+    db_manager, db_session, approval_seed, test_tenant_key, test_user
+):
+    """If the inbox-notify hiccups, the decide transaction must still succeed.
+
+    The status flip + WebSocket broadcast have already committed by the time
+    we hit the message-send; a delivery failure logs a warning but cannot
+    raise (otherwise a transient routing-service outage would leave the
+    gate visibly cleared in the DB but bubble a 5xx to the user).
+    """
+    ws = MagicMock()
+    ws.broadcast_to_tenant = AsyncMock()
+    routing = MagicMock()
+    routing.send_message = AsyncMock(side_effect=RuntimeError("transient routing outage"))
+    service = UserApprovalService(
+        db_manager=db_manager,
+        tenant_manager=TenantManager(),
+        websocket_manager=ws,
+        test_session=db_session,
+        message_routing_service=routing,
+    )
+
+    pending = await _create_pending_approval(service, approval_seed, test_tenant_key)
+    decided = await service.mark_decided(
+        tenant_key=test_tenant_key,
+        approval_id=pending.id,
+        option_id="approve",
+        user_id=str(test_user.id),
+    )
+
+    assert decided.status == "decided"
+    routing.send_message.assert_awaited_once()
+
+
+@pytest.mark.asyncio
 async def test_mark_decided_cross_tenant_returns_not_found(
     approval_service, approval_seed, test_tenant_key, db_session
 ):

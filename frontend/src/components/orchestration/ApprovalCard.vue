@@ -249,12 +249,27 @@ async function handleDecide(optionId) {
 
 .approval-card__actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: stretch;
   gap: 8px;
-  justify-content: flex-end;
 }
 
 .approval-card__option-btn {
   min-width: 96px;
+  width: 100%;
+  white-space: normal;
+  word-break: break-word;
+  text-align: left;
+  height: auto;
+  min-height: 40px;
+  padding: 8px 14px;
+
+  :deep(.v-btn__content) {
+    white-space: normal;
+    word-break: break-word;
+    text-align: left;
+    line-height: 1.3;
+    display: block;
+  }
 }
 </style>

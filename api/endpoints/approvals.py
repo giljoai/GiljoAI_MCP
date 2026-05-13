@@ -18,6 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from api.endpoints.dependencies import (
     get_db_manager,
+    get_message_routing_service,
     get_tenant_manager,
     get_websocket_manager,
 )
@@ -26,6 +27,7 @@ from giljo_mcp.database import DatabaseManager
 from giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
 from giljo_mcp.models.auth import User
 from giljo_mcp.schemas.user_approval import ApprovalListResponse, UserApprovalRead
+from giljo_mcp.services.message_routing_service import MessageRoutingService
 from giljo_mcp.services.user_approval_service import UserApprovalService
 from giljo_mcp.tenant import TenantManager
 
@@ -63,11 +65,13 @@ async def get_user_approval_service(
     db_manager: DatabaseManager = Depends(get_db_manager),
     tenant_manager: TenantManager = Depends(get_tenant_manager),
     websocket_manager=Depends(get_websocket_manager),
+    message_routing_service: MessageRoutingService = Depends(get_message_routing_service),
 ) -> UserApprovalService:
     return UserApprovalService(
         db_manager=db_manager,
         tenant_manager=tenant_manager,
         websocket_manager=websocket_manager,
+        message_routing_service=message_routing_service,
     )
 
 

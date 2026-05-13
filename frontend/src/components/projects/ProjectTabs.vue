@@ -326,7 +326,42 @@
       @close="showCloseoutModal = false"
       @closeout="handleCloseoutComplete"
       @continue="handleContinueWorking"
+      @approval-decided="handleApprovalDecided"
     />
+
+    <!-- Post-decision confirmation: tells the user the orchestrator has been
+         unblocked and pinged via inbox message, but they still need to nudge
+         the orchestrator (a Claude Code conversation in their terminal) so it
+         processes the inbox on its next action. -->
+    <v-dialog
+      v-model="showApprovalDecidedConfirmation"
+      max-width="480"
+      data-testid="approval-decided-confirmation"
+    >
+      <v-card class="smooth-border">
+        <div class="dlg-header dlg-header--primary">
+          <v-icon class="dlg-icon" icon="mdi-check-circle-outline" />
+          <span class="dlg-title">Orchestrator unlocked</span>
+        </div>
+        <v-card-text class="pa-4 text-body-2">
+          Your decision was sent to the orchestrator's inbox and the
+          <code>awaiting_user</code> gate is cleared. Open the orchestrator
+          chat and tell it to proceed (or simply type "continue") so it
+          processes the message and resumes the project.
+        </v-card-text>
+        <div class="dlg-footer">
+          <v-spacer />
+          <v-btn
+            color="primary"
+            variant="flat"
+            data-testid="approval-decided-confirmation-close"
+            @click="showApprovalDecidedConfirmation = false"
+          >
+            Close
+          </v-btn>
+        </div>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
@@ -476,6 +511,15 @@ watch(activeTab, (newTab) => {
 const loadingStageProject = ref(false)
 const executionMode = ref(props.project?.execution_mode || 'multi_terminal')
 const showGeminiNotice = ref(false)
+const showApprovalDecidedConfirmation = ref(false)
+
+function handleApprovalDecided() {
+  // CloseoutModal emits this after POST /api/approvals/{id}/decide succeeds.
+  // Close the decide modal, surface the small "now nudge the orchestrator"
+  // confirmation so the user knows the next manual step.
+  showCloseoutModal.value = false
+  showApprovalDecidedConfirmation.value = true
+}
 const isGeminiMode = computed(() => executionMode.value === 'gemini_cli')
 
 /**

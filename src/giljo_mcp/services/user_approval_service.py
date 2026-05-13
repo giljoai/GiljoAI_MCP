@@ -74,12 +74,14 @@ class UserApprovalService:
         tenant_manager: TenantManager,
         websocket_manager: Any | None = None,
         test_session: AsyncSession | None = None,
+        message_routing_service: Any | None = None,
     ):
         self.db_manager = db_manager
         self.tenant_manager = tenant_manager
         self._websocket_manager = websocket_manager
         self._test_session = test_session
         self._repo = UserApprovalRepository(db_manager)
+        self._message_routing_service = message_routing_service
 
     def _get_session(self):
         if self._test_session is not None:
@@ -297,7 +299,62 @@ class UserApprovalService:
             approval_id=decided.id,
             decided_option_id=option_id,
         )
+        await self._notify_orchestrator_of_decision(
+            tenant_key=tenant_key,
+            execution=execution,
+            decided=decided,
+            option_id=option_id,
+        )
         return decided
+
+    async def _notify_orchestrator_of_decision(
+        self,
+        *,
+        tenant_key: str,
+        execution: AgentExecution,
+        decided: UserApproval,
+        option_id: str,
+    ) -> None:
+        """Post a 'user decided' message to the orchestrator's inbox so the agent
+        learns the choice on its next receive_messages() call.
+
+        Best-effort: failure here must not roll back the decide transaction.
+        The status flip + WebSocket broadcast have already happened upstream;
+        the inbox message is the explicit semantic channel the agent reads.
+        """
+        if self._message_routing_service is None:
+            return
+        agent_name = execution.agent_display_name
+        if not agent_name:
+            return
+        option_label = option_id
+        for opt in decided.options or []:
+            if isinstance(opt, dict) and opt.get("id") == option_id:
+                option_label = opt.get("label") or option_id
+                break
+        content = (
+            f"User decided your approval request.\n"
+            f"Choice: {option_label} (option_id={option_id})\n"
+            f"Original question: {decided.reason}\n\n"
+            f"The awaiting_user gate is cleared. You may proceed."
+        )
+        try:
+            await self._message_routing_service.send_message(
+                to_agents=[agent_name],
+                content=content,
+                project_id=decided.project_id,
+                message_type="direct",
+                priority="normal",
+                from_agent="user",
+                tenant_key=tenant_key,
+            )
+        except Exception as exc:  # noqa: BLE001 - inbox delivery is non-critical
+            logger.warning(
+                "[USER_APPROVAL] Failed to notify orchestrator of decision approval=%s job=%s: %s",
+                decided.id,
+                decided.job_id,
+                exc,
+            )
 
     async def _broadcast_resume(
         self,

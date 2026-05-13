@@ -13,8 +13,15 @@
     <v-card v-draggable data-testid="closeout-modal" class="smooth-border">
       <!-- Modal header -->
       <div id="closeout-modal-title" class="dlg-header dlg-header--primary dlg-header--sticky">
-        <v-icon class="dlg-icon" icon="mdi-memory" />
-        <span class="dlg-title">Project 360 Memory: {{ projectName }}</span>
+        <v-icon
+          class="dlg-icon"
+          :icon="orchestratorCloseoutBlocked && pendingOrchestratorApproval ? 'mdi-clipboard-check-outline' : 'mdi-memory'"
+        />
+        <span class="dlg-title">
+          {{ orchestratorCloseoutBlocked && pendingOrchestratorApproval
+             ? `Decision Required: ${projectName}`
+             : `Project 360 Memory: ${projectName}` }}
+        </span>
         <v-btn icon variant="text" size="small" class="dlg-close" :aria-label="'Close modal'" @click="handleClose">
           <v-icon icon="mdi-close" size="18" />
         </v-btn>
@@ -22,8 +29,11 @@
 
       <v-divider />
 
-      <!-- Modal content -->
-      <v-card-text class="pa-4">
+      <!-- Modal content. When orchestrator is closeout-blocked AND a live approval
+           is loaded, hide the 360-memory + next-steps surface and let the
+           ApprovalCard below carry the entire modal body. Reduces information
+           overload at the moment of decision. -->
+      <v-card-text v-if="!(orchestratorCloseoutBlocked && pendingOrchestratorApproval)" class="pa-4">
         <!-- 360 Memory Info Banner -->
         <v-alert
           type="info"
@@ -207,21 +217,19 @@
       <!-- Modal actions -->
       <div class="dlg-footer">
         <template v-if="orchestratorCloseoutBlocked">
-          <div class="closeout-blocked-indicator" data-testid="closeout-blocked-indicator">
-            <v-icon icon="mdi-clipboard-check-outline" size="18" class="closeout-blocked-icon" />
-            <div class="closeout-blocked-text">
-              <span class="closeout-blocked-label">Decision Required</span>
-              <span class="closeout-blocked-note">
-                <template v-if="pendingOrchestratorApproval">
-                  Choose an option above to resume the orchestrator.
-                </template>
-                <template v-else>
-                  Loading the orchestrator's request — please wait.
-                </template>
-              </span>
-            </div>
-          </div>
+          <!-- ApprovalCard above carries the full decision UI (reason, context,
+               option buttons). Footer is intentionally minimal: spacer + Cancel.
+               The previous "Decision Required" footer-strip was a duplicate of
+               the ApprovalCard subtitle and was deleted to reduce clutter. -->
           <v-spacer />
+          <v-btn
+            v-if="!pendingOrchestratorApproval"
+            variant="text"
+            disabled
+            :aria-label="'Loading approval'"
+          >
+            Loading the orchestrator's request…
+          </v-btn>
           <v-btn
             variant="text"
             :aria-label="'Cancel'"
@@ -319,7 +327,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['close', 'continue', 'closeout'])
+const emit = defineEmits(['close', 'continue', 'closeout', 'approval-decided'])
 
 // FE-5017 Phase C: pending user_approval lookup for inline ApprovalCard.
 const approvalsStore = useApprovalsStore()
@@ -328,11 +336,12 @@ const pendingOrchestratorApproval = computed(() => {
   return approvalsStore.findByJobId(props.orchestratorJobId)
 })
 
-const handleApprovalDecided = () => {
-  // The store has already removed the row optimistically; the WebSocket
-  // resume event will flip the orchestrator status back to 'working'.
-  // No further action needed here — the modal closes naturally when
-  // orchestratorCloseoutBlocked goes false.
+const handleApprovalDecided = (payload) => {
+  // Decide endpoint returned 200: gate cleared server-side, orchestrator
+  // status flipped back to 'working', and the inbox-notify has been queued.
+  // Tell the parent (ProjectTabs) to close this modal and open the small
+  // "orchestrator unlocked — go tell it to proceed" confirmation dialog.
+  emit('approval-decided', payload)
 }
 
 // Vuetify display breakpoints
