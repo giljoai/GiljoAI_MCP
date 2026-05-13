@@ -149,7 +149,10 @@
       </v-chip>
     </div>
 
-    <!-- State A2: Orchestrator closeout-blocked — HITL decision required -->
+    <!-- State A2: Orchestrator awaiting_user — HITL decision required.
+         Clicking the pill opens DecisionModal (a small focused dialog), NOT
+         the full CloseoutModal. Project closeout follows its normal path once
+         the orchestrator acts on the decision and completes its job. -->
     <div
       v-else-if="activeTab === 'jobs' && orchestratorCloseoutBlocked"
       class="action-buttons-row"
@@ -158,14 +161,14 @@
         type="button"
         class="closeout-decision-banner closeout-decision-banner--clickable smooth-border"
         data-testid="closeout-decision-banner"
-        aria-label="Open closeout decision dialog"
-        @click="openCloseoutModal"
+        aria-label="Open decision dialog"
+        @click="openDecisionModal"
       >
         <v-icon icon="mdi-clipboard-check-outline" size="20" class="closeout-decision-icon" />
         <div class="closeout-decision-content">
           <span class="closeout-decision-title">Decision Required</span>
           <span class="closeout-decision-desc">
-            Check in with the orchestrator in chat to review the deferred findings, then click here to approve, reject, or defer.
+            Check in with the orchestrator in chat, then click here to decide.
           </span>
         </div>
         <v-icon icon="mdi-chevron-right" size="20" class="closeout-decision-chevron" />
@@ -314,7 +317,10 @@
       </v-card>
     </v-dialog>
 
-    <!-- Project Closeout Modal (Handover 0361) -->
+    <!-- Project Closeout Modal (Handover 0361) — 360 Memory review + Continue
+         Working / Close Out Project. Only opened by the normal "Close Out
+         Project" button after allJobsTerminal. HITL approval is handled by
+         the separate DecisionModal below. -->
     <CloseoutModal
       :show="showCloseoutModal"
       :project-id="project.project_id || project.id"
@@ -326,6 +332,16 @@
       @close="showCloseoutModal = false"
       @closeout="handleCloseoutComplete"
       @continue="handleContinueWorking"
+    />
+
+    <!-- HITL Decision Modal — focused dialog containing only the ApprovalCard.
+         Opens when the user clicks the "Decision Required" pill on the project
+         jobs tab. Decoupled from CloseoutModal so approving an in-flight
+         request doesn't drag the user into the 360 Memory closeout view. -->
+    <DecisionModal
+      :show="showDecisionModal"
+      :orchestrator-job-id="orchestratorJobId"
+      @close="showDecisionModal = false"
       @approval-decided="handleApprovalDecided"
     />
 
@@ -382,6 +398,7 @@ import api from '@/services/api'
 import LaunchTab from './LaunchTab.vue'
 import JobsTab from './JobsTab.vue'
 import CloseoutModal from '@/components/orchestration/CloseoutModal.vue'
+import DecisionModal from '@/components/orchestration/DecisionModal.vue'
 import { DEFAULT_PROJECT_TYPE_COLOR } from '@/utils/constants'
 
 const { copy: clipboardCopy } = useClipboard()
@@ -511,13 +528,18 @@ watch(activeTab, (newTab) => {
 const loadingStageProject = ref(false)
 const executionMode = ref(props.project?.execution_mode || 'multi_terminal')
 const showGeminiNotice = ref(false)
+const showDecisionModal = ref(false)
 const showApprovalDecidedConfirmation = ref(false)
 
+function openDecisionModal() {
+  showDecisionModal.value = true
+}
+
 function handleApprovalDecided() {
-  // CloseoutModal emits this after POST /api/approvals/{id}/decide succeeds.
-  // Close the decide modal, surface the small "now nudge the orchestrator"
-  // confirmation so the user knows the next manual step.
-  showCloseoutModal.value = false
+  // DecisionModal emits this after POST /api/approvals/{id}/decide succeeds.
+  // Close the decision dialog, surface the small "now nudge the orchestrator"
+  // confirmation so the user knows the next manual step in their terminal.
+  showDecisionModal.value = false
   showApprovalDecidedConfirmation.value = true
 }
 const isGeminiMode = computed(() => executionMode.value === 'gemini_cli')
@@ -1076,7 +1098,7 @@ async function handleLaunchJobs() {
 }
 
 .closeout-decision-banner--clickable {
-  width: 100%;
+  max-width: 560px;
   cursor: pointer;
   text-align: left;
   color: inherit;

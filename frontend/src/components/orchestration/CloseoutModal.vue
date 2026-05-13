@@ -13,15 +13,8 @@
     <v-card v-draggable data-testid="closeout-modal" class="smooth-border">
       <!-- Modal header -->
       <div id="closeout-modal-title" class="dlg-header dlg-header--primary dlg-header--sticky">
-        <v-icon
-          class="dlg-icon"
-          :icon="orchestratorCloseoutBlocked && pendingOrchestratorApproval ? 'mdi-clipboard-check-outline' : 'mdi-memory'"
-        />
-        <span class="dlg-title">
-          {{ orchestratorCloseoutBlocked && pendingOrchestratorApproval
-             ? `Decision Required: ${projectName}`
-             : `Project 360 Memory: ${projectName}` }}
-        </span>
+        <v-icon class="dlg-icon" icon="mdi-memory" />
+        <span class="dlg-title">Project 360 Memory: {{ projectName }}</span>
         <v-btn icon variant="text" size="small" class="dlg-close" :aria-label="'Close modal'" @click="handleClose">
           <v-icon icon="mdi-close" size="18" />
         </v-btn>
@@ -29,11 +22,8 @@
 
       <v-divider />
 
-      <!-- Modal content. When orchestrator is closeout-blocked AND a live approval
-           is loaded, hide the 360-memory + next-steps surface and let the
-           ApprovalCard below carry the entire modal body. Reduces information
-           overload at the moment of decision. -->
-      <v-card-text v-if="!(orchestratorCloseoutBlocked && pendingOrchestratorApproval)" class="pa-4">
+      <!-- Modal content -->
+      <v-card-text class="pa-4">
         <!-- 360 Memory Info Banner -->
         <v-alert
           type="info"
@@ -202,34 +192,19 @@
 
       <v-divider />
 
-      <!-- HITL Closeout: When orchestrator is awaiting_user, render ApprovalCard inline.
-           BE-5029 + FE-5017 Phase C: replaced the static "Decision Required" alert
-           with the live request_approval surface. The card hits
-           POST /api/approvals/{id}/decide via useApprovalsStore. -->
-      <div v-if="orchestratorCloseoutBlocked && pendingOrchestratorApproval" class="closeout-approval-wrap">
-        <ApprovalCard
-          :approval="pendingOrchestratorApproval"
-          data-testid="closeout-approval-card"
-          @decided="handleApprovalDecided"
-        />
-      </div>
-
       <!-- Modal actions -->
       <div class="dlg-footer">
         <template v-if="orchestratorCloseoutBlocked">
-          <!-- ApprovalCard above carries the full decision UI (reason, context,
-               option buttons). Footer is intentionally minimal: spacer + Cancel.
-               The previous "Decision Required" footer-strip was a duplicate of
-               the ApprovalCard subtitle and was deleted to reduce clutter. -->
+          <div class="closeout-blocked-indicator" data-testid="closeout-blocked-indicator">
+            <v-icon icon="mdi-clipboard-check-outline" size="18" class="closeout-blocked-icon" />
+            <div class="closeout-blocked-text">
+              <span class="closeout-blocked-label">Awaiting decision</span>
+              <span class="closeout-blocked-note">
+                Resolve the orchestrator's request in the dedicated decision dialog before closing out.
+              </span>
+            </div>
+          </div>
           <v-spacer />
-          <v-btn
-            v-if="!pendingOrchestratorApproval"
-            variant="text"
-            disabled
-            :aria-label="'Loading approval'"
-          >
-            Loading the orchestrator's request…
-          </v-btn>
           <v-btn
             variant="text"
             :aria-label="'Cancel'"
@@ -286,8 +261,6 @@ import { useRouter } from 'vue-router'
 import { useFormatDate } from '@/composables/useFormatDate'
 import { useToast } from '@/composables/useToast'
 import api from '@/services/api'
-import ApprovalCard from '@/components/orchestration/ApprovalCard.vue'
-import { useApprovalsStore } from '@/stores/useApprovalsStore'
 
 const { formatDateTime } = useFormatDate()
 const router = useRouter()
@@ -327,22 +300,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['close', 'continue', 'closeout', 'approval-decided'])
-
-// FE-5017 Phase C: pending user_approval lookup for inline ApprovalCard.
-const approvalsStore = useApprovalsStore()
-const pendingOrchestratorApproval = computed(() => {
-  if (!props.orchestratorJobId) return null
-  return approvalsStore.findByJobId(props.orchestratorJobId)
-})
-
-const handleApprovalDecided = (payload) => {
-  // Decide endpoint returned 200: gate cleared server-side, orchestrator
-  // status flipped back to 'working', and the inbox-notify has been queued.
-  // Tell the parent (ProjectTabs) to close this modal and open the small
-  // "orchestrator unlocked — go tell it to proceed" confirmation dialog.
-  emit('approval-decided', payload)
-}
+const emit = defineEmits(['close', 'continue', 'closeout'])
 
 // Vuetify display breakpoints
 const { mobile } = useDisplay()
@@ -364,11 +322,6 @@ watch(
       loadMemoryEntries()
       // Expand first entry by default
       expandedPanels.value = [0]
-      // FE-5017 Phase C: hydrate pending approvals so the inline ApprovalCard
-      // can render the moment the modal opens. WebSocket events keep it fresh
-      // afterwards. Errors are swallowed — they surface via store.error and
-      // the banner falls back to the "Loading…" copy.
-      approvalsStore.fetchPending().catch(() => {})
     } else {
       resetState()
     }
