@@ -1004,6 +1004,16 @@ onMounted(async () => {
    the text even when text-align is center). */
 :deep(.v-data-table__thead th:not(:nth-child(4)) .v-data-table-header__content) {
   justify-content: center !important;
+  position: relative;
+}
+
+/* Float the sort arrow out of the flex flow so the title text centres
+   geometrically over the cell instead of being pushed left by the icon. */
+:deep(.v-data-table__thead th:not(:nth-child(4)) .v-data-table-header__content > i) {
+  position: absolute !important;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 /* Left-aligned: Task (4). */
