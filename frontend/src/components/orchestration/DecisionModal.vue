@@ -28,11 +28,6 @@
       <v-divider />
 
       <div class="decision-modal-body">
-        <p class="decision-modal-hint text-body-2">
-          Discuss the orchestrator's request in chat first, then choose an option.
-          Your choice is sent to the orchestrator's inbox.
-        </p>
-
         <ApprovalCard
           v-if="approval"
           :approval="approval"
@@ -111,10 +106,6 @@ function handleDecided(payload) {
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
-
-.decision-modal-hint {
-  color: var(--text-secondary, #a3aac4);
 }
 
 .decision-modal-loading {
