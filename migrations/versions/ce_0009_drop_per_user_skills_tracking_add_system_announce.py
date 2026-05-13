@@ -35,10 +35,7 @@ ANNOUNCED_KEY = "skills_version_announced"
 
 def _has_column(conn, table: str, column: str) -> bool:
     result = conn.execute(
-        sa.text(
-            "SELECT 1 FROM information_schema.columns "
-            "WHERE table_name = :table AND column_name = :column"
-        ),
+        sa.text("SELECT 1 FROM information_schema.columns WHERE table_name = :table AND column_name = :column"),
         {"table": table, "column": column},
     )
     return result.first() is not None
@@ -46,9 +43,7 @@ def _has_column(conn, table: str, column: str) -> bool:
 
 def _has_table(conn, table: str) -> bool:
     result = conn.execute(
-        sa.text(
-            "SELECT 1 FROM information_schema.tables WHERE table_name = :table"
-        ),
+        sa.text("SELECT 1 FROM information_schema.tables WHERE table_name = :table"),
         {"table": table},
     )
     return result.first() is not None
