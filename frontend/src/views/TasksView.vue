@@ -967,8 +967,18 @@ onMounted(async () => {
   padding: 2px 8px;
   border-radius: $border-radius-sharp;
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 0.75rem;
+  font-size: 0.62rem;
   font-weight: 600;
+}
+
+/* Match Status badge font to Priority pill size (cosmetic parity). */
+:deep(.task-status-badge) {
+  font-size: 0.62rem;
+}
+
+/* Created column: plain-text date — match Due Date cell size. */
+.date-cell {
+  font-size: 0.72rem;
 }
 
 /* 0870h: row action buttons — color/hover via global .icon-interactive */
