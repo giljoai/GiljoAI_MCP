@@ -71,7 +71,12 @@ export function useTaskFilters(tasks, { taxonomyTypes = ref([]) } = {}) {
 
     if (search.value) {
       const term = search.value.toLowerCase()
-      list = list.filter((t) => t.title?.toLowerCase().includes(term))
+      list = list.filter(
+        (t) =>
+          t.title?.toLowerCase().includes(term) ||
+          t.description?.toLowerCase().includes(term) ||
+          t.taxonomy_alias?.toLowerCase().includes(term),
+      )
     }
 
     if (statusFilter.value) {

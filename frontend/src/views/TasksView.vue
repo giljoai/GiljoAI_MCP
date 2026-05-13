@@ -95,7 +95,6 @@
       <v-data-table
         :headers="headers"
         :items="hierarchicalTasks"
-        :search="search"
         :loading="loading"
         :items-per-page="25"
         class="elevation-0 scrollable-table"
@@ -360,7 +359,7 @@
                      task+project counter (BE-5065). -->
                 <v-text-field
                   v-if="editingTask"
-                  :model-value="currentTask.taxonomy_alias || '—'"
+                  :model-value="currentTask.series_number ?? '—'"
                   label="Serial"
                   variant="outlined"
                   readonly

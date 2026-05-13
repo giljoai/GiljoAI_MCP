@@ -120,6 +120,108 @@ describe('useTaskFilters', () => {
     expect(filteredTasks.value[0].id).toBe(3)
   })
 
+  it('search matches by description (case-insensitive)', () => {
+    const taggedTasks = ref([
+      {
+        id: 10,
+        title: 'Reseed agents on activation',
+        description: 'Activating a product should not re-run the agent seed.',
+        status: 'pending',
+        priority: 'medium',
+        task_type_id: 'type-be',
+        taxonomy_alias: 'BE5042',
+        series_number: 5042,
+      },
+      {
+        id: 11,
+        title: 'Unrelated work',
+        description: 'Nothing here.',
+        status: 'pending',
+        priority: 'low',
+        task_type_id: null,
+        taxonomy_alias: '',
+        series_number: null,
+      },
+    ])
+    const { filteredTasks, search } = useTaskFilters(taggedTasks)
+    search.value = 'agent seed'
+    expect(filteredTasks.value.map((t) => t.id)).toEqual([10])
+  })
+
+  it('search matches by taxonomy_alias (full serial badge)', () => {
+    const taggedTasks = ref([
+      {
+        id: 20,
+        title: 'A task',
+        description: null,
+        status: 'pending',
+        priority: 'medium',
+        task_type_id: 'type-fe',
+        taxonomy_alias: 'FE5047',
+        series_number: 5047,
+      },
+      {
+        id: 21,
+        title: 'Another task',
+        description: null,
+        status: 'pending',
+        priority: 'medium',
+        task_type_id: 'type-be',
+        taxonomy_alias: 'BE5042',
+        series_number: 5042,
+      },
+    ])
+    const { filteredTasks, search } = useTaskFilters(taggedTasks)
+    search.value = 'FE5047'
+    expect(filteredTasks.value.map((t) => t.id)).toEqual([20])
+  })
+
+  it('search matches by partial serial number digits', () => {
+    const taggedTasks = ref([
+      {
+        id: 30,
+        title: 'A task',
+        description: null,
+        status: 'pending',
+        priority: 'medium',
+        task_type_id: 'type-be',
+        taxonomy_alias: 'BE5042',
+        series_number: 5042,
+      },
+      {
+        id: 31,
+        title: 'Another task',
+        description: null,
+        status: 'pending',
+        priority: 'medium',
+        task_type_id: 'type-fe',
+        taxonomy_alias: 'FE5047',
+        series_number: 5047,
+      },
+    ])
+    const { filteredTasks, search } = useTaskFilters(taggedTasks)
+    search.value = '5042'
+    expect(filteredTasks.value.map((t) => t.id)).toEqual([30])
+  })
+
+  it('search does not throw on tasks with null description / empty alias', () => {
+    const taggedTasks = ref([
+      {
+        id: 40,
+        title: 'Untyped scratch note',
+        description: null,
+        status: 'pending',
+        priority: 'low',
+        task_type_id: null,
+        taxonomy_alias: '',
+        series_number: null,
+      },
+    ])
+    const { filteredTasks, search } = useTaskFilters(taggedTasks)
+    search.value = 'scratch'
+    expect(filteredTasks.value.map((t) => t.id)).toEqual([40])
+  })
+
   it('reacts to task list changes', () => {
     const { filteredTasks, statusFilter } = useTaskFilters(tasks)
     statusFilter.value = 'pending'
