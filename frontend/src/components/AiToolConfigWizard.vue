@@ -11,6 +11,24 @@
       <div class="dlg-header">
         <v-img src="/giljo_YW_Face.svg" width="32" height="32" class="dlg-icon" style="flex-shrink: 0" />
         <span class="dlg-title">MCP Configuration Tool</span>
+        <v-tooltip v-if="isCe" location="bottom" max-width="320">
+          <template #activator="{ props: tipProps }">
+            <button
+              v-bind="tipProps"
+              class="info-chip smooth-border"
+              aria-label="About hosted-web-AI limitations"
+              data-testid="wizard-info-icon"
+            >
+              <v-icon size="14">mdi-help-circle-outline</v-icon>
+            </button>
+          </template>
+          <div class="info-tip-body">
+            <strong>Want Claude.ai web or ChatGPT to connect?</strong>
+            Web AI clients require OAuth, which is exclusive to the hosted GiljoAI service.
+            CE supports desktop apps and CLIs over your local network.
+            <a href="https://giljo.ai" target="_blank" rel="noopener" class="info-tip-link">giljo.ai</a>
+          </div>
+        </v-tooltip>
         <v-btn icon variant="text" class="dlg-close" aria-label="Close" @click="showWizard = false">
           <v-icon>mdi-close</v-icon>
         </v-btn>
@@ -99,13 +117,18 @@
             <template v-if="selectedTool === 'openclaw'">
               Add this to the <code>mcpServers</code> block in <code>~/.openclaw/openclaw.json</code>, then restart the gateway. Also works with NemoClaw.
             </template>
+            <template v-else-if="selectedTool === 'claude_desktop'">
+              Paste this into <code>claude_desktop_config.json</code>. If your file already has an <code>mcpServers</code> block, merge just the <code>giljo_mcp</code> entry into it.
+            </template>
             <template v-else>
               Copy and paste {{ selectedTool === 'codex' ? 'these commands' : 'this' }} in your terminal to configure {{ selectedToolName }}:
             </template>
           </v-alert>
 
-          <!-- HTTPS: Node.js cert trust warning (Claude Code + Gemini are Node.js-based)
-               CE only — demo/saas use Cloudflare-issued certs that Node already trusts. -->
+          <!-- HTTPS: Node.js cert trust warning (Claude Code CLI + Gemini are Node.js-based)
+               CE only — demo/saas use Cloudflare-issued certs that Node already trusts.
+               Excludes claude_desktop, which handles self-signed TLS via the
+               NODE_TLS_REJECT_UNAUTHORIZED env var in its JSON config. -->
           <template v-if="(selectedTool === 'gemini' || selectedTool === 'claude' || selectedTool === 'codex') && isHttps && isCe">
             <v-radio-group v-model="certPlatform" inline hide-details class="platform-radios mb-2">
               <v-radio label="PowerShell" value="windows" density="compact" />
@@ -163,7 +186,52 @@
           </template>
 
           <!-- E) Configuration Command / JSON snippet -->
+          <template v-if="selectedTool === 'claude_desktop'">
+            <div class="config-block smooth-border" data-testid="claude-desktop-json-block">
+              <div class="config-block-header">
+                <span class="config-block-label">claude_desktop_config.json</span>
+                <v-btn
+                  icon="mdi-content-copy"
+                  size="x-small"
+                  variant="text"
+                  aria-label="Copy JSON configuration"
+                  @click="copyPrompt"
+                />
+              </div>
+              <pre class="config-code">{{ generatedPrompt }}</pre>
+              <div v-if="copied" class="config-copied-hint">Copied!</div>
+            </div>
+            <p class="text-caption text-helper mt-2 mb-2">
+              Save the file, then quit Claude Desktop fully (system-tray icon → Quit) and relaunch. First launch is slow — npx downloads <code>mcp-remote</code>.
+            </p>
+            <v-expansion-panels class="mb-2" data-testid="claude-desktop-paths-expander">
+              <v-expansion-panel>
+                <v-expansion-panel-title>Where do I paste this?</v-expansion-panel-title>
+                <v-expansion-panel-text>
+                  <ul class="paths-list">
+                    <li>
+                      <strong>Windows (Electron install):</strong>
+                      <code>%APPDATA%\Claude\claude_desktop_config.json</code>
+                    </li>
+                    <li>
+                      <strong>Windows (Microsoft Store install):</strong>
+                      <code>%LOCALAPPDATA%\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\claude_desktop_config.json</code>
+                    </li>
+                    <li>
+                      <strong>macOS:</strong>
+                      <code>~/Library/Application Support/Claude/claude_desktop_config.json</code>
+                    </li>
+                    <li>
+                      <strong>Linux:</strong>
+                      <code>~/.config/Claude/claude_desktop_config.json</code>
+                    </li>
+                  </ul>
+                </v-expansion-panel-text>
+              </v-expansion-panel>
+            </v-expansion-panels>
+          </template>
           <v-textarea
+            v-else
             v-model="generatedPrompt"
             :label="selectedTool === 'openclaw' ? 'JSON Configuration' : 'Configuration Command'"
             readonly
@@ -182,15 +250,17 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import api from '@/services/api'
 import configService from '@/services/configService'
+import setupService from '@/services/setupService'
 import { useClipboard } from '@/composables/useClipboard'
 import { useToast } from '@/composables/useToast'
 import {
   buildServerUrl as buildUrl,
   generateConfigForTool,
   generateCodexEnvVar,
+  isBackendHttps,
   makeKeyName,
   CERT_TRUST_WINDOWS,
   CERT_TRUST_UNIX,
@@ -222,9 +292,14 @@ const serverIp = ref(detectServerInfo().hostname)
 const serverPort = ref(detectServerInfo().port)
 const generatedKey = ref('')
 const generatedPrompt = ref('')
+// Backend config (INF-5012). Used to detect self-signed HTTPS so the Claude
+// Desktop JSON can inject NODE_TLS_REJECT_UNAUTHORIZED="0" only when the
+// backend itself terminates TLS with mkcert (not when fronted by a proxy).
+const backendConfig = ref(null)
 
 const aiTools = [
-  { name: 'Claude Code', value: 'claude' },
+  { name: 'Claude Code CLI', value: 'claude' },
+  { name: 'Claude Desktop', value: 'claude_desktop' },
   { name: 'Codex CLI', value: 'codex' },
   { name: 'Gemini CLI', value: 'gemini' },
   { name: 'OpenClaw', value: 'openclaw' },
@@ -232,6 +307,7 @@ const aiTools = [
 
 const toolLogos = {
   claude: '/claude_pix.svg',
+  claude_desktop: '/claude_pix.svg',
   codex: '/icons/codex_mark_white.svg',
   gemini: '/gemini-icon.svg',
   openclaw: '/openclaw-dark.svg',
@@ -242,7 +318,7 @@ const selectedToolName = computed(
 )
 
 const isHttps = computed(() => window.location.protocol === 'https:')
-const isCe = computed(() => configService.getGiljoMode() === 'ce')
+const isCe = ref(false)
 
 const certTrustCommandWindows = CERT_TRUST_WINDOWS
 const certTrustCommandUnix = CERT_TRUST_UNIX
@@ -282,7 +358,13 @@ async function generatePrompt() {
     generatedPrompt.value = ''
     await generateApiKey()
     const serverUrl = buildServerUrl()
-    generatedPrompt.value = generateConfigForTool(selectedTool.value, serverUrl, generatedKey.value)
+    const selfSigned = isBackendHttps(backendConfig.value)
+    generatedPrompt.value = generateConfigForTool(
+      selectedTool.value,
+      serverUrl,
+      generatedKey.value,
+      { selfSigned },
+    )
   } catch (e) {
     const msg = e?.response?.data?.message || e?.message || 'Failed to generate API key'
     errorMsg.value = msg
@@ -329,6 +411,30 @@ async function copyCertCommand() {
     showToast({ message: 'Clipboard blocked. Select the prompt and press Ctrl+C to copy manually.', type: 'warning' })
   }
 }
+
+async function loadBackendConfig() {
+  try {
+    const cfg = await configService.fetchConfig()
+    if (cfg?.api) backendConfig.value = cfg.api
+  } catch (e) {
+    // Non-fatal — falls back to no self-signed flag (omits NODE_TLS_REJECT_UNAUTHORIZED).
+    console.warn('[Wizard] Failed to fetch backend config:', e)
+  }
+}
+
+async function loadModeFlag() {
+  try {
+    const status = await setupService.checkEnhancedStatus()
+    isCe.value = status?.mode === 'ce'
+  } catch (e) {
+    console.warn('[Wizard] Failed to resolve mode:', e)
+  }
+}
+
+onMounted(() => {
+  loadBackendConfig()
+  loadModeFlag()
+})
 
 // Expose method to programmatically open the wizard
 defineExpose({
@@ -384,5 +490,96 @@ defineExpose({
 
 .configurator-pill:hover {
   background: rgba($color-brand-yellow, 0.12);
+}
+
+.info-chip {
+  --smooth-border-color: #{$color-brand-yellow};
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: transparent;
+  color: $color-brand-yellow;
+  border: none;
+  cursor: help;
+}
+
+.info-tip-body {
+  display: block;
+  line-height: 1.4;
+}
+
+.info-tip-link {
+  display: inline-block;
+  margin-top: 6px;
+  color: $color-brand-yellow;
+  text-decoration: underline;
+}
+
+.config-block {
+  position: relative;
+  background: $color-background-primary;
+  border-radius: $border-radius-default;
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+
+.config-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  background: rgba($med-blue, 0.3);
+}
+
+.config-block-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #a3aac4; // --text-secondary (6.56:1 on #12202e)
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.config-code {
+  padding: 12px;
+  margin: 0;
+  font-family: 'Roboto Mono', 'Courier New', monospace;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: $color-text-primary;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.config-copied-hint {
+  padding: 0 12px 6px;
+  font-size: 0.75rem;
+  color: $color-brand-yellow;
+}
+
+.text-helper {
+  // --text-muted, WCAG AA 4.98:1 on #12202e. Avoids Vuetify text-medium-emphasis.
+  color: #8895a8;
+}
+
+.paths-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.paths-list li {
+  margin-bottom: 6px;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+.paths-list code {
+  font-family: 'Roboto Mono', 'Courier New', monospace;
+  font-size: 0.75rem;
+  word-break: break-all;
 }
 </style>

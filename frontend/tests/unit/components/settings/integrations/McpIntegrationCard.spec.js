@@ -192,7 +192,7 @@ describe('McpIntegrationCard.vue', () => {
     it('tooltip contains full description text', () => {
       const html = wrapper.html()
       expect(html).toContain('Connect your AI coding agent to GiljoAI orchestration')
-      expect(html).toContain('Supports Claude Code, Codex CLI, and Gemini CLI')
+      expect(html).toContain('Supports Claude Code CLI, Claude Desktop, Codex CLI, and Gemini CLI')
     })
 
     it('card description mentions Configurator', () => {

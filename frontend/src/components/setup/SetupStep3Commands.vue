@@ -98,7 +98,7 @@ const COLOR_MUTED = '#8f97b7' // $color-scrollbar-thumb-hover-background (lighte
 const COLOR_SUCCESS = '#6bcf7f' // $gradient-brand-end
 
 const TOOL_META = {
-  claude_code: { name: 'Claude Code', logo: '/claude_pix.svg' },
+  claude_code: { name: 'Claude Code CLI', logo: '/claude_pix.svg' },
   codex_cli: { name: 'Codex CLI', logo: '/icons/codex_mark_white.svg' },
   gemini_cli: { name: 'Gemini CLI', logo: '/gemini-icon.svg' },
 }

@@ -134,7 +134,7 @@ async function copyToClipboard(text) {
 }
 
 const platforms = [
-  { id: 'claude_code', label: 'Claude Code', buttonLabel: 'Claude Prompt', icon: '/claude_pix.svg', color: 'deep-orange', experimental: false },
+  { id: 'claude_code', label: 'Claude Code CLI', buttonLabel: 'Claude Prompt', icon: '/claude_pix.svg', color: 'deep-orange', experimental: false },
   { id: 'codex_cli', label: 'Codex CLI', buttonLabel: 'Codex Prompt', icon: '/codex_logo.svg', color: 'green', experimental: true },
   { id: 'gemini_cli', label: 'Gemini CLI', buttonLabel: 'Gemini Prompt', icon: '/gemini-icon.svg', color: 'blue', experimental: true },
   { id: 'generic', label: 'Generic MCP', buttonLabel: 'Generic', icon: '/logo-mcp.svg', color: 'grey', experimental: false, isGeneric: true },

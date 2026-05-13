@@ -237,13 +237,21 @@ class TaskConversionService:
             existing_active_project.status = ProjectStatus.INACTIVE
             existing_active_project.updated_at = datetime.now(UTC)
 
-        # Auto-assign series_number to satisfy uq_project_taxonomy_active.
-        # The partial unique index uses NULLS NOT DISTINCT, so two projects with
-        # all-NULL taxonomy under the same (tenant_key, product_id) collide. Mirror
-        # ProjectService.create_project's auto-series logic so untaxonomied
-        # task→project conversions get a monotonically increasing series_number.
-        await self._project_repo.lock_rows_for_series(session, tenant_key, active_product.id, None)
-        series_number = await self._project_repo.get_next_series_number(session, tenant_key, active_product.id, None)
+        # BE-5065: inherit taxonomy from the originating task when present so
+        # ``BE-0017`` task → ``BE-0017`` project (type + series_number copied).
+        # The task row is about to be deleted, freeing the (type, series_number)
+        # slot in the shared bucket for the new project to claim. For untyped
+        # tasks (task_type_id IS NULL) fall back to the BE-5064 fresh-number
+        # path under the (tenant, product, NULL-type) bucket so the project
+        # still satisfies ``uq_project_taxonomy_active`` (NULLS NOT DISTINCT).
+        project_type_id: str | None = task.task_type_id
+        if project_type_id is not None:
+            project_series_number: int | None = task.series_number
+        else:
+            await self._project_repo.lock_rows_for_series_shared(session, tenant_key, active_product.id, None)
+            project_series_number = await self._project_repo.get_next_series_number_shared(
+                session, tenant_key, active_product.id, None
+            )
 
         # Create project
         final_project_name = project_name or task.title
@@ -254,7 +262,8 @@ class TaskConversionService:
             product_id=active_product.id,
             tenant_key=tenant_key,
             status=ProjectStatus.INACTIVE,  # Projects start inactive, user activates when ready
-            series_number=series_number,
+            project_type_id=project_type_id,
+            series_number=project_series_number,
         )
 
         await self._repo.add_project(session, new_project)

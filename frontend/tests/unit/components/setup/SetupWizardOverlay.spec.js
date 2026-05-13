@@ -82,7 +82,7 @@ describe('SetupWizardOverlay', () => {
       const names = wrapper.findAll('.tool-name')
       const providers = wrapper.findAll('.tool-provider')
 
-      expect(names[0].text()).toBe('Claude Code')
+      expect(names[0].text()).toBe('Claude Code CLI')
       expect(names[1].text()).toBe('Codex CLI')
       expect(names[2].text()).toBe('Gemini CLI')
 
@@ -405,7 +405,7 @@ describe('SetupWizardOverlay', () => {
       const wrapper = mountOverlay()
       const toolCards = wrapper.findAll('.tool-card')
 
-      expect(toolCards[0].attributes('aria-label')).toBe('Claude Code')
+      expect(toolCards[0].attributes('aria-label')).toBe('Claude Code CLI')
       expect(toolCards[1].attributes('aria-label')).toBe('Codex CLI')
       expect(toolCards[2].attributes('aria-label')).toBe('Gemini CLI')
     })

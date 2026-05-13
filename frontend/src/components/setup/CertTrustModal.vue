@@ -37,7 +37,7 @@
             </p>
             <p class="cert-intro">
               Your browser accepted the connection, but AI coding tools
-              (Claude Code, Codex CLI, Gemini CLI) need the server's root
+              (Claude Code CLI, Codex CLI, Gemini CLI) need the server's root
               certificate installed on this machine to work properly.
             </p>
 
@@ -99,7 +99,7 @@
                 <div class="cert-step-number">3</div>
                 <div class="cert-step-content">
                   <div class="cert-step-title">Trust certificate in Node.js</div>
-                  <p class="cert-hint">Required for Claude Code, Codex CLI, and Gemini CLI (all Node versions):</p>
+                  <p class="cert-hint">Required for Claude Code CLI, Codex CLI, and Gemini CLI (all Node versions):</p>
 
                   <div class="cert-command-block smooth-border">
                     <code class="cert-command">{{ nodeCommand }}</code>

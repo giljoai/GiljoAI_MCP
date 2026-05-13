@@ -25,6 +25,7 @@ from sqlalchemy import (
     case,
     literal,
     select,
+    text,
 )
 from sqlalchemy.orm import column_property, relationship
 from sqlalchemy.sql import func
@@ -136,6 +137,20 @@ class Task(Base):
         Index("idx_task_created_by_user", "created_by_user_id"),
         Index("idx_task_tenant_created_user", "tenant_key", "created_by_user_id"),  # Composite for "Created by Me"
         Index("idx_task_converted_to_project", "converted_to_project_id"),  # Conversion tracking
+        # BE-5065: shared task+project series counter — partial unique index on
+        # typed rows. Mirrors uq_project_taxonomy_active. NULLS NOT DISTINCT
+        # collapses any all-NULL slot, but the WHERE clause keeps legacy
+        # untyped tasks (series_number IS NULL) exempt.
+        Index(
+            "uq_task_taxonomy_active",
+            "tenant_key",
+            "product_id",
+            "task_type_id",
+            "series_number",
+            "subseries",
+            unique=True,
+            postgresql_where=text("series_number IS NOT NULL"),
+        ),
     )
 
     def __repr__(self) -> str:

@@ -289,7 +289,7 @@
           </div>
 
           <div class="mb-3">
-            <div class="text-subtitle-2 mb-2">2. Trust the certificate in Node.js (for AI coding tools like Claude Code):</div>
+            <div class="text-subtitle-2 mb-2">2. Trust the certificate in Node.js (for AI coding tools like Claude Code CLI):</div>
             <div class="pa-3 bg-grey-darken-4 rounded text-body-2">
               <code class="d-block mb-1"><strong>Windows (PowerShell):</strong> $env:NODE_OPTIONS = "--use-system-ca"; [System.Environment]::SetEnvironmentVariable('NODE_OPTIONS', '--use-system-ca', 'User')</code>
               <code class="d-block"><strong>Linux/macOS:</strong> mkdir -p ~/.giljo &amp;&amp; cp ~/Downloads/rootCA.pem ~/.giljo/rootCA.pem &amp;&amp; echo 'export NODE_EXTRA_CA_CERTS="$HOME/.giljo/rootCA.pem"' >> ~/.bashrc &amp;&amp; export NODE_EXTRA_CA_CERTS="$HOME/.giljo/rootCA.pem"</code>

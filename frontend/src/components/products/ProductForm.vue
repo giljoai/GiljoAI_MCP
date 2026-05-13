@@ -223,7 +223,7 @@
                   (tech stack, architecture, testing, etc.) plus generate improved summaries.
                 </div>
                 <div class="text-caption text-muted-a11y mt-1 text-center">
-                  Uses your AI coding agent (Claude Code, Codex CLI, Gemini CLI, or any MCP-compatible tool).
+                  Uses your AI coding agent (Claude Code CLI, Codex CLI, Gemini CLI, or any MCP-compatible tool).
                 </div>
               </v-alert>
 
@@ -257,7 +257,7 @@
                 label="Codebase Folder (optional)"
                 variant="outlined"
                 density="comfortable"
-                placeholder="e.g., F:\Projects\MyApp or /home/user/myapp"
+                placeholder="e.g., C:\Projects\MyApp or /home/user/myapp"
                 prepend-icon="mdi-folder-outline"
                 hint="Your local codebase path"
                 persistent-hint

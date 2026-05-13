@@ -69,7 +69,7 @@
 
                 <p class="text-caption text-muted-a11y">
                   Works in both single-terminal (subagent) and multi-terminal mode.
-                  All major CLI agents (Claude Code, Codex, Gemini) support bash sleep polling.
+                  All major CLI agents (Claude Code CLI, Codex, Gemini) support bash sleep polling.
                 </p>
               </v-expansion-panel-text>
             </v-expansion-panel>
@@ -110,7 +110,7 @@
                 <div class="tool-selector mb-3">
                   <div class="tip-subtitle">AI coding agent:</div>
                   <v-chip-group v-model="selectedTool" mandatory selected-class="tool-chip-active">
-                    <v-chip size="small" value="claude" variant="outlined">Claude Code</v-chip>
+                    <v-chip size="small" value="claude" variant="outlined">Claude Code CLI</v-chip>
                     <v-chip size="small" value="codex" variant="outlined">Codex</v-chip>
                     <v-chip size="small" value="gemini" variant="outlined">
                       Gemini
@@ -199,7 +199,7 @@
                 </v-btn>
 
                 <p class="text-caption text-muted-a11y mb-0">
-                  Works with any MCP-compatible AI coding tool (Claude Code, Codex CLI, Gemini CLI).
+                  Works with any MCP-compatible AI coding tool (Claude Code CLI, Codex CLI, Gemini CLI).
                 </p>
               </v-expansion-panel-text>
             </v-expansion-panel>

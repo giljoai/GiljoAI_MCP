@@ -391,7 +391,7 @@ const agenticTool = computed(() => {
   // Only show after user has explicitly selected a mode (executionPlatform starts null)
   const mode = executionPlatform.value
   if (!mode) return null
-  if (mode === 'claude_code_cli') return { type: 'img', src: '/claude_pix.svg', label: 'Claude Code', alt: 'Claude Code subagent active' }
+  if (mode === 'claude_code_cli') return { type: 'img', src: '/claude_pix.svg', label: 'Claude Code CLI', alt: 'Claude Code CLI subagent active' }
   if (mode === 'codex_cli') return { type: 'img', src: '/codex_logo.svg', label: 'Codex CLI', alt: 'Codex CLI subagent active' }
   if (mode === 'gemini_cli') return { type: 'img', src: '/gemini-icon.svg', label: 'Gemini CLI', alt: 'Gemini CLI subagent active' }
   if (mode === 'multi_terminal') return { type: 'icon', icon: 'mdi-monitor-multiple', label: 'Multi Terminal', alt: 'Multi terminal mode active' }

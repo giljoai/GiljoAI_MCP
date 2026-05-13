@@ -17,7 +17,7 @@ from __future__ import annotations
 import logging
 from datetime import UTC, datetime
 
-from sqlalchemy import and_, func, select, update
+from sqlalchemy import and_, func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -25,7 +25,7 @@ from giljo_mcp.domain.project_status import ProjectStatus
 from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from giljo_mcp.models.product_memory_entry import ProductMemoryEntry
 from giljo_mcp.models.projects import Project, TaxonomyType
-from giljo_mcp.models.tasks import Message
+from giljo_mcp.models.tasks import Message, Task
 
 
 logger = logging.getLogger(__name__)
@@ -105,6 +105,86 @@ class ProjectRepository:
             max_query = max_query.where(Project.project_type_id.is_(None))
         result = await session.execute(max_query)
         return result.scalar_one()
+
+    async def lock_rows_for_series_shared(
+        self,
+        session: AsyncSession,
+        tenant_key: str,
+        product_id: str | None,
+        taxonomy_type_id: str | None,
+    ) -> None:
+        """Serialize series_number assignment for a (tenant, product, type) bucket.
+
+        BE-5065: tasks and projects share a single monotonic series_number counter
+        per (tenant_key, product_id, taxonomy_type_id) so ``BE-0017`` is unique
+        across both tables.
+
+        Uses ``pg_advisory_xact_lock`` keyed on a deterministic hash of the
+        bucket identifier. ``SELECT ... FOR UPDATE`` is insufficient on its own:
+        when the bucket has no rows yet, two concurrent transactions both lock
+        empty result sets and proceed to ``max(...) = 0``, producing duplicate
+        ``series_number = 1`` values. The advisory lock is acquired BEFORE the
+        max-aggregate and released automatically when the transaction commits
+        or rolls back.
+
+        FOR UPDATE is still applied to existing rows so any concurrent UPDATE
+        on a bucket row blocks until we commit (defends against series mutation
+        outside this path).
+        """
+        bucket_key = f"taxonomy:{tenant_key}:{product_id or ''}:{taxonomy_type_id or ''}"
+        await session.execute(
+            text("SELECT pg_advisory_xact_lock(hashtext(:key))"),
+            {"key": bucket_key},
+        )
+
+        project_lock = select(Project.id).where(
+            Project.tenant_key == tenant_key,
+            Project.product_id == product_id,
+        )
+        task_lock = select(Task.id).where(
+            Task.tenant_key == tenant_key,
+            Task.product_id == product_id,
+        )
+        if taxonomy_type_id:
+            project_lock = project_lock.where(Project.project_type_id == taxonomy_type_id)
+            task_lock = task_lock.where(Task.task_type_id == taxonomy_type_id)
+        else:
+            project_lock = project_lock.where(Project.project_type_id.is_(None))
+            task_lock = task_lock.where(Task.task_type_id.is_(None))
+
+        await session.execute(project_lock.with_for_update())
+        await session.execute(task_lock.with_for_update())
+
+    async def get_next_series_number_shared(
+        self,
+        session: AsyncSession,
+        tenant_key: str,
+        product_id: str | None,
+        taxonomy_type_id: str | None,
+    ) -> int:
+        """Get next series_number across BOTH projects and tasks for a bucket.
+
+        BE-5065: ``max(projects.series_number, tasks.series_number) + 1`` so the
+        counter is shared. Returns 1 when both tables are empty for the bucket.
+        """
+        project_max_q = select(func.coalesce(func.max(Project.series_number), 0)).where(
+            Project.tenant_key == tenant_key,
+            Project.product_id == product_id,
+        )
+        task_max_q = select(func.coalesce(func.max(Task.series_number), 0)).where(
+            Task.tenant_key == tenant_key,
+            Task.product_id == product_id,
+        )
+        if taxonomy_type_id:
+            project_max_q = project_max_q.where(Project.project_type_id == taxonomy_type_id)
+            task_max_q = task_max_q.where(Task.task_type_id == taxonomy_type_id)
+        else:
+            project_max_q = project_max_q.where(Project.project_type_id.is_(None))
+            task_max_q = task_max_q.where(Task.task_type_id.is_(None))
+
+        project_max = (await session.execute(project_max_q)).scalar_one()
+        task_max = (await session.execute(task_max_q)).scalar_one()
+        return max(project_max, task_max) + 1
 
     async def check_duplicate_taxonomy(
         self,

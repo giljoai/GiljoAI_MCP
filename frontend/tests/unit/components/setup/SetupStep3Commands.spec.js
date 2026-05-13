@@ -66,7 +66,7 @@ describe('SetupStep3Commands', () => {
     it('renders instruction text with tool name', async () => {
       const wrapper = mountStep3()
       await flushPromises()
-      expect(wrapper.text()).toContain('Ask your Claude Code to run:')
+      expect(wrapper.text()).toContain('Ask your Claude Code CLI to run:')
     })
 
     it('does not show tab bar with single connected tool', async () => {

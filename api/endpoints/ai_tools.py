@@ -7,9 +7,10 @@
 AI Tools Configuration Generator API Endpoints
 
 Provides elegant copy-paste configuration system for connecting AI tools
-(Claude Code, CODEX, Gemini) to GiljoAI MCP server.
+(Claude Code CLI, Claude Desktop, CODEX, Gemini) to GiljoAI MCP server.
 """
 
+import json
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -90,6 +91,49 @@ def get_codex_config(server_url: str, api_key: str) -> str:
     return f"codex mcp add giljo_mcp --url {server_url}/mcp --bearer-token-env-var GILJO_API_KEY"
 
 
+def get_claude_desktop_config(server_url: str, api_key: str, self_signed_https: bool) -> str:
+    """
+    Generate Claude Desktop MCP config JSON (mcp-remote bridge over HTTP transport).
+
+    Claude Desktop can't speak HTTP MCP natively; it spawns the `npx mcp-remote`
+    bridge subprocess which then connects to GiljoAI's `/mcp` endpoint and forwards
+    the Authorization header. The bearer token is read from the AUTH_HEADER env var
+    so the literal key never appears in argv (visible to other processes via ps).
+
+    Args:
+        server_url: GiljoAI server URL.
+        api_key: User's API key.
+        self_signed_https: True only when this backend serves HTTPS itself with a
+            self-signed/mkcert certificate (features.ssl_enabled=True). In that
+            case the bridge needs NODE_TLS_REJECT_UNAUTHORIZED=0 to accept the
+            cert. For proxied HTTPS (TLS terminated upstream) and plain HTTP the
+            flag is omitted — never weaken TLS verification on a publicly-signed
+            chain.
+
+    Returns:
+        Pretty-printed JSON string ready to drop into claude_desktop_config.json.
+    """
+    env: dict[str, str] = {"AUTH_HEADER": f"Bearer {api_key}"}
+    if self_signed_https:
+        env["NODE_TLS_REJECT_UNAUTHORIZED"] = "0"
+
+    config = {
+        "mcpServers": {
+            "giljo_mcp": {
+                "command": "npx",
+                "args": [
+                    "mcp-remote",
+                    f"{server_url}/mcp",
+                    "--header",
+                    "Authorization:${AUTH_HEADER}",
+                ],
+                "env": env,
+            }
+        }
+    }
+    return json.dumps(config, indent=2)
+
+
 def get_gemini_config(server_url: str, api_key: str) -> str:
     """
     Generate Gemini CLI MCP HTTP transport command.
@@ -121,9 +165,17 @@ def get_http_tool_instructions(tool_id: str) -> list[str]:
         return [
             "Open your terminal or command prompt",
             "Copy the command shown above",
-            "Paste and run the command to configure Claude Code",
+            "Paste and run the command to configure Claude Code CLI",
             "Verify connection with: claude mcp list",
-            "Start using GiljoAI tools in Claude Code conversations",
+            "Start using GiljoAI tools in Claude Code CLI conversations",
+        ]
+    if tool_id == "claude_desktop":
+        return [
+            "Open Claude Desktop's configuration file (Settings → Developer → Edit Config)",
+            "Merge the JSON shown above into the existing mcpServers object",
+            "Save the file and fully quit Claude Desktop (not just close the window)",
+            "Relaunch Claude Desktop and confirm the giljo_mcp server appears as connected",
+            "If npx is missing on Windows, install Node.js LTS first",
         ]
     if tool_id == "codex":
         return [
@@ -143,6 +195,49 @@ def get_http_tool_instructions(tool_id: str) -> list[str]:
     return ["Copy the command above", "Run it in your terminal", "Verify the connection", "Start using GiljoAI tools"]
 
 
+CONFIG_GENERATORS: dict[str, dict[str, str]] = {
+    "claude": {
+        "format": "command",
+        "file_location": "Terminal/PowerShell",
+        "filename": "giljo-claude-setup.md",
+    },
+    "claude_desktop": {
+        "format": "json",
+        "file_location": "claude_desktop_config.json",
+        "filename": "giljo-claude-desktop-setup.md",
+    },
+    "codex": {
+        "format": "command",
+        "file_location": "Terminal/PowerShell",
+        "filename": "giljo-codex-setup.md",
+    },
+    "gemini": {
+        "format": "command",
+        "file_location": "Terminal/PowerShell",
+        "filename": "giljo-gemini-setup.md",
+    },
+}
+
+
+def _is_self_signed_https(request: Request) -> bool:
+    """Return True iff this server serves HTTPS directly with a self-signed cert.
+
+    Signal: the request's public scheme is https AND features.ssl_enabled is True
+    in the runtime config. ssl_enabled=True means CE/SaaS terminates TLS itself
+    (mkcert/LAN install); when False but the URL is still https, TLS was
+    terminated by a reverse proxy with a publicly-signed cert and clients do not
+    need NODE_TLS_REJECT_UNAUTHORIZED.
+    """
+    from api.app_state import state
+
+    scheme = request.url.scheme
+    if scheme != "https":
+        return False
+    if state.config is None:
+        return False
+    return bool(state.config.get_nested("features.ssl_enabled", default=False))
+
+
 # API Endpoints
 
 
@@ -157,9 +252,16 @@ async def list_supported_tools():
     tools = [
         AIToolInfo(
             id="claude",
-            name="Claude Code",
+            name="Claude Code CLI",
             config_format="command",
             file_location="Terminal/PowerShell",
+            supported=True,
+        ),
+        AIToolInfo(
+            id="claude_desktop",
+            name="Claude Desktop",
+            config_format="json",
+            file_location="claude_desktop_config.json",
             supported=True,
         ),
         AIToolInfo(
@@ -215,38 +317,29 @@ async def generate_ai_tool_config(
     # to substitute their real key before running the command.
     api_key = "<YOUR_API_KEY>"
 
-    # Generate configuration based on tool
-    config_generators = {
-        "claude": {
-            "generator": get_claude_code_config,
-            "format": "command",
-            "file_location": "Terminal/PowerShell",
-            "filename": "giljo-claude-setup.md",
-        },
-        "codex": {
-            "generator": get_codex_config,
-            "format": "command",
-            "file_location": "Terminal/PowerShell",
-            "filename": "giljo-codex-setup.md",
-        },
-        "gemini": {
-            "generator": get_gemini_config,
-            "format": "command",
-            "file_location": "Terminal/PowerShell",
-            "filename": "giljo-gemini-setup.md",
-        },
-    }
-
-    if tool_id not in config_generators:
+    if tool_id not in CONFIG_GENERATORS:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Tool '{tool_name}' is not supported. Supported tools: {', '.join(config_generators.keys())}",
+            detail=f"Tool '{tool_name}' is not supported. Supported tools: {', '.join(CONFIG_GENERATORS.keys())}",
         )
 
-    tool_config = config_generators[tool_id]
+    tool_config = CONFIG_GENERATORS[tool_id]
 
-    # Generate configuration command
-    config_content = tool_config["generator"](server_url, api_key)
+    if tool_id == "claude":
+        config_content = get_claude_code_config(server_url, api_key)
+    elif tool_id == "claude_desktop":
+        config_content = get_claude_desktop_config(
+            server_url, api_key, self_signed_https=_is_self_signed_https(request)
+        )
+    elif tool_id == "codex":
+        config_content = get_codex_config(server_url, api_key)
+    elif tool_id == "gemini":
+        config_content = get_gemini_config(server_url, api_key)
+    else:  # pragma: no cover - guarded by CONFIG_GENERATORS membership check above
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Tool '{tool_name}' is registered but has no generator wired",
+        )
 
     # Get instructions for HTTP transport
     instructions = get_http_tool_instructions(tool_id)
@@ -292,9 +385,12 @@ async def download_setup_guide(
     config_response = await generate_ai_tool_config(tool_name, current_user, db)
 
     # Build markdown guide
-    tool_display_name = {"claude": "Claude Code", "codex": "OpenAI CODEX", "gemini": "Google Gemini"}.get(
-        config_response.tool, config_response.tool.title()
-    )
+    tool_display_name = {
+        "claude": "Claude Code CLI",
+        "claude_desktop": "Claude Desktop",
+        "codex": "OpenAI CODEX",
+        "gemini": "Google Gemini",
+    }.get(config_response.tool, config_response.tool.title())
 
     markdown = f"""# GiljoAI MCP Setup Guide for {tool_display_name}
 

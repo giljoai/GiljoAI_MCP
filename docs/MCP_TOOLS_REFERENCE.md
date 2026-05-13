@@ -609,8 +609,9 @@ product to be set.
 | priority | str | No | Priority level. Default: `medium`. |
 | category | str | No | Task category for grouping. |
 | assigned_to | str | No | Agent or user to assign the task to. |
+| task_type | str | No | Taxonomy type abbreviation (e.g. `BE`, `FE`, `INF`). When set, the task is auto-assigned a `series_number` from a counter shared with projects per `(tenant_key, product_id, type_id)`, yielding a `taxonomy_alias` like `BE-5067` in the response. On task->project conversion, both `task_type` and `series_number` are inherited so the alias is preserved end-to-end. |
 
-**Returns:** Created task record.
+**Returns:** Created task record (includes `taxonomy_alias` when `task_type` is set).
 
 ---
 

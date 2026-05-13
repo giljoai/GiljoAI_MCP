@@ -234,14 +234,16 @@ class ProjectService:
                     )
 
                 # Auto-assign series_number when not provided (Handover 0837a)
-                # This prevents uq_project_taxonomy violations for MCP callers
-                # that don't supply taxonomy fields.
+                # BE-5065: counter is shared across tasks AND projects per
+                # (tenant_key, product_id, taxonomy_type_id) so a project of
+                # type BE created after task BE-0017 gets BE-0018.
+                # Lock matching rows in both tables to prevent concurrent
+                # duplicates, then compute max. FOR UPDATE can't be used with
+                # aggregates. Include deleted rows: uq_project_taxonomy doesn't
+                # exclude them.
                 if series_number is None:
-                    # Lock matching rows to prevent concurrent duplicates,
-                    # then compute max. FOR UPDATE can't be used with aggregates.
-                    # Include deleted rows: uq_project_taxonomy doesn't exclude them.
-                    await self._repo.lock_rows_for_series(session, tenant_key, product_id, project_type_id)
-                    series_number = await self._repo.get_next_series_number(
+                    await self._repo.lock_rows_for_series_shared(session, tenant_key, product_id, project_type_id)
+                    series_number = await self._repo.get_next_series_number_shared(
                         session, tenant_key, product_id, project_type_id
                     )
 

@@ -149,6 +149,9 @@ class TaskService:
         tenant_key: str | None = None,
         title: str | None = None,
         description: str | None = None,
+        series_number: int | None = None,
+        assign_shared_series: bool = False,
+        _assigned_series_out: list[int | None] | None = None,
     ) -> str:
         """Quick task capture - logs a task with minimal information.
 
@@ -192,6 +195,9 @@ class TaskService:
                     tenant_key,
                     title=title,
                     description=description,
+                    series_number=series_number,
+                    assign_shared_series=assign_shared_series,
+                    assigned_series_out=_assigned_series_out,
                 )
             async with self._get_session() as session:
                 return await self._log_task_impl(
@@ -204,6 +210,9 @@ class TaskService:
                     tenant_key,
                     title=title,
                     description=description,
+                    series_number=series_number,
+                    assign_shared_series=assign_shared_series,
+                    assigned_series_out=_assigned_series_out,
                 )
         except (BaseGiljoError, ResourceNotFoundError, ValidationError, AuthorizationError):
             # Re-raise our custom exceptions without wrapping
@@ -223,6 +232,9 @@ class TaskService:
         tenant_key: str | None,
         title: str | None = None,
         description: str | None = None,
+        series_number: int | None = None,
+        assign_shared_series: bool = False,
+        assigned_series_out: list[int | None] | None = None,
     ) -> str:
         """Implementation of log_task with explicit session parameter.
 
@@ -279,6 +291,20 @@ class TaskService:
         task_title = title or content
         task_description = description or content
 
+        # BE-5065: assign shared task+project series_number inside this tx so
+        # the FOR UPDATE lock + advisory lock held by lock_rows_for_series_shared
+        # persist until the new task row is committed.
+        if assign_shared_series and task_type_id is not None and series_number is None:
+            from giljo_mcp.repositories.project_repository import ProjectRepository
+
+            project_repo = ProjectRepository()
+            await project_repo.lock_rows_for_series_shared(session, tenant_key, product_id, task_type_id)
+            series_number = await project_repo.get_next_series_number_shared(
+                session, tenant_key, product_id, task_type_id
+            )
+        if assigned_series_out is not None:
+            assigned_series_out[0] = series_number
+
         # Create task
         task = Task(
             tenant_key=tenant_key,
@@ -287,6 +313,7 @@ class TaskService:
             title=task_title,
             description=task_description,
             task_type_id=task_type_id,
+            series_number=series_number,
             priority=priority,
             status="pending",
         )
@@ -860,6 +887,13 @@ class TaskService:
 
         product_id = active_product.id
 
+        # BE-5065: shared task+project series counter. Only typed tasks get a
+        # series_number; untyped tasks (task_type_id IS NULL) stay NULL so the
+        # partial unique index ``uq_task_taxonomy_active`` (WHERE series_number
+        # IS NOT NULL) is not engaged. ``log_task`` performs the lock + assign
+        # + insert inside one session so the FOR UPDATE lock + advisory lock
+        # are held until the row is committed.
+        assigned_series: list[int | None] = [None]
         task_id = await self.log_task(
             content=title,
             title=title,
@@ -868,6 +902,8 @@ class TaskService:
             priority=priority,
             product_id=product_id,
             tenant_key=effective_tenant_key,
+            assign_shared_series=task_type_id is not None,
+            _assigned_series_out=assigned_series,
         )
 
         self._logger.info(
@@ -887,12 +923,21 @@ class TaskService:
             except (RuntimeError, ValueError, OSError) as e:
                 self._logger.warning(f"Failed to broadcast task:created event: {e}")
 
+        # BE-5065: surface taxonomy_alias to the MCP caller. Build it from the
+        # resolved abbreviation + the series_number assigned inside log_task
+        # so we don't need a DB roundtrip (also keeps mock-friendly tests
+        # happy when log_task is stubbed).
+        taxonomy_alias = ""
+        if task_type_id is not None and assigned_series[0] is not None:
+            taxonomy_alias = f"{resolved_type_label}-{assigned_series[0]:04d}"
+
         response: dict[str, Any] = {
             "success": True,
             "task_id": task_id,
             "title": title,
             "priority": priority,
             "task_type": resolved_type_label,
+            "taxonomy_alias": taxonomy_alias,
             "product_id": product_id,
             "message": f"Task '{title}' created successfully",
         }

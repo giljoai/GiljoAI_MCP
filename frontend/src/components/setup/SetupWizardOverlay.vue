@@ -288,7 +288,7 @@ const LEARNING_SECTIONS = [
     content: [
       'GiljoAI MCP is a passive context server. Your AI coding tool does all reasoning and coding using your own subscription. GiljoAI stores product knowledge, generates focused prompts, and serves coordination data so your agents stay aligned.',
       'Your AI tool connects to GiljoAI as an MCP server over HTTP. Each tool gets its own API key and connection.',
-      'Use Claude Code, Codex CLI, Gemini CLI, or any MCP-compatible tool simultaneously. If it can connect to an MCP server, GiljoAI accepts it.',
+      'Use Claude Code CLI, Codex CLI, Gemini CLI, or any MCP-compatible tool simultaneously. If it can connect to an MCP server, GiljoAI accepts it.',
     ],
   },
   {
@@ -316,7 +316,7 @@ const LEARNING_SECTIONS = [
     icon: 'mdi-slash-forward-box',
     title: 'Skills and Agent Templates',
     content: [
-      'Three skills are installed on your machine during setup: /gil_add, /gil_get, and /gil_get_agents (Claude Code, Gemini CLI) or $gil-add, $gil-get, and $gil-get-agents (Codex CLI).',
+      'Three skills are installed on your machine during setup: /gil_add, /gil_get, and /gil_get_agents (Claude Code CLI, Gemini CLI) or $gil-add, $gil-get, and $gil-get-agents (Codex CLI).',
       'Use /gil_add to capture tasks or create projects mid-session without breaking flow. Use /gil_get to look up existing projects and tasks (read-only). Use /gil_get_agents to fetch agent templates into your workspace for subagent spawning.',
       'The Agent Template Manager lets you browse, customize, and create agent profiles with roles, expertise, and chain strategies. Templates export automatically for the right platform.',
     ],
@@ -344,7 +344,7 @@ const LEARNING_SECTIONS = [
 ]
 
 const TOOLS = [
-  { id: 'claude_code', name: 'Claude Code', provider: 'by Anthropic', logo: '/claude_pix.svg' },
+  { id: 'claude_code', name: 'Claude Code CLI', provider: 'by Anthropic', logo: '/claude_pix.svg' },
   { id: 'codex_cli', name: 'Codex CLI', provider: 'by OpenAI', logo: '/icons/codex_mark_white.svg' },
   { id: 'gemini_cli', name: 'Gemini CLI', provider: 'by Google', logo: '/gemini-icon.svg' },
 ]

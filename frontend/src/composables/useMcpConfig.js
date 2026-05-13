@@ -7,13 +7,16 @@
  * Tool ID conventions:
  *   - Setup wizard uses: claude_code, codex_cli, gemini_cli
  *   - Legacy modal uses: claude, codex, gemini, openclaw
+ *   - Claude Desktop uses claude_desktop in both (JSON output, distinct from Claude Code CLI).
  *   Both are supported via normalizeToolId().
  */
 
 /**
  * Normalize tool IDs between wizard (claude_code) and legacy (claude) formats.
+ * `claude_desktop` is preserved as-is (it has no legacy alias and produces JSON,
+ * not a CLI command).
  * @param {string} toolId
- * @returns {string} canonical legacy ID (claude, codex, gemini, openclaw)
+ * @returns {string} canonical legacy ID (claude, codex, gemini, openclaw, claude_desktop)
  */
 export function normalizeToolId(toolId) {
   const map = {
@@ -124,10 +127,55 @@ export function isHttps() {
 // ─── Config generation per tool ───────────────────────────────────
 
 /**
- * Generate Claude Code MCP add command.
+ * Generate Claude Code CLI MCP add command.
  */
 export function generateClaudeConfig(serverUrl, apiKey) {
   return `claude mcp add --scope user --transport http giljo_mcp ${serverUrl}/mcp --header "Authorization: Bearer ${apiKey}"`
+}
+
+/**
+ * Generate Claude Desktop MCP config JSON (mcp-remote bridge over HTTP transport).
+ *
+ * Source of truth: this output is what the user pastes into
+ * claude_desktop_config.json. It MUST match the backend generator in
+ * api/endpoints/ai_tools.py → get_claude_desktop_config byte-for-byte for the
+ * same inputs (pretty-printed, 2-space indent, key order preserved).
+ *
+ * Claude Desktop can't speak HTTP MCP natively — it spawns `npx mcp-remote`
+ * which forwards Authorization. Bearer token is read from the AUTH_HEADER env
+ * var so the literal key never appears in argv.
+ *
+ * @param {string} serverUrl - GiljoAI server URL (no trailing slash).
+ * @param {string} apiKey - User's API key (or "<YOUR_API_KEY>" placeholder).
+ * @param {object} [options]
+ * @param {boolean} [options.selfSigned=false] - When true, inject
+ *   NODE_TLS_REJECT_UNAUTHORIZED="0" so the bridge accepts a self-signed
+ *   (mkcert/LAN) cert. Only set when isBackendHttps(backendConfig) is true.
+ *   Never set for plain HTTP or proxied HTTPS (publicly-signed cert).
+ * @returns {string} Pretty-printed JSON string ready to drop into
+ *   claude_desktop_config.json.
+ */
+export function generateClaudeDesktopConfig(serverUrl, apiKey, options = {}) {
+  const selfSigned = options.selfSigned === true
+  const env = { AUTH_HEADER: `Bearer ${apiKey}` }
+  if (selfSigned) {
+    env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
+  }
+  const config = {
+    mcpServers: {
+      giljo_mcp: {
+        command: 'npx',
+        args: [
+          'mcp-remote',
+          `${serverUrl}/mcp`,
+          '--header',
+          'Authorization:${AUTH_HEADER}',
+        ],
+        env,
+      },
+    },
+  }
+  return JSON.stringify(config, null, 2)
 }
 
 /**
@@ -165,13 +213,17 @@ export function generateOpenclawConfig(serverUrl, apiKey) {
  * @param {string} toolId
  * @param {string} serverUrl
  * @param {string} apiKey
+ * @param {object} [options] - Tool-specific options. For claude_desktop:
+ *   `{ selfSigned: boolean }` to enable NODE_TLS_REJECT_UNAUTHORIZED.
  * @returns {string}
  */
-export function generateConfigForTool(toolId, serverUrl, apiKey) {
+export function generateConfigForTool(toolId, serverUrl, apiKey, options = {}) {
   const id = normalizeToolId(toolId)
   switch (id) {
     case 'claude':
       return generateClaudeConfig(serverUrl, apiKey)
+    case 'claude_desktop':
+      return generateClaudeDesktopConfig(serverUrl, apiKey, options)
     case 'codex':
       return generateCodexConfig(serverUrl)
     case 'gemini':
@@ -222,7 +274,8 @@ export function getCertTrustCommand(platform) {
 export function makeKeyName(toolId) {
   const id = normalizeToolId(toolId)
   const map = {
-    claude: 'Claude Code',
+    claude: 'Claude Code CLI',
+    claude_desktop: 'Claude Desktop',
     codex: 'Codex CLI',
     gemini: 'Gemini',
     openclaw: 'OpenClaw',
