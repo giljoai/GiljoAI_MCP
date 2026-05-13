@@ -54,12 +54,14 @@ describe('DecisionModal.vue', () => {
     expect(wrapper.text()).toContain('Approve the Protected Zone edit?')
   })
 
-  it('renders a quiet loading state (spinner only) when no approval is in the store yet', () => {
+  it('renders nothing (no spinner, no text) when no approval is in the store yet', () => {
     const wrapper = mountModal()
+    // Deliberate: do NOT show a spinner or loading text. The post-decision
+    // optimistic store removal sets approval=null, and we don't want a
+    // flash of "loading..." between option click and dialog close.
     expect(wrapper.find('[data-testid="decision-modal-card"]').exists()).toBe(false)
-    // No verbose copy that invites the user to wait around -- just a spinner.
-    expect(wrapper.find('.decision-modal-loading').exists()).toBe(true)
     expect(wrapper.text()).not.toContain('Loading')
+    expect(wrapper.find('.decision-modal-loading').exists()).toBe(false)
   })
 
   it('emits "close" when the Cancel button is clicked', async () => {

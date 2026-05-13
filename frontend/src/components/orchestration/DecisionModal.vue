@@ -7,6 +7,7 @@
     role="dialog"
     aria-labelledby="decision-modal-title"
     data-testid="decision-modal"
+    @update:model-value="(v) => { if (!v) handleCancel() }"
     @keydown.esc="handleCancel"
   >
     <v-card v-draggable class="smooth-border decision-modal-card">
@@ -28,16 +29,19 @@
       <v-divider />
 
       <div class="decision-modal-body">
+        <!-- Render the ApprovalCard ONLY when the approval row is present.
+             We deliberately do NOT show a spinner in the null branch:
+             - After the user decides, the store removes the approval row
+               optimistically. If we showed a spinner here, it would flash
+               between "click option" and "dialog finishes its close
+               transition", making the user think the orchestrator is
+               still doing something. The user should leave this dialog. -->
         <ApprovalCard
           v-if="approval"
           :approval="approval"
           data-testid="decision-modal-card"
           @decided="handleDecided"
         />
-
-        <div v-else class="decision-modal-loading">
-          <v-progress-circular indeterminate size="28" width="3" color="primary" />
-        </div>
       </div>
 
       <div class="dlg-footer">
@@ -108,8 +112,4 @@ function handleDecided(payload) {
   gap: 12px;
 }
 
-.decision-modal-loading {
-  padding: 16px 0;
-  text-align: center;
-}
 </style>
