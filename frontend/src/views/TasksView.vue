@@ -200,14 +200,16 @@
                item.task_type_color (REST) or item.task_type.color (MCP shape)
                so the type+serial are visually paired). -->
           <template v-slot:item.taxonomy_alias="{ item }">
-            <span
-              v-if="item.taxonomy_alias"
-              class="taxonomy-badge"
-              :style="taxonomyBadgeStyle(item.task_type_color || item.task_type?.color || DEFAULT_PROJECT_TYPE_COLOR)"
-            >
-              {{ item.taxonomy_alias }}
-            </span>
-            <span v-else class="date-cell--empty">—</span>
+            <div class="d-flex justify-center">
+              <span
+                v-if="item.taxonomy_alias"
+                class="taxonomy-badge"
+                :style="taxonomyBadgeStyle(item.task_type_color || item.task_type?.color || DEFAULT_PROJECT_TYPE_COLOR)"
+              >
+                {{ item.taxonomy_alias }}
+              </span>
+              <span v-else class="date-cell--empty">—</span>
+            </div>
           </template>
 
           <!-- Due Date Column - Inline Calendar Picker -->
@@ -547,16 +549,18 @@ const errorMessage = ref('')
 // Table headers (FE-5046: Serial column folds in the old Type column —
 // taxonomy alias + type color tint render together as a single badge
 // before the Title column).
-// Widths sized to the widest realistic content (e.g. "INFRA9999" / "S5MW"
-// for Serial), not to the column heading. align:'center' keeps header text
-// centred over centred-cell content (badges, pills, action icons).
+// Widths sized to the widest realistic content (e.g. "INFRA9999" for the
+// Serial badge), not to the column heading. align:'center' keeps header
+// text and cell badges/icons aligned over a common centre line. Header
+// + cell text-align is additionally enforced via :nth-child rules in
+// <style> below because Vuetify's `align` prop doesn't always reach th.
 const headers = [
   { title: 'Status', key: 'status', width: '110', align: 'center' },
-  { title: 'Priority', key: 'priority', width: '70', align: 'center', cellProps: { class: 'col-priority' } },
-  { title: 'Serial', key: 'taxonomy_alias', width: '105', align: 'center', cellProps: { class: 'col-serial' } },
-  { title: 'Task', key: 'title', maxWidth: '340' },
+  { title: 'Priority', key: 'priority', width: '80', align: 'center' },
+  { title: 'Serial', key: 'taxonomy_alias', width: '105', align: 'center' },
+  { title: 'Task', key: 'title', maxWidth: '340', align: 'start' },
   { title: 'Created', key: 'created_at', width: '150', align: 'start' },
-  { title: 'Due Date', key: 'due_date', width: '110', align: 'start' },
+  { title: 'Due Date', key: 'due_date', width: '120', align: 'start' },
   { title: 'Convert', key: 'convert', width: '60', align: 'center', sortable: false },
   { title: 'Actions', key: 'actions', sortable: false, width: '70', align: 'center' },
 ]
@@ -977,17 +981,50 @@ onMounted(async () => {
   white-space: nowrap;
 }
 
-/* Tighten cell padding on the badge columns so narrow widths actually fit
-   the badge instead of being eaten by Vuetify's default 16px L/R td padding. */
-:deep(.col-priority),
-:deep(.col-serial) {
-  padding-left: 4px !important;
-  padding-right: 4px !important;
+/* Column alignment + width discipline.
+   Vuetify's `align` prop sets text-align on td but its reach to th is
+   inconsistent across versions, so we pin both via :nth-child here.
+   Column order: 1 Status | 2 Priority | 3 Serial | 4 Task | 5 Created |
+   6 Due Date | 7 Convert | 8 Actions. */
+
+/* Headers: never wrap (kills the "Due\nDate" stack). */
+:deep(.v-data-table__thead th) {
+  white-space: nowrap !important;
 }
 
-/* Center the priority pill's hit-area under the centered header. */
-:deep(.col-priority) .inline-select .v-field__input {
-  justify-content: center;
+/* Centered columns: Status (1), Priority (2), Serial (3), Convert (7), Actions (8). */
+:deep(.v-data-table__thead th:nth-child(1)),
+:deep(.v-data-table__thead th:nth-child(2)),
+:deep(.v-data-table__thead th:nth-child(3)),
+:deep(.v-data-table__thead th:nth-child(7)),
+:deep(.v-data-table__thead th:nth-child(8)),
+:deep(.v-data-table__tr td:nth-child(1)),
+:deep(.v-data-table__tr td:nth-child(2)),
+:deep(.v-data-table__tr td:nth-child(3)),
+:deep(.v-data-table__tr td:nth-child(7)),
+:deep(.v-data-table__tr td:nth-child(8)) {
+  text-align: center !important;
+}
+
+/* Left-aligned columns: Task (4), Created (5), Due Date (6). */
+:deep(.v-data-table__thead th:nth-child(4)),
+:deep(.v-data-table__thead th:nth-child(5)),
+:deep(.v-data-table__thead th:nth-child(6)),
+:deep(.v-data-table__tr td:nth-child(4)),
+:deep(.v-data-table__tr td:nth-child(5)),
+:deep(.v-data-table__tr td:nth-child(6)) {
+  text-align: left !important;
+}
+
+/* Tighten cell padding on the badge columns (Priority, Serial) so the
+   narrow widths actually fit the badge instead of being eaten by
+   Vuetify's default 16px L/R td padding. */
+:deep(.v-data-table__thead th:nth-child(2)),
+:deep(.v-data-table__thead th:nth-child(3)),
+:deep(.v-data-table__tr td:nth-child(2)),
+:deep(.v-data-table__tr td:nth-child(3)) {
+  padding-left: 4px !important;
+  padding-right: 4px !important;
 }
 
 /* Match Status badge font to Priority pill size (cosmetic parity). */
