@@ -550,17 +550,18 @@ const errorMessage = ref('')
 // taxonomy alias + type color tint render together as a single badge
 // before the Title column).
 // Widths sized to the widest realistic content (e.g. "INFRA9999" for the
-// Serial badge), not to the column heading. align:'center' keeps header
-// text and cell badges/icons aligned over a common centre line. Header
-// + cell text-align is additionally enforced via :nth-child rules in
-// <style> below because Vuetify's `align` prop doesn't always reach th.
+// Serial badge). Due Date is hidden temporarily — inline editor still
+// lives in template + state; restore by re-adding the header row.
+// align:'center' keeps header text and cell badges/icons aligned over a
+// common centre line. Header + cell text-align is additionally enforced
+// via :nth-child rules in <style> below because Vuetify's `align` prop
+// doesn't always reach th.
 const headers = [
   { title: 'Status', key: 'status', width: '110', align: 'center' },
   { title: 'Priority', key: 'priority', width: '80', align: 'center' },
   { title: 'Serial', key: 'taxonomy_alias', width: '105', align: 'center' },
   { title: 'Task', key: 'title', maxWidth: '340', align: 'start' },
-  { title: 'Created', key: 'created_at', width: '150', align: 'start' },
-  { title: 'Due Date', key: 'due_date', width: '120', align: 'start' },
+  { title: 'Created', key: 'created_at', width: '150', align: 'center' },
   { title: 'Convert', key: 'convert', width: '60', align: 'center', sortable: false },
   { title: 'Actions', key: 'actions', sortable: false, width: '70', align: 'center' },
 ]
@@ -984,47 +985,47 @@ onMounted(async () => {
 /* Column alignment + width discipline.
    Vuetify's `align` prop sets text-align on td but its reach to th is
    inconsistent across versions, so we pin both via :nth-child here.
-   Column order: 1 Status | 2 Priority | 3 Serial | 4 Task | 5 Created |
-   6 Due Date | 7 Convert | 8 Actions. */
+   Column order (Due Date hidden): 1 Status | 2 Priority | 3 Serial |
+   4 Task | 5 Created | 6 Convert | 7 Actions. */
 
-/* Headers: never wrap (kills the "Due\nDate" stack). */
+/* Headers: never wrap. */
 :deep(.v-data-table__thead th) {
   white-space: nowrap !important;
 }
 
-/* Centered columns: Status (1), Priority (2), Serial (3), Convert (7), Actions (8). */
-:deep(.v-data-table__thead th:nth-child(1)),
-:deep(.v-data-table__thead th:nth-child(2)),
-:deep(.v-data-table__thead th:nth-child(3)),
-:deep(.v-data-table__thead th:nth-child(7)),
-:deep(.v-data-table__thead th:nth-child(8)),
-:deep(.v-data-table__tr td:nth-child(1)),
-:deep(.v-data-table__tr td:nth-child(2)),
-:deep(.v-data-table__tr td:nth-child(3)),
-:deep(.v-data-table__tr td:nth-child(7)),
-:deep(.v-data-table__tr td:nth-child(8)) {
+/* Centered columns: everything except Task (4). */
+:deep(.v-data-table__thead th:not(:nth-child(4))),
+:deep(.v-data-table__tr td:not(:nth-child(4))) {
   text-align: center !important;
 }
 
-/* Left-aligned columns: Task (4), Created (5), Due Date (6). */
+/* Center the title+sort-icon group inside the header cell (Vuetify's
+   default header-content has justify-content: normal, which left-anchors
+   the text even when text-align is center). */
+:deep(.v-data-table__thead th:not(:nth-child(4)) .v-data-table-header__content) {
+  justify-content: center !important;
+}
+
+/* Left-aligned: Task (4). */
 :deep(.v-data-table__thead th:nth-child(4)),
-:deep(.v-data-table__thead th:nth-child(5)),
-:deep(.v-data-table__thead th:nth-child(6)),
-:deep(.v-data-table__tr td:nth-child(4)),
-:deep(.v-data-table__tr td:nth-child(5)),
-:deep(.v-data-table__tr td:nth-child(6)) {
+:deep(.v-data-table__tr td:nth-child(4)) {
   text-align: left !important;
 }
 
-/* Tighten cell padding on the badge columns (Priority, Serial) so the
-   narrow widths actually fit the badge instead of being eaten by
-   Vuetify's default 16px L/R td padding. */
+/* Tighten cell padding on the badge columns (Priority, Serial). */
 :deep(.v-data-table__thead th:nth-child(2)),
 :deep(.v-data-table__thead th:nth-child(3)),
 :deep(.v-data-table__tr td:nth-child(2)),
 :deep(.v-data-table__tr td:nth-child(3)) {
   padding-left: 4px !important;
   padding-right: 4px !important;
+}
+
+/* Force the badge/pill inside a v-select (Status, Priority) to sit at
+   the centre of the v-field input area. Without this the pill is only
+   ~30px wide inside a ~90px input and sits at the start. */
+.inline-select :deep(.v-field__input) {
+  justify-content: center;
 }
 
 /* Match Status badge font to Priority pill size (cosmetic parity). */
