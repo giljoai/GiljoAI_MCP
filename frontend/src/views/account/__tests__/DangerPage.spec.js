@@ -1,9 +1,11 @@
 /**
  * Tests for the Download My Data section on the account Danger Zone page.
  *
- * BE-5062 — CE-only GDPR data portability. The section must:
- *   - render when running in CE (edition === 'community')
- *   - be hidden under saas / demo editions
+ * BE-5062 — GDPR data portability. The section must:
+ *   - render in CE (edition === 'community')
+ *   - render in SaaS when the current user is an org admin
+ *   - be hidden in SaaS when the current user is NOT an org admin
+ *   - be hidden under demo regardless of role
  *   - call api.account.exportMyData() when the user clicks Generate Export
  *   - reflect WebSocket `tenant:export_progress` events in the UI
  *   - surface the download link when the export completes
@@ -44,13 +46,23 @@ vi.mock('@/composables/useToast', () => ({
   useToast: () => ({ showToast: showToastMock }),
 }))
 
-// configService.getEdition() controls CE-only visibility (matches existing
+// configService.getEdition() controls edition-aware visibility (matches existing
 // pattern in this file for the SaaS-only delete card).
 const editionRef = { value: 'community' }
 vi.mock('@/services/configService', () => ({
   default: {
     getEdition: () => editionRef.value,
   },
+}))
+
+// useUserStore exposes isAdmin; BE-5062 SaaS gate reads it for the export card.
+const userIsAdminRef = { value: false }
+vi.mock('@/stores/user', () => ({
+  useUserStore: () => ({
+    get isAdmin() {
+      return userIsAdminRef.value
+    },
+  }),
 }))
 
 // ---------- Helper ----------
@@ -87,6 +99,7 @@ describe('DangerPage — Download My Data section (BE-5062)', () => {
     exportMyDataMock.mockReset()
     showToastMock.mockClear()
     editionRef.value = 'community'
+    userIsAdminRef.value = false
   })
 
   afterEach(() => {
@@ -101,15 +114,26 @@ describe('DangerPage — Download My Data section (BE-5062)', () => {
     expect(wrapper.find('[data-test="generate-export-btn"]').exists()).toBe(true)
   })
 
-  it('hides the section when edition is saas', async () => {
+  it('renders the section in SaaS when the user is an org admin', async () => {
     editionRef.value = 'saas'
+    userIsAdminRef.value = true
+    const wrapper = await mountPage()
+    await flushPromises()
+    expect(wrapper.find('[data-test="download-my-data-section"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test="generate-export-btn"]').exists()).toBe(true)
+  })
+
+  it('hides the section in SaaS when the user is NOT an org admin', async () => {
+    editionRef.value = 'saas'
+    userIsAdminRef.value = false
     const wrapper = await mountPage()
     await flushPromises()
     expect(wrapper.find('[data-test="download-my-data-section"]').exists()).toBe(false)
   })
 
-  it('hides the section when edition is demo', async () => {
+  it('hides the section in demo regardless of role', async () => {
     editionRef.value = 'demo'
+    userIsAdminRef.value = true // even an admin must not see it in demo
     const wrapper = await mountPage()
     await flushPromises()
     expect(wrapper.find('[data-test="download-my-data-section"]').exists()).toBe(false)

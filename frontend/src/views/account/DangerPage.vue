@@ -6,12 +6,13 @@
     </p>
 
     <!--
-      Download My Data (BE-5062 — GDPR data portability, CE-only).
-      Hidden in saas/demo where this feature isn't offered.
-      Server gates the endpoint itself; this v-if is just UX hygiene.
+      Download My Data (BE-5062 — GDPR data portability).
+      Visible in CE (single-user, no role gate) and in SaaS for org admins.
+      Hidden in Demo (writes/exports disabled in hosted demo).
+      Server gates the endpoint itself; this v-if is UX hygiene.
     -->
     <div
-      v-if="isCe"
+      v-if="canExportData"
       class="danger-card danger-card--enabled smooth-border"
       data-test="download-my-data-section"
       :style="{ '--card-accent': 'var(--brand-yellow, #ffc300)' }"
@@ -194,6 +195,7 @@ import configService from '@/services/configService'
 import { useToast } from '@/composables/useToast'
 import api from '@/services/api'
 import { useWebSocketV2 } from '@/composables/useWebSocket'
+import { useUserStore } from '@/stores/user'
 
 const showDeleteDialog = ref(false)
 const DeleteAccountDialog = shallowRef(null)
@@ -206,6 +208,17 @@ const { showToast } = useToast()
 // rendered well after initial navigation (ADR-002 § "Rule 1").
 const isCe = computed(() => configService.getEdition() === 'community')
 const isSaas = computed(() => configService.getEdition() !== 'community')
+const isDemo = computed(() => configService.getEdition() === 'demo')
+
+// BE-5062: Download My Data is available in CE (single-user, no role gate)
+// and in SaaS for org admins. Demo is always hidden because hosted-demo
+// blocks writes/exports. Tenant isolation is enforced server-side regardless.
+const userStore = useUserStore()
+const canExportData = computed(() => {
+  if (isDemo.value) return false
+  if (isCe.value) return true
+  return isSaas.value && userStore.isAdmin
+})
 
 // ---------------------------------------------------------------------------
 // BE-5062 — Download My Data

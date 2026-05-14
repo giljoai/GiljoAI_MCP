@@ -437,13 +437,38 @@ async def test_endpoint_403_in_demo(db_manager, db_session: AsyncSession, export
     assert "not available" in detail.lower()
 
 
-async def test_endpoint_403_in_saas(db_manager, db_session: AsyncSession, export_user: User) -> None:
+async def test_endpoint_200_in_saas_for_admin(db_manager, db_session: AsyncSession, export_user: User) -> None:
+    """SaaS admins CAN export their org's data."""
+    export_user.role = "admin"
+    db_session.add(export_user)
+    await db_session.commit()
+
+    app = _build_app(db_manager, db_session, export_user)
+    transport = ASGITransport(app=app)
+    with patch("api.app_state.GILJO_MODE", "saas"):
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.post("/api/v1/account/export")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert "download_url" in body
+    assert "model_counts" in body
+
+
+async def test_endpoint_403_in_saas_for_non_admin(db_manager, db_session: AsyncSession, export_user: User) -> None:
+    """SaaS non-admins (member/viewer/developer) are 403'd."""
+    export_user.role = "developer"  # default seed role
+    db_session.add(export_user)
+    await db_session.commit()
+
     app = _build_app(db_manager, db_session, export_user)
     transport = ASGITransport(app=app)
     with patch("api.app_state.GILJO_MODE", "saas"):
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             resp = await client.post("/api/v1/account/export")
     assert resp.status_code == 403
+    body = resp.json()
+    detail = body.get("detail") or body.get("message") or ""
+    assert "admin" in detail.lower()
 
 
 async def test_endpoint_requires_auth(db_manager, db_session: AsyncSession) -> None:

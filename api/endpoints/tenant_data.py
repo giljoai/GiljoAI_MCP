@@ -5,8 +5,17 @@
 
 """Tenant data portability endpoints (BE-5062, GDPR "Export My Data").
 
-CE-only. Gated to 403 when GILJO_MODE in ('saas', 'demo') — the hosted editions
-sit behind a separate hosted-data flow that lives in saas/ and demo/, not here.
+Available in CE and SaaS; blocked in Demo (writes/exports are disabled in the
+hosted demo edition by policy).
+
+Gate:
+    GILJO_MODE == 'demo'                                  -> 403
+    GILJO_MODE == 'saas' AND current_user.role != 'admin' -> 403
+    otherwise (CE single-user, or SaaS org admin)         -> 200
+
+Tenant isolation is enforced one layer deeper, in TenantExportService — every
+SQL query filters WHERE tenant_key == current_user.tenant_key, so a SaaS org
+admin can only export rows belonging to THEIR org.
 
 POST /api/v1/account/export
     Returns {"download_url", "expires_at", "model_counts"} on success.
@@ -50,10 +59,21 @@ async def export_tenant_data(
     # ``api.app_state.GILJO_MODE`` without re-importing this module.
     from api.app_state import GILJO_MODE
 
-    if GILJO_MODE in ("saas", "demo"):
+    if GILJO_MODE == "demo":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Data export is not available in this edition.",
+        )
+
+    # SaaS requires admin role to export org-level data. CE keeps the original
+    # "any authenticated user" rule because single-user CE installs treat the
+    # operator as the de-facto admin (gating to role==admin there adds friction
+    # with no security gain). Tenant isolation in TenantExportService stops a
+    # SaaS admin from ever reaching another org's data.
+    if GILJO_MODE == "saas" and current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Data export requires an organization admin role.",
         )
 
     tenant_key = current_user.tenant_key

@@ -165,7 +165,8 @@ describe('AccountShell.vue', () => {
     await flushPromises()
 
     expect(wrapper.find('[data-test="danger-page"]').exists()).toBe(true)
-    // BE-5062: Download My Data section is CE-only — hidden here under SaaS.
+    // BE-5062: Download My Data is admin-gated in SaaS. This shell smoke does
+    // not seed an admin user, so the section must be absent.
     expect(wrapper.find('[data-test="download-my-data-section"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="delete-account-card"]').exists()).toBe(true)
     // Delete card is now active.
