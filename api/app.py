@@ -99,6 +99,7 @@ try:
         tasks,
         taxonomy_types,
         templates,
+        tenant_data,
         user_settings,
         users,
         version,
@@ -593,6 +594,8 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(user_settings.router, prefix="/api/v1/user", tags=["user-settings"])
     # Handover 0506: System settings endpoints (general, network, database, product-info, cookie-domain)
     app.include_router(settings.router, prefix="/api/v1/settings", tags=["settings"])
+    # BE-5062: CE-only tenant data export (gated to 403 in SaaS/demo)
+    app.include_router(tenant_data.router, prefix="/api/v1/account", tags=["tenant-data"])
     app.include_router(database_setup.router, prefix="/api/setup/database", tags=["database-setup"])
     app.include_router(setup_security.router, prefix="/api/setup", tags=["setup-security"])
     app.include_router(serena.router, prefix="/api/serena", tags=["serena"])

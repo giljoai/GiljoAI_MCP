@@ -273,7 +273,11 @@ class DownloadToken(Base):
     tenant_key = Column(String(36), nullable=False, index=True, comment="Tenant key for multi-tenant isolation")
 
     # Download metadata
-    download_type = Column(String(50), nullable=False, comment="Type of download: 'slash_commands', 'agent_templates'")
+    download_type = Column(
+        String(50),
+        nullable=False,
+        comment="Type of download: 'slash_commands', 'agent_templates', 'tenant_export'",
+    )
     filename = Column(String(255), nullable=True, comment="Original filename for the download")
 
     # Staging lifecycle and metrics (Handover 0102)
@@ -297,7 +301,10 @@ class DownloadToken(Base):
         Index("idx_download_token_tenant", "tenant_key"),
         Index("idx_download_token_expires", "expires_at"),
         Index("idx_download_token_tenant_type", "tenant_key", "download_type"),
-        CheckConstraint("download_type IN ('slash_commands', 'agent_templates')", name="ck_download_token_type"),
+        CheckConstraint(
+            "download_type IN ('slash_commands', 'agent_templates', 'tenant_export')",
+            name="ck_download_token_type",
+        ),
         CheckConstraint("staging_status IN ('pending', 'ready', 'failed')", name="ck_download_token_staging_status"),
     )
 

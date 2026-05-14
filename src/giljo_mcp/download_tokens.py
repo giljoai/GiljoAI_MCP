@@ -88,8 +88,8 @@ class TokenManager:
             ValueError: If download_type is invalid
             HTTPException: If database operation fails
         """
-        # Validate download_type
-        if download_type not in ("slash_commands", "agent_templates"):
+        # Validate download_type (must match DB CHECK constraint in migration ce_0025)
+        if download_type not in ("slash_commands", "agent_templates", "tenant_export"):
             raise ValueError(f"Invalid download_type: {download_type}")
 
         # If no database session, just return a UUID (for testing)

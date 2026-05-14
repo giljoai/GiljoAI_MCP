@@ -165,11 +165,9 @@ describe('AccountShell.vue', () => {
     await flushPromises()
 
     expect(wrapper.find('[data-test="danger-page"]').exists()).toBe(true)
-    expect(wrapper.find('[data-test="export-data-card"]').exists()).toBe(true)
+    // BE-5062: Download My Data section is CE-only — hidden here under SaaS.
+    expect(wrapper.find('[data-test="download-my-data-section"]').exists()).toBe(false)
     expect(wrapper.find('[data-test="delete-account-card"]').exists()).toBe(true)
-
-    // Export card still wears its "Coming soon" chip.
-    expect(wrapper.text()).toContain('Coming soon')
     // Delete card is now active.
     expect(wrapper.find('[data-test="open-delete-account-dialog"]').exists()).toBe(true)
   })

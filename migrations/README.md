@@ -1,45 +1,79 @@
 # Migrations
 
-## Baseline Migration Approach (Handover 0601)
+This directory holds the Alembic migration chains for the GiljoAI MCP database.
 
-This project uses a unified baseline migration for fresh installations.
+## Layout
 
-### Active Migrations
+- `versions/` — **CE migration chain.** All CE schema lives here. `startup.py` runs `alembic upgrade head` against this chain on every boot.
+- `saas_versions/` — **SaaS migration chain.** Only loaded when `GILJO_MODE=saas`. Reserved for SaaS-only tables (`tenants`, `password_reset_tokens`, etc.).
+- `archive/` — pre-baseline history, kept for reference only. Not executed.
+- `manual/` — one-off manual SQL scripts (data fixes, repair operations). Not part of any chain.
+- `revision_registry.json` — tracks revision IDs to avoid collisions.
 
-- `versions/caeddfdbb2a0_unified_baseline_all_tables.py` - Creates all 32 tables from pristine SQLAlchemy models
+## Routing decision tree (run this first)
 
-### Archived Migrations
+Before adding ANY migration, decide which chain it belongs in:
 
-Pre-baseline migrations are preserved in `archive/pre_baseline/` for historical reference.
-These are NOT used by fresh installations.
+```
+Is the table SaaS-only (defined under saas/ models)?
+├── YES → migrations/saas_versions/  (will only run with GILJO_MODE=saas)
+└── NO (table is a CE model, even if SaaS extends it)
+    │
+    Is this a column / index / constraint change on an existing CE table?
+    ├── YES → migrations/versions/  (incremental migration, MUST be idempotent)
+    └── NO — it's a brand-new table for an unreleased feature
+        │
+        Has the feature shipped to ANY environment (dogfood, demo prod, public)?
+        ├── YES → migrations/versions/  (incremental — existing DBs need ALTER)
+        └── NO  → modify the baseline (caeddfdbb2a0_unified_baseline_all_tables.py)
+```
 
-**Archived Files:**
-- `0670e17a56ff_remove_deprecated_vision_summary_fields.py` - Legacy migration (superseded by baseline)
-- `0103_BEFORE_AFTER_COMPARISON.md` - Historical documentation
-- `0103_DEPLOYMENT_CHECKLIST.md` - Historical documentation
-- `0103_SECURITY_FIX_SUMMARY.md` - Historical documentation
+**Why the split:**
+- **Baseline** (`caeddfdbb2a0_unified_baseline_all_tables.py`) creates all tables in one shot for fresh installs. Fast (<1 second), zero historical baggage. Only safe to modify for tables/columns that don't yet exist in ANY running database.
+- **Incremental migrations** in `versions/` are how existing databases (dogfood at 10.1.0.101, demo prod, public CE installs) get schema updates. Once a feature ships, the baseline can no longer be the only source of truth — running installs need an ALTER path.
 
-### Adding Schema Changes
+## Hard rules
 
-When modifying the database schema:
+1. **CE columns → CE chain.** A column added to any model under `src/giljo_mcp/models/` (outside `saas/`) MUST have its migration in `versions/`, never `saas_versions/`. Mis-routing crashes CE deploys with "column does not exist" because SQLAlchemy SELECTs all model columns at query time and `startup.py` only runs the CE chain.
 
-1. Update SQLAlchemy models in `src/giljo_mcp/models/`
-2. Update the baseline migration (`caeddfdbb2a0_unified_baseline_all_tables.py`) to match
-3. Run `python install.py` to apply changes to your local database
+2. **Incremental migrations must be idempotent.** Wrap with existence checks so a re-run doesn't crash:
+   ```python
+   from sqlalchemy import inspect
 
-**Do NOT create new Alembic migrations** - modify the baseline instead.
+   def upgrade():
+       bind = op.get_bind()
+       inspector = inspect(bind)
+       columns = [c["name"] for c in inspector.get_columns("my_table")]
+       if "my_new_column" not in columns:
+           op.add_column("my_table", sa.Column("my_new_column", sa.String(), nullable=True))
+   ```
+   Same pattern for tables, indexes, constraints. The CE installer reruns migrations on every boot — non-idempotent migrations break users.
 
-### Why Baseline Approach?
+3. **Tenant-key columns are mandatory** on every new domain table. CE uses `tenant_key` (single-tenant), SaaS uses `tenant_key` (multi-tenant org-scoped). Never add a domain table without it.
 
-The baseline migration approach provides:
-- **Fresh installs in <1 second** (single migration vs. multiple sequential ones)
-- **Clean slate** - all tables created from current SQLAlchemy model state
-- **Simplified maintenance** - one file to keep in sync with models
-- **Zero historical baggage** - no legacy migration chain to maintain
+4. **alembic.ini is in the protected zone.** You should rarely need to edit it — adding a migration file does NOT require alembic.ini changes. If you genuinely need to (e.g., changing `script_location` or adding a branch label), stop and ask for one-time approval per the Protected Zones rule in CLAUDE.md.
 
-### Migration History
+5. **Writes during a migration bypass the service layer by design.** The "all product writes go through ProductService" rule (CLAUDE.md, post-0962) applies to runtime application code, not schema migrations. Migrations operate on the schema and can use raw `op.execute()` / bulk update statements for data backfills. This is intentional and not a violation.
 
-Old incremental migrations (pre-0601) are archived in `archive/pre_baseline/` and `archive/versions_pre_reset/`.
-These directories preserve the historical migration chain but are not executed during installation.
+6. **No commented-out code in migrations.** If a migration is superseded, move it to `archive/` rather than commenting it out.
 
-For complete migration history, see `archive/MIGRATION_HISTORY_PRE_RESET_20251221.md`.
+## Adding schema changes — step by step
+
+1. **Update the SQLAlchemy model** in `src/giljo_mcp/models/`.
+2. **Decide chain** using the routing decision tree above.
+3. **Generate a revision** with `alembic revision -m "your_change_description"` (or hand-author if you know the pattern).
+4. **Make the upgrade idempotent** (see hard rule 2).
+5. **Implement the downgrade** — even if you think nobody will use it. Downgrade is the rollback path for failed installs.
+6. **If it's a column on an existing baseline table**, also update the baseline (`caeddfdbb2a0_unified_baseline_all_tables.py`) so fresh installs get the column directly without needing the incremental migration to also run. The incremental migration's idempotency guard will make it a no-op on fresh installs.
+7. **Test locally:** `python startup.py --verbose` — confirms `alembic upgrade head` runs cleanly.
+8. **Commit** the model change + migration file together in one commit.
+
+## SaaS migrations
+
+`saas_versions/` is loaded by `migrations/env.py` only when `GILJO_MODE=saas`. The Table Existence Rule (CLAUDE.md) forbids CE code from referencing SaaS-only tables — that's enforced at runtime by SQLAlchemy errors and at CI by the "SaaS table references in CE" check.
+
+If you find yourself needing a column on a CE model that ONLY makes sense in SaaS, that's a sign the column is in the wrong place — either move the model into `saas/models/` or rethink the design.
+
+## When in doubt
+
+Cite the project ID in your commit message and ask the orchestrator. Migration mistakes are expensive to roll back from a running install — the cost of a 5-minute clarification beats the cost of an emergency hotfix.

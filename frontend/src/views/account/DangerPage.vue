@@ -5,10 +5,15 @@
       Account-level actions. These are permanent — proceed carefully.
     </p>
 
-    <!-- Export card (still stubbed — wired by FE-0844) -->
+    <!--
+      Download My Data (BE-5062 — GDPR data portability, CE-only).
+      Hidden in saas/demo where this feature isn't offered.
+      Server gates the endpoint itself; this v-if is just UX hygiene.
+    -->
     <div
-      class="danger-card smooth-border"
-      data-test="export-data-card"
+      v-if="isCe"
+      class="danger-card danger-card--enabled smooth-border"
+      data-test="download-my-data-section"
       :style="{ '--card-accent': 'var(--brand-yellow, #ffc300)' }"
     >
       <div
@@ -18,13 +23,88 @@
         <v-icon size="20">mdi-download-outline</v-icon>
       </div>
       <div class="danger-card-body">
-        <div class="danger-card-title">Export my data</div>
+        <div class="danger-card-title">Download my data</div>
         <div class="danger-card-desc">
-          Download a copy of your products, projects, jobs, and 360 memory.
+          Download all your data as a portable ZIP. Includes products, projects,
+          vision documents, agents, memory, tasks, and configuration. Credentials
+          are redacted.
+        </div>
+
+        <!-- Progress feed (driven by WebSocket tenant:export_progress events). -->
+        <div
+          v-if="exporting || exportProgress"
+          class="export-progress"
+          data-test="export-progress"
+        >
+          <v-progress-linear
+            :model-value="exportPercent"
+            :indeterminate="exporting && !exportProgress"
+            color="warning"
+            height="4"
+            class="mb-2"
+          />
+          <div
+            class="export-progress-status"
+            data-test="export-progress-status"
+          >
+            {{ exportStatusText }}
+          </div>
+        </div>
+
+        <!-- Completed: download link + expiry + model counts. -->
+        <div
+          v-if="exportResult"
+          class="export-result"
+          data-test="export-result"
+        >
+          <a
+            :href="exportResult.download_url"
+            class="export-download-link"
+            data-test="export-download-link"
+            download
+          >
+            <v-icon size="16" class="mr-1">mdi-download</v-icon>
+            Download tenant_export.zip
+          </a>
+          <div class="export-expiry" data-test="export-expiry">
+            Link expires {{ expiresAtFormatted }}
+          </div>
+          <ul
+            v-if="modelCountEntries.length"
+            class="export-model-counts"
+            data-test="export-model-counts"
+          >
+            <li
+              v-for="[model, count] in modelCountEntries"
+              :key="model"
+            >
+              <span class="model-name">{{ model }}</span>
+              <span class="model-count">{{ count }}</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Error surface. -->
+        <div
+          v-if="exportError"
+          class="export-error"
+          data-test="export-error"
+        >
+          {{ exportError }}
         </div>
       </div>
       <div class="danger-card-action">
-        <v-chip size="small" color="warning" variant="tonal">Coming soon</v-chip>
+        <v-btn
+          color="warning"
+          variant="flat"
+          :loading="exporting"
+          :disabled="exporting"
+          data-test="generate-export-btn"
+          @click="onGenerateExport"
+        >
+          {{ exportResult ? 'Generate again' : 'Generate export' }}
+          <v-icon end>mdi-arrow-right</v-icon>
+        </v-btn>
       </div>
     </div>
 
@@ -109,15 +189,139 @@
  *   the dialog is dynamically imported from saas/, so neither the import
  *   nor the deletion path strings end up in the CE bundle.
  */
-import { ref, shallowRef, computed, onMounted } from 'vue'
+import { ref, shallowRef, computed, onMounted, onBeforeUnmount } from 'vue'
 import configService from '@/services/configService'
 import { useToast } from '@/composables/useToast'
+import api from '@/services/api'
+import { useWebSocketV2 } from '@/composables/useWebSocket'
 
 const showDeleteDialog = ref(false)
 const DeleteAccountDialog = shallowRef(null)
 const { showToast } = useToast()
 
+// Edition flags. `getEdition()` returns 'community' for GILJO_MODE=ce, 'saas'
+// for saas, 'demo' for demo. We use this for visibility of CE-only / SaaS-only
+// affordances on this page (matches the existing pattern for the SaaS-only
+// delete card). configService is the mode source of truth for components
+// rendered well after initial navigation (ADR-002 § "Rule 1").
+const isCe = computed(() => configService.getEdition() === 'community')
 const isSaas = computed(() => configService.getEdition() !== 'community')
+
+// ---------------------------------------------------------------------------
+// BE-5062 — Download My Data
+// ---------------------------------------------------------------------------
+const exporting = ref(false)
+const exportError = ref('')
+// Latest WebSocket progress frame: { model, current, total, phase }.
+const exportProgress = ref(null)
+// Final result from POST /api/v1/account/export:
+//   { download_url, expires_at, model_counts }
+const exportResult = ref(null)
+
+const exportPercent = computed(() => {
+  const p = exportProgress.value
+  if (!p) return 0
+  if (p.phase === 'complete') return 100
+  if (!p.total || p.total <= 0) return 0
+  return Math.min(100, Math.round((p.current / p.total) * 100))
+})
+
+const exportStatusText = computed(() => {
+  const p = exportProgress.value
+  if (!p) return 'Preparing export…'
+  if (p.phase === 'complete') {
+    return p.records != null
+      ? `Export complete — ${p.records} records.`
+      : 'Export complete.'
+  }
+  // "exporting" phase — model + counts.
+  const model = p.model || '…'
+  return `Exporting ${model} (${p.current} / ${p.total})…`
+})
+
+const expiresAtFormatted = computed(() => {
+  const iso = exportResult.value?.expires_at
+  if (!iso) return ''
+  try {
+    return new Date(iso).toLocaleString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  } catch {
+    return iso
+  }
+})
+
+const modelCountEntries = computed(() => {
+  const counts = exportResult.value?.model_counts
+  if (!counts || typeof counts !== 'object') return []
+  return Object.entries(counts).sort(([a], [b]) => a.localeCompare(b))
+})
+
+// Subscribe to tenant:export_progress on the shared WebSocket connection.
+// useWebSocketV2().on(...) returns an unsubscribe function — we capture both
+// so saas/demo renders don't leak handlers and the explicit cleanup runs
+// before the auto-cleanup that fires on component unmount.
+const ws = useWebSocketV2()
+let unsubscribeExportProgress = null
+
+function handleExportProgress(payload) {
+  // Payload is normalized to the flat data shape by the WS store; the data
+  // field may be nested or flat depending on transport. Read defensively.
+  const data = payload?.data && typeof payload.data === 'object' ? payload.data : payload
+  if (!data) return
+  exportProgress.value = {
+    model: data.model ?? '',
+    current: Number(data.current ?? 0),
+    total: Number(data.total ?? 0),
+    records: data.records != null ? Number(data.records) : null,
+    phase: data.phase ?? 'exporting',
+  }
+}
+
+async function onGenerateExport() {
+  if (exporting.value) return
+  exporting.value = true
+  exportError.value = ''
+  exportProgress.value = null
+  exportResult.value = null
+
+  // Subscribe lazily on first click so we don't pay handler cost for users
+  // who never trigger an export.
+  if (!unsubscribeExportProgress) {
+    unsubscribeExportProgress = ws.on('tenant:export_progress', handleExportProgress)
+  }
+
+  try {
+    const response = await api.account.exportMyData()
+    const body = response?.data ?? response
+    exportResult.value = {
+      download_url: body?.download_url ?? '',
+      expires_at: body?.expires_at ?? '',
+      model_counts: body?.model_counts ?? {},
+    }
+    if (!exportResult.value.download_url) {
+      throw new Error('Backend did not return a download URL.')
+    }
+  } catch (err) {
+    // Backend exception handlers can return either { detail } (FastAPI default)
+    // or { error_code, message, timestamp } (wrapped). Surface either, plus
+    // the 403 "Data export is not available in this edition." case.
+    const data = err?.response?.data
+    const message =
+      data?.detail ||
+      data?.message ||
+      err?.message ||
+      'Could not generate export. Please try again.'
+    exportError.value = message
+    showToast({ message, type: 'error' })
+  } finally {
+    exporting.value = false
+  }
+}
 
 // SAAS-023: lazy account-state store handle (CE-export safe).
 const accountStateStoreRef = shallowRef(null)
@@ -158,6 +362,17 @@ const dlgLoaders = import.meta.glob('@/saas/components/DeleteAccountDialog.vue')
 // SAAS-023: also lazy-load the account-state store so the Cancel-pending
 // affordance can read deletion status. CE export drops both globs.
 const acctStoreLoaders = import.meta.glob('@/saas/stores/useAccountStateStore.js')
+
+onBeforeUnmount(() => {
+  if (unsubscribeExportProgress) {
+    try {
+      unsubscribeExportProgress()
+    } catch {
+      /* useWebSocketV2 auto-cleanup will handle it anyway */
+    }
+    unsubscribeExportProgress = null
+  }
+})
 
 onMounted(async () => {
   if (!isSaas.value) return
@@ -276,5 +491,65 @@ onMounted(async () => {
 .danger-card-action {
   flex-shrink: 0;
   align-self: center;
+}
+
+/* BE-5062: Download My Data — progress, result, error blocks
+   Render inline below the description so the card grows naturally. */
+.export-progress,
+.export-result,
+.export-error {
+  margin-top: 12px;
+}
+
+.export-progress-status {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.export-download-link {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--brand-yellow, #ffc300);
+  text-decoration: none;
+}
+
+.export-download-link:hover {
+  text-decoration: underline;
+}
+
+.export-expiry {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.export-model-counts {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 4px 12px;
+}
+
+.export-model-counts li {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.export-model-counts .model-count {
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.export-error {
+  font-size: 0.8rem;
+  color: rgb(var(--v-theme-error));
+  line-height: 1.45;
 }
 </style>

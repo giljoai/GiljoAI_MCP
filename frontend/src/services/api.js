@@ -423,6 +423,14 @@ export const api = {
     resetFieldToggleConfig: () => apiClient.post('/api/v1/users/me/field-priority/reset'),
   },
 
+  // Account-level actions (Danger Zone). BE-5062: GDPR data portability —
+  // CE-only. The backend gates the endpoint server-side; the frontend hides
+  // the affordance in saas/demo to avoid surfacing a button that always 403s.
+  // Response: { download_url, expires_at, model_counts }. Download URL TTL 15 min.
+  account: {
+    exportMyData: () => apiClient.post('/api/v1/account/export'),
+  },
+
   // Vision Documents (Multi-Document Support - Handover 0043)
   visionDocuments: {
     // List all vision documents for a product
