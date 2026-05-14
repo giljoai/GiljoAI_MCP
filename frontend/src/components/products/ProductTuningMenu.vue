@@ -109,7 +109,7 @@
 
     <!-- Generated Prompt Display -->
     <v-expand-transition>
-      <v-card v-if="generatedPrompt" variant="flat" class="mt-3 smooth-border tuning-card">
+      <v-card v-if="generatedPrompt" ref="generatedPromptCard" variant="flat" class="mt-3 smooth-border tuning-card">
         <v-card-title class="text-subtitle-1 d-flex align-center">
           <v-icon start size="20">mdi-text-box-outline</v-icon>
           Generated Tuning Prompt
@@ -156,7 +156,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import api from '@/services/api'
 import { useClipboard } from '@/composables/useClipboard'
 import { useToast } from '@/composables/useToast'
@@ -189,6 +189,7 @@ const sectionsError = ref('')
 // Prompt generation state
 const generatingPrompt = ref(false)
 const generatedPrompt = ref('')
+const generatedPromptCard = ref(null)
 
 // Section display labels
 const SECTION_LABELS = {
@@ -298,6 +299,15 @@ async function generatePrompt() {
 
     if (!generatedPrompt.value) {
       showToast({ message: 'No prompt was generated. Check that selected sections have data.', type: 'warning' })
+    } else {
+      await nextTick()
+      // v-expand-transition animates height, so wait a frame for it to settle before scrolling
+      requestAnimationFrame(() => {
+        const el = generatedPromptCard.value?.$el ?? generatedPromptCard.value
+        if (el && typeof el.scrollIntoView === 'function') {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }
+      })
     }
   } catch (error) {
     const message = error.response?.data?.detail || 'Failed to generate tuning prompt'
