@@ -175,6 +175,41 @@
       </button>
     </div>
 
+    <!-- State A3: Just-decided — orchestrator gate cleared, user needs to
+         nudge the orchestrator in chat. Same surface as A2, different visual
+         band + dismissable X. Auto-clears when all jobs go terminal (project
+         ready for closeout, banner no longer relevant). -->
+    <div
+      v-else-if="activeTab === 'jobs' && showOrchUnlockedBanner"
+      class="action-buttons-row"
+    >
+      <div
+        class="closeout-decision-banner closeout-decision-banner--unlocked smooth-border"
+        data-testid="orchestrator-unlocked-banner"
+        role="status"
+        aria-live="polite"
+      >
+        <v-icon icon="mdi-check-circle-outline" size="20" class="closeout-decision-icon closeout-decision-icon--ok" />
+        <div class="closeout-decision-content">
+          <span class="closeout-decision-title">Orchestrator unlocked</span>
+          <span class="closeout-decision-desc">
+            Tell the orchestrator to read its message and proceed.
+          </span>
+        </div>
+        <v-btn
+          icon
+          variant="text"
+          size="small"
+          class="closeout-decision-dismiss"
+          aria-label="Dismiss"
+          data-testid="orchestrator-unlocked-dismiss"
+          @click="showOrchUnlockedBanner = false"
+        >
+          <v-icon icon="mdi-close" size="18" />
+        </v-btn>
+      </div>
+    </div>
+
     <!-- State B: All agents terminal, project NOT done -> closeout button -->
     <div v-else-if="activeTab === 'jobs' && showCloseoutButton" class="action-buttons-row">
       <v-btn
@@ -341,12 +376,6 @@
       @close="showDecisionModal = false"
       @approval-decided="handleApprovalDecided"
     />
-
-    <!-- Post-decision confirmation: dumb static popup, no logic. -->
-    <OrchestratorUnlockedPopup
-      :show="showOrchestratorUnlocked"
-      @close="showOrchestratorUnlocked = false"
-    />
   </v-container>
 </template>
 
@@ -368,7 +397,6 @@ import LaunchTab from './LaunchTab.vue'
 import JobsTab from './JobsTab.vue'
 import CloseoutModal from '@/components/orchestration/CloseoutModal.vue'
 import DecisionModal from '@/components/orchestration/DecisionModal.vue'
-import OrchestratorUnlockedPopup from '@/components/orchestration/OrchestratorUnlockedPopup.vue'
 import { DEFAULT_PROJECT_TYPE_COLOR } from '@/utils/constants'
 
 const { copy: clipboardCopy } = useClipboard()
@@ -499,15 +527,20 @@ const loadingStageProject = ref(false)
 const executionMode = ref(props.project?.execution_mode || 'multi_terminal')
 const showGeminiNotice = ref(false)
 const showDecisionModal = ref(false)
-const showOrchestratorUnlocked = ref(false)
+const showOrchUnlockedBanner = ref(false)
 
 function openDecisionModal() {
   showDecisionModal.value = true
 }
 
 function handleApprovalDecided() {
+  // Decide POST succeeded server-side. Close the dialog and swap the
+  // "Decision Required" banner for the "Orchestrator unlocked" variant.
+  // No second modal. The banner sits until the user dismisses it OR all
+  // jobs go terminal (project ready for closeout, see watcher set up after
+  // useProjectCloseout destructure below).
   showDecisionModal.value = false
-  showOrchestratorUnlocked.value = true
+  showOrchUnlockedBanner.value = true
 }
 const isGeminiMode = computed(() => executionMode.value === 'gemini_cli')
 
@@ -528,6 +561,7 @@ const {
   memoryPollTimedOut,
   memoryPollError,
   projectDoneStatus,
+  allJobsTerminal,
   showCloseoutButton,
   showMemoryPending,
   openCloseoutModal,
@@ -542,6 +576,30 @@ const {
   projectId,
   sortedJobs,
   onComplete: () => emit('project-updated'),
+})
+
+// Auto-clear the unlocked banner when the orchestrator has finished its
+// work (all jobs terminal -> closeout flow takes over) or the project
+// closes outright. User can still dismiss manually via the X.
+watch([allJobsTerminal, projectDoneStatus], ([allTerminal, doneStatus]) => {
+  if (allTerminal || doneStatus) showOrchUnlockedBanner.value = false
+})
+
+// Also auto-clear once the orchestrator drains its inbox: the decide flow
+// posts a "user decided" message into the orchestrator's inbox, which
+// bumps messages_waiting_count. When the orchestrator calls receive_messages
+// the count returns to 0 -- at that point the user no longer needs the
+// "tell it to proceed" reminder, the orchestrator is already proceeding.
+// Fires only on the >0 -> 0 transition so an already-empty inbox at the
+// moment the banner appears doesn't dismiss it prematurely.
+const orchMessagesWaiting = computed(() => {
+  const orch = (sortedJobs.value || []).find((j) => j.agent_display_name === 'orchestrator')
+  return orch?.messages_waiting_count ?? 0
+})
+watch(orchMessagesWaiting, (newCount, oldCount) => {
+  if (showOrchUnlockedBanner.value && oldCount > 0 && newCount === 0) {
+    showOrchUnlockedBanner.value = false
+  }
 })
 
 /**
@@ -1071,6 +1129,22 @@ async function handleLaunchJobs() {
   color: inherit;
   font: inherit;
   transition: background 120ms ease, filter 120ms ease;
+}
+
+// Post-decision variant: green band, not clickable, has X to dismiss.
+.closeout-decision-banner--unlocked {
+  max-width: 560px;
+  background: rgba($color-status-success, 0.10);
+  --smooth-border-color: rgba($color-status-success, 0.30);
+
+  .closeout-decision-icon--ok {
+    color: $color-status-success;
+  }
+}
+
+.closeout-decision-dismiss {
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .closeout-decision-banner--clickable:hover,

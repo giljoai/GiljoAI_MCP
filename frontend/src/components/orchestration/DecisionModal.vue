@@ -30,8 +30,8 @@
 
       <div class="decision-modal-body">
         <ApprovalCard
-          v-if="approval"
-          :approval="approval"
+          v-if="stickyApproval"
+          :approval="stickyApproval"
           data-testid="decision-modal-card"
           @decided="handleDecided"
         />
@@ -48,7 +48,7 @@
 </template>
 
 <script setup>
-import { computed, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useDisplay } from 'vuetify'
 import ApprovalCard from '@/components/orchestration/ApprovalCard.vue'
 import { useApprovalsStore } from '@/stores/useApprovalsStore'
@@ -70,15 +70,34 @@ const approvalsStore = useApprovalsStore()
 const { mobile } = useDisplay()
 const isMobile = computed(() => mobile.value)
 
-const approval = computed(() => {
+const liveApproval = computed(() => {
   if (!props.orchestratorJobId) return null
   return approvalsStore.findByJobId(props.orchestratorJobId)
 })
 
+// Snapshot the approval the first time we see it for this open cycle and HOLD
+// the reference until the dialog closes. Critical because the server's
+// "decide accepted" WebSocket broadcast can arrive at the browser BEFORE the
+// POST /decide response does. Without the snapshot, the WS event clears the
+// store row, the v-if below flips false, ApprovalCard unmounts mid-await,
+// and ApprovalCard's 'decided' emit fires into a dead listener — the parent
+// never learns the user clicked. Reproduced in Chrome devtools on dogfood.
+const stickyApproval = ref(null)
+watch(
+  liveApproval,
+  (a) => {
+    if (a && !stickyApproval.value) stickyApproval.value = a
+  },
+  { immediate: true },
+)
+
 watch(
   () => props.show,
   (open) => {
-    if (open) approvalsStore.fetchPending().catch(() => {})
+    if (open) {
+      stickyApproval.value = null
+      approvalsStore.fetchPending().catch(() => {})
+    }
   },
 )
 
@@ -87,9 +106,6 @@ function handleCancel() {
 }
 
 function handleDecided(payload) {
-  // Emit synchronously inside the same tick — ApprovalCard's emit fires before
-  // any unmount happens, so the parent reliably receives this and can swap
-  // DecisionModal for OrchestratorUnlockedPopup.
   emit('approval-decided', payload)
 }
 </script>
