@@ -412,7 +412,10 @@ onMounted(async () => {
 
 .danger-card {
   display: flex;
-  align-items: center;
+  /* Top-align icon + body + action so the button + download-icon do not
+     drift to vertical center when the body grows (BE-5062 results, progress
+     feed, or pending-deletion details). */
+  align-items: flex-start;
   gap: 16px;
   padding: 18px 20px;
   background: rgb(var(--v-theme-surface));
@@ -490,7 +493,7 @@ onMounted(async () => {
 
 .danger-card-action {
   flex-shrink: 0;
-  align-self: center;
+  align-self: flex-start;
 }
 
 /* BE-5062: Download My Data — progress, result, error blocks

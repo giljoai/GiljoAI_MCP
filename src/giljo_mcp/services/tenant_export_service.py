@@ -29,6 +29,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import re
 import tempfile
 import zipfile
 from datetime import UTC, datetime
@@ -172,9 +173,28 @@ EXPORT_MODELS: tuple[type, ...] = (
 _REDACTION_NOTICE = (
     "> NOTE: Password hashes, recovery PIN hashes, encrypted secrets, and "
     "webhook secrets were redacted from this export for security hygiene. "
+    "Tenant-key values (`tk_...`) embedded in free-form text and JSONB "
+    "content (mission strings, message bodies, memory entries, agent "
+    "execution results) were also replaced with `<redacted-tenant-key>`. "
     "If you import this data into another tool, you will need to re-set "
     "credentials."
 )
+
+
+# Tenant-key values may appear inside free-form text or JSONB content
+# (mission strings, message bodies, memory entries, agent execution
+# result blobs). The per-field strip filter cannot reach those because
+# they are payload, not column names. We scrub them at the JSON-bytes
+# level just before each data/*.json is written to the ZIP. The pattern
+# is intentionally narrow (the GiljoAI tenant_key format is `tk_` +
+# 20+ alphanumeric chars) so it does not false-positive on normal user
+# content.
+_TENANT_KEY_PATTERN = re.compile(rb"tk_[A-Za-z0-9]{20,}")
+_TENANT_KEY_REDACTION = b"<redacted-tenant-key>"
+
+
+def _redact_tenant_key_values(blob: bytes) -> bytes:
+    return _TENANT_KEY_PATTERN.sub(_TENANT_KEY_REDACTION, blob)
 
 
 class TenantExportService:
@@ -358,7 +378,7 @@ class TenantExportService:
         with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
             # data/*.json
             for model_name, rows in model_data.items():
-                blob = json.dumps(rows, indent=2, sort_keys=True).encode("utf-8")
+                blob = _redact_tenant_key_values(json.dumps(rows, indent=2, sort_keys=True).encode("utf-8"))
                 arcname = f"data/{model_name}.json"
                 zf.writestr(arcname, blob)
                 file_entries.append(

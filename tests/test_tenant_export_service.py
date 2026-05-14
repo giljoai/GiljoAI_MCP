@@ -179,6 +179,50 @@ async def test_export_strips_tenant_key_from_rows(db_session: AsyncSession) -> N
         assert manifest["tenant_key"] == tenant_key
 
 
+async def test_export_redacts_tenant_key_values_in_text_and_jsonb(
+    db_session: AsyncSession,
+) -> None:
+    """tk_* values embedded in free-form text / JSONB content must be redacted.
+
+    The per-field strip filter operates on column names, so it cannot reach
+    tenant_key values that appear as payload inside Message.content,
+    AgentJob.mission strings, ProductMemoryEntry summaries, AgentExecution
+    JSONB result blobs, etc. The byte-level scrub at write time must catch them.
+    """
+    tenant_key = TenantManager.generate_tenant_key()
+    await _seed_user(db_session, tenant_key)
+    # Inject a foreign tenant_key value into a Configuration JSONB payload — this
+    # is the worst case: JSONB content that survives the field strip and would
+    # leak another tenant's identifier if not scrubbed.
+    from giljo_mcp.models import Configuration
+
+    foreign_tk = "tk_FOREIGN0123456789ABCDEFGHIJKL"
+    cfg = Configuration(
+        tenant_key=tenant_key,
+        key="diag.last_seen_tenant_keys",
+        value={"observed": [foreign_tk, "tk_OTHER9876543210ZZZZZZZZZZZZZZ"]},
+        category="diagnostics",
+    )
+    db_session.add(cfg)
+    await db_session.commit()
+
+    service = TenantExportService(db_session=db_session)
+    zip_path, _ = await service.export(tenant_key=tenant_key)
+
+    import re as _re
+
+    pattern = _re.compile(rb"tk_[A-Za-z0-9]{20,}")
+    with zipfile.ZipFile(zip_path, "r") as zf:
+        for name in zf.namelist():
+            if name.startswith("data/") and name.endswith(".json"):
+                blob = zf.read(name)
+                matches = pattern.findall(blob)
+                assert not matches, f"tenant_key value(s) leaked in {name}: {matches[:3]}"
+        # manifest provenance is allowed to contain the exporting tenant_key
+        manifest = json.loads(zf.read("manifest.json"))
+        assert manifest["tenant_key"] == tenant_key
+
+
 async def test_export_excludes_ephemeral_tables(db_session: AsyncSession) -> None:
     """EPHEMERAL_EXCLUDE_MODELS must not appear as data/*.json files."""
     tenant_key = TenantManager.generate_tenant_key()
