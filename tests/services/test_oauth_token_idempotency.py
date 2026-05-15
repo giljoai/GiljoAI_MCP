@@ -15,8 +15,6 @@ registry-backed cache.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
-
 import pytest
 
 from giljo_mcp.services import cache_backends
@@ -60,7 +58,6 @@ class TestCacheGetPut:
         entry = idem.IdempotencyEntry(
             response_body={"access_token": "tok"},
             body_signature="sig-abc",
-            expires_at=datetime.now(UTC),
         )
         await idem.cache_put("tk_x", "code-1", entry)
         got = await idem.cache_get("tk_x", "code-1")
@@ -77,12 +74,10 @@ class TestCacheGetPut:
         entry_a = idem.IdempotencyEntry(
             response_body={"who": "tenant_a"},
             body_signature="sig-a",
-            expires_at=datetime.now(UTC),
         )
         entry_b = idem.IdempotencyEntry(
             response_body={"who": "tenant_b"},
             body_signature="sig-b",
-            expires_at=datetime.now(UTC),
         )
         await idem.cache_put("tk_a", "shared-code", entry_a)
         await idem.cache_put("tk_b", "shared-code", entry_b)

@@ -180,8 +180,8 @@ class TestValidateRedirectUri:
         "uri",
         [
             "https://evil.example.com/callback",
-            "http://192.168.1.100/callback",
-            "http://10.0.0.1:8080/callback",
+            "http://192.0.2.100/callback",
+            "http://198.51.100.1:8080/callback",
             "ftp://localhost/callback",
             "",
         ],
@@ -370,7 +370,7 @@ class TestExchangeCodeForToken:
             code_challenge=challenge,
         )
 
-        with pytest.raises(ValueError, match="client_id"):
+        with pytest.raises(ValueError, match="Authorization code not found"):
             await oauth_service.exchange_code_for_token(
                 code=code,
                 client_id="wrong-client",

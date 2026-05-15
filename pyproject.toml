@@ -71,6 +71,7 @@ dev = [
     "pytest-asyncio>=0.21.0",
     "pytest-cov>=4.1.0",
     "pytest-timeout>=2.2.0",
+    "fakeredis>=2.20.0",
     "pre-commit>=3.4.0",
     "types-PyYAML",
     "fastmcp>=0.1.0",  # MCP server framework (test-only dependency)

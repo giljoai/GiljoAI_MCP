@@ -697,7 +697,6 @@ class OAuthService:
             _idem.IdempotencyEntry(
                 response_body=dict(response),
                 body_signature=idem_signature,
-                expires_at=datetime.now(UTC) + timedelta(seconds=_idem.OAUTH_TOKEN_IDEMPOTENCY_WINDOW_SECONDS),
             ),
         )
 

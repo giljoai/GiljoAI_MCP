@@ -29,13 +29,8 @@ import json
 import logging
 import os
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
 from giljo_mcp.services.cache_backends import OAUTH_IDEMPOTENCY_BACKEND_NAME, get_cache_backend
-
-
-if TYPE_CHECKING:
-    from datetime import datetime
 
 
 logger = logging.getLogger(__name__)
@@ -46,15 +41,10 @@ _TOKEN_IDEMPOTENCY_FIELD_SEP = b"\x1f"
 
 @dataclass(frozen=True)
 class IdempotencyEntry:
-    """One cached /token response keyed by (tenant_key, code).
-
-    `expires_at` is retained on the dataclass for backwards-compatibility
-    with prior callers; the backend's TTL is the authoritative expiry.
-    """
+    """One cached /token response keyed by (tenant_key, code)."""
 
     response_body: dict
     body_signature: str
-    expires_at: datetime
 
 
 def _serialize(entry: IdempotencyEntry) -> str:
@@ -84,7 +74,6 @@ async def cache_get(tenant_key: str, code: str) -> IdempotencyEntry | None:
     return IdempotencyEntry(
         response_body=dict(payload["response_body"]),  # type: ignore[arg-type]
         body_signature=str(payload["body_signature"]),
-        expires_at=_far_future_marker(),
     )
 
 
@@ -97,12 +86,6 @@ async def cache_put(tenant_key: str, code: str, entry: IdempotencyEntry) -> None
         _serialize(entry),
         ttl_seconds=OAUTH_TOKEN_IDEMPOTENCY_WINDOW_SECONDS,
     )
-
-
-def _far_future_marker() -> datetime:
-    from datetime import UTC, datetime, timedelta
-
-    return datetime.now(UTC) + timedelta(days=365)
 
 
 def compute_body_signature(
