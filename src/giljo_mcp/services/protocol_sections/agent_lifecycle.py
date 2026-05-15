@@ -200,11 +200,11 @@ completing, an unblock event, or any other trigger — execute this loop:
   paths, commit hashes, API names, and behavior changes from those results. Never write a speculative
   mission ("the implementer probably added X") — if the result is absent, note it as unknown and scope
   verification to what is confirmed.
-- **HOW to handle findings the orchestrator can fix without re-spawning:** If a finding is trivial
-  (roughly 10 lines, single file, low risk — e.g. a lint warning, a missing docstring, a wrong constant),
-  the orchestrator may fix it inline and add a follow-up commit without re-spawning the deliverable agent.
-  If a finding is substantive (architectural change, multi-file impact, risky logic) → re-spawn the
-  relevant deliverable agent with a tightly scoped fix mission, referencing the reviewer's exact finding.
+- **HOW to handle non-blocking findings (triage by RISK, not file count):**
+  - *Mechanical AND caused by this project* — drop a stranded field, delete vestigial code orphaned by this commit, rename a symbol this project introduced, fix a regex/constant that drifted as a side effect. → Fix inline regardless of file count, re-run the same verification (relevant `pytest` scope + `ruff` + the CI you push to), ship the fix in THIS project. Do NOT defer your own mess.
+  - *Out-of-scope finding* — pre-existing master bug not introduced by this project, unrelated cleanup the reviewer noticed in passing. → `create_task` and cite the ID in `decisions_made`. Audit purity matters.
+  - *Needs user approval* — protected zones (`pyproject.toml`, root `CLAUDE.md`, `docs/`, `alembic.ini`, `LICENSE`, `install.py`/`install.sh`/`install.ps1`, `startup.py`); irreversible actions; license/security/billing changes. → `create_task` with the approval gate stated in the description.
+  - *Architectural, multi-file logic, or risky* — anything that re-shapes a contract, crosses an edition boundary, touches concurrency/auth/migrations, or that the reviewer flagged as needing design discussion. → Re-spawn the deliverable agent with a scoped fix mission citing the exact finding. Do NOT fix inline.
 
 **PROGRESS REPORTING (MANDATORY after every coordination action):**
   → To update statuses: `report_progress(job_id="{job_id}", todo_items=[...FULL list with updated statuses...])`
@@ -240,9 +240,7 @@ After completing a coordination loop with no actionable work remaining:
    If any are not, either complete them or explain why they were dropped
 
 **Deferred findings:**
-If the reviewer reported non-blocking findings that were NOT fixed during this project,
-create a follow-up task via `mcp__giljo_mcp__create_task` — or a project via `mcp__giljo_mcp__create_project` if it is multi-step — and cite the returned ID in `decisions_made` when you call `close_project_and_update_memory`. Do not use `action_required:` tags or `action_required` 360 entries; they are deprecated.
-For trivial items (~10 lines), prefer fixing immediately rather than deferring.
+Apply the Phase 2 triage rule ("HOW to handle non-blocking findings"). Mechanical findings caused by this project MUST be fixed before closeout — they are not deferral candidates. Only out-of-scope, protected-zone, or architectural findings are legitimate deferrals: file them via `mcp__giljo_mcp__create_task` (or `create_project` if multi-step) and cite the returned ID in `decisions_made` when you call `close_project_and_update_memory`. Do not use `action_required:` tags or `action_required` 360 entries; they are deprecated.
 
 **Closeout works without git:**
 Git commit collection is best-effort. When the server cannot resolve commits (non-git environment,
