@@ -910,7 +910,11 @@ class TestStagingDirectiveUsesProjectFlag:
         assert response.staging_directive.action == "STOP"
 
     @pytest.mark.asyncio
-    async def test_directive_does_not_fire_post_staging_complete(self):
+    async def test_directive_reports_already_complete_post_staging_complete(self):
+        """Replaces the historical silent-null behavior. Broadcasts after staging
+        is already complete now return a diagnostic ALREADY_COMPLETE directive
+        instead of None, so callers can distinguish 'success' from 'already done'.
+        """
         from giljo_mcp.schemas.service_responses import SendMessageResult
         from giljo_mcp.services.message_routing_service import MessageRoutingService
 
@@ -946,7 +950,212 @@ class TestStagingDirectiveUsesProjectFlag:
             project=project,
         )
 
+        assert response.staging_directive is not None
+        assert response.staging_directive.status == "ALREADY_COMPLETE"
+        # Diagnostic statuses must NOT carry STOP semantics — only the success path does.
+        assert response.staging_directive.action is None
+        assert response.staging_directive.implementation_gate is None
+        # Project flag must remain unchanged.
+        assert project.staging_status == "staging_complete"
+
+
+class TestStagingDirectiveDiagnosticStatuses:
+    """Diagnostic statuses replace the historical silent-null failure mode for
+    broadcast attempts that did NOT trigger staging completion.
+
+    Each precondition that previously returned a bare `staging_directive=None`
+    now populates a status + message so callers can self-diagnose.
+    """
+
+    def _make_service(self):
+        from giljo_mcp.services.message_routing_service import MessageRoutingService
+
+        db_manager = MagicMock()
+        tenant = MagicMock()
+        tenant.get_current_tenant = MagicMock(return_value="tenant-test")
+        return MessageRoutingService(db_manager, tenant)
+
+    @pytest.mark.asyncio
+    async def test_not_broadcast_status_when_staging_orch_sends_single_recipient(self):
+        """Most common real-world failure: staging orchestrator sends to a single
+        recipient instead of to_agents=['all']. Previously silent-null.
+        """
+        from giljo_mcp.schemas.service_responses import SendMessageResult
+
+        service = self._make_service()
+        sender_exec = MagicMock()
+        sender_exec.agent_name = "orchestrator"
+        sender_exec.job_id = "j1"
+        sender_job = MagicMock()
+        sender_job.project_id = "p1"
+
+        service._repo.get_execution_by_agent_id = AsyncMock(return_value=sender_exec)
+        service._repo.get_agent_job_by_job_id = AsyncMock(return_value=sender_job)
+
+        project = MagicMock()
+        project.staging_status = "staging"
+
+        response = SendMessageResult(message_id="m1", to_agents=["impl-id"])
+        session = AsyncMock()
+
+        await service._check_staging_broadcast_directive(
+            session=session,
+            response=response,
+            resolved_to_agents=["impl-id"],
+            to_agents=["impl-id"],
+            from_agent="orch-agent-id",
+            tenant_key="tenant-test",
+            project=project,
+        )
+
+        assert response.staging_directive is not None
+        assert response.staging_directive.status == "NOT_BROADCAST"
+        assert "to_agents=['all']" in response.staging_directive.message
+        assert "message_type='broadcast'" in response.staging_directive.message
+        # Critically: the staging flag must NOT have been flipped on a NOT_BROADCAST
+        # call (the previous bug reporter's worry).
+        assert project.staging_status != "staging_complete"
+
+    @pytest.mark.asyncio
+    async def test_not_orchestrator_status_when_non_orch_broadcasts(self):
+        from giljo_mcp.schemas.service_responses import SendMessageResult
+
+        service = self._make_service()
+        sender_exec = MagicMock()
+        sender_exec.agent_name = "implementer"
+        sender_exec.job_id = "j1"
+        sender_job = MagicMock()
+        sender_job.project_id = "p1"
+
+        service._repo.get_execution_by_agent_id = AsyncMock(return_value=sender_exec)
+        service._repo.get_agent_job_by_job_id = AsyncMock(return_value=sender_job)
+
+        project = MagicMock()
+        project.staging_status = "staging"
+
+        response = SendMessageResult(message_id="m1", to_agents=["a", "b"])
+        session = AsyncMock()
+
+        await service._check_staging_broadcast_directive(
+            session=session,
+            response=response,
+            resolved_to_agents=["a", "b"],
+            to_agents=["all"],
+            from_agent="impl-agent-id",
+            tenant_key="tenant-test",
+            project=project,
+        )
+
+        assert response.staging_directive is not None
+        assert response.staging_directive.status == "NOT_ORCHESTRATOR"
+        assert "implementer" in response.staging_directive.message
+        assert project.staging_status != "staging_complete"
+
+    @pytest.mark.asyncio
+    async def test_sender_not_found_status_when_from_agent_unresolved(self):
+        from giljo_mcp.schemas.service_responses import SendMessageResult
+
+        service = self._make_service()
+        # Critical: simulate "from_agent passed but doesn't resolve" — the bug
+        # the previous agent could have hit if they passed a job_id instead of agent_id.
+        service._repo.get_execution_by_agent_id = AsyncMock(return_value=None)
+
+        project = MagicMock()
+        project.staging_status = "staging"
+
+        response = SendMessageResult(message_id="m1", to_agents=["a", "b"])
+        session = AsyncMock()
+
+        await service._check_staging_broadcast_directive(
+            session=session,
+            response=response,
+            resolved_to_agents=["a", "b"],
+            to_agents=["all"],
+            from_agent="bogus-id",
+            tenant_key="tenant-test",
+            project=project,
+        )
+
+        assert response.staging_directive is not None
+        assert response.staging_directive.status == "SENDER_NOT_FOUND"
+        assert "bogus-id" in response.staging_directive.message
+
+    @pytest.mark.asyncio
+    async def test_no_diagnostic_for_ordinary_direct_message_outside_staging(self):
+        """Diagnostic noise rule: ordinary direct messages from non-orchestrators
+        outside staging context must NOT carry a diagnostic directive. The directive
+        is reserved for broadcast attempts (where intent to complete staging is
+        plausible) — this protects normal inter-agent traffic from clutter.
+        """
+        from giljo_mcp.schemas.service_responses import SendMessageResult
+
+        service = self._make_service()
+        sender_exec = MagicMock()
+        sender_exec.agent_name = "implementer"
+        sender_exec.job_id = "j1"
+        sender_job = MagicMock()
+        sender_job.project_id = "p1"
+
+        service._repo.get_execution_by_agent_id = AsyncMock(return_value=sender_exec)
+        service._repo.get_agent_job_by_job_id = AsyncMock(return_value=sender_job)
+
+        project = MagicMock()
+        project.staging_status = "staging_complete"
+
+        response = SendMessageResult(message_id="m1", to_agents=["tester-id"])
+        session = AsyncMock()
+
+        await service._check_staging_broadcast_directive(
+            session=session,
+            response=response,
+            resolved_to_agents=["tester-id"],
+            to_agents=["tester-id"],
+            from_agent="impl-agent-id",
+            tenant_key="tenant-test",
+            project=project,
+        )
+
+        # Implementer-to-tester direct message in implementation phase: no directive.
         assert response.staging_directive is None
+
+    @pytest.mark.asyncio
+    async def test_success_path_unchanged_carries_stop_semantics(self):
+        """Regression: the success path must still populate action=STOP and the
+        full STAGING_SESSION_COMPLETE contract that agents key off in CH2."""
+        from giljo_mcp.schemas.service_responses import SendMessageResult
+
+        service = self._make_service()
+        sender_exec = MagicMock()
+        sender_exec.agent_name = "orchestrator"
+        sender_exec.job_id = "j1"
+        sender_job = MagicMock()
+        sender_job.project_id = "p1"
+
+        service._repo.get_execution_by_agent_id = AsyncMock(return_value=sender_exec)
+        service._repo.get_agent_job_by_job_id = AsyncMock(return_value=sender_job)
+
+        project = MagicMock()
+        project.staging_status = "staging"
+
+        response = SendMessageResult(message_id="m1", to_agents=["a"])
+        session = AsyncMock()
+
+        await service._check_staging_broadcast_directive(
+            session=session,
+            response=response,
+            resolved_to_agents=["a"],
+            to_agents=["all"],  # literal 'all' triggers broadcast even with 1 resolved
+            from_agent="orch-agent-id",
+            tenant_key="tenant-test",
+            project=project,
+        )
+
+        assert response.staging_directive is not None
+        assert response.staging_directive.status == "STAGING_SESSION_COMPLETE"
+        assert response.staging_directive.action == "STOP"
+        assert response.staging_directive.implementation_gate == "LOCKED"
+        assert response.staging_directive.next_step is not None
+        assert project.staging_status == "staging_complete"
 
 
 # ---------------------------------------------------------------------------

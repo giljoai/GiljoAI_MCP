@@ -580,13 +580,12 @@ class OAuthService:
         # instead of one 200 + one 400. Mismatched signature falls through
         # to the existing fail-closed path.
         idem_proof = client_secret if resolved_client.client_secret_hash is not None else (code_verifier or "")
-        idem_key = (auth_code.tenant_key, code)
         idem_signature = _idem.compute_body_signature(
             client_id=client_id,
             proof=idem_proof or "",
             redirect_uri=redirect_uri,
         )
-        cached = _idem.cache_get(idem_key, now=datetime.now(UTC))
+        cached = await _idem.cache_get(auth_code.tenant_key, code)
         if cached is not None and cached.body_signature == idem_signature:
             logger.info(
                 "oauth_token_idempotency_hit tenant=%s",
@@ -692,8 +691,9 @@ class OAuthService:
         # concurrent retry that arrives microseconds later sees the same
         # token pair instead of a 400 from the spec-strict single-use
         # auth-code enforcement.
-        _idem.cache_put(
-            idem_key,
+        await _idem.cache_put(
+            auth_code.tenant_key,
+            code,
             _idem.IdempotencyEntry(
                 response_body=dict(response),
                 body_signature=idem_signature,

@@ -422,9 +422,19 @@ Call: send_message(
 
 This broadcast enables the "Implement" button in UI (REQUIRED)
 
-The server will confirm staging completion in the response with a
-`staging_directive` field containing status: "STAGING_SESSION_COMPLETE".
-When you receive this directive, your session is DONE. Stop immediately.
+The server will respond with a `staging_directive` field. Read its `status`:
+
+  • "STAGING_SESSION_COMPLETE" → success. Your session is DONE. Stop immediately.
+  • "ALREADY_COMPLETE"        → an earlier broadcast already flipped the flag.
+                                 If you are the staging orchestrator, stop now.
+  • "NOT_BROADCAST"           → call shape error. Resend with to_agents=['all']
+                                 AND message_type='broadcast' (both required).
+  • "NOT_ORCHESTRATOR"        → only the orchestrator can complete staging.
+  • "SENDER_NOT_FOUND"        → from_agent did not resolve. Pass YOUR agent_id
+                                 UUID from get_workflow_status, not a display name.
+
+Do NOT retry on ALREADY_COMPLETE — the flag is one-shot. Read the `message`
+field on any non-success status; it explains the exact problem.
 
 ⚠️  STAGING ENDS HERE - DO NOT call complete_job() or write_360_memory()
    Your session is done. Implementation happens in a new session.

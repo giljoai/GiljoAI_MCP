@@ -356,7 +356,12 @@ class TestStagingToImplementationFlow:
 
     @pytest.mark.asyncio
     async def test_layer2_staging_directive_does_not_fire_post_staging_complete(self):
-        """Layer 2: staging_directive must NOT fire once staging_status is already staging_complete."""
+        """Layer 2: staging flag must NOT be re-flipped once staging_status is
+        already staging_complete. Post the silent-null fix, the directive now
+        carries an ALREADY_COMPLETE diagnostic on broadcast attempts so callers
+        can distinguish 'already done' from a successful re-trigger; the durable
+        invariant being protected here is that the project flag is NOT mutated.
+        """
         svc = _make_routing_service()
 
         sender_exec = MagicMock()
@@ -386,7 +391,12 @@ class TestStagingToImplementationFlow:
             project=project,
         )
 
-        assert response.staging_directive is None
+        # Project flag stays — this is the durable Layer 2 guarantee.
+        assert project.staging_status == "staging_complete"
+        # Diagnostic directive identifies the no-op without carrying STOP semantics.
+        assert response.staging_directive is not None
+        assert response.staging_directive.status == "ALREADY_COMPLETE"
+        assert response.staging_directive.action is None
 
     # ------------------------------------------------------------------
     # Step 7: orchestrator still 'blocked' → prompt still 200 (regression guard)

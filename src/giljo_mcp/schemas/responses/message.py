@@ -9,17 +9,26 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class StagingDirective(BaseModel):
-    """Staging session completion directive for orchestrator stop signal.
+    """Staging session completion directive — success or diagnostic.
 
-    Defense-in-depth Layer 5.5: Reinforced advisory STOP signal for staging
-    completion (Handover 0709b).
+    `status` distinguishes the success path from diagnostic non-success paths:
+      - "STAGING_SESSION_COMPLETE": staging flag was flipped this call. action="STOP".
+      - "ALREADY_COMPLETE": project was already staged; this call did not change state.
+      - "NOT_BROADCAST": staging-phase orchestrator sent a single-recipient direct
+        message; STAGING_COMPLETE requires to_agents=['all'] + message_type='broadcast'.
+      - "NOT_ORCHESTRATOR": broadcast sender is not the orchestrator; only the
+        orchestrator can complete staging.
+      - "SENDER_NOT_FOUND": from_agent did not resolve to an active execution.
+
+    Only the success path populates `action`, `implementation_gate`, and `next_step`.
+    Diagnostic statuses populate `status` + `message` only.
     """
 
     status: str
-    action: str
     message: str
-    implementation_gate: str
-    next_step: str
+    action: str | None = None
+    implementation_gate: str | None = None
+    next_step: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -29,7 +38,9 @@ class SendMessageResult(BaseModel):
 
     Returned by send_message() and broadcast().
     message_id is Optional because broadcasting to an empty project yields None.
-    staging_directive is present only when a staging-phase orchestrator broadcasts.
+    staging_directive is populated on broadcast attempts during staging (success
+    flips the staging flag; diagnostic statuses explain why a broadcast did NOT
+    flip the flag). It remains None for ordinary direct messages outside staging.
     """
 
     message_id: str | None = None

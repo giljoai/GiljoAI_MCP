@@ -360,47 +360,125 @@ class MessageRoutingService:
         """Detect staging orchestrator broadcast and enrich response with STOP directive.
 
         Handover 0709b: Defense-in-depth Layer 5.5 for staging completion.
+
+        Surfaces diagnostic statuses (ALREADY_COMPLETE / NOT_BROADCAST /
+        NOT_ORCHESTRATOR / SENDER_NOT_FOUND) when a staging completion broadcast
+        was attempted but did not fire — replaces the previous silent-null failure
+        mode that left agents unable to distinguish success, idempotent no-op,
+        and call-shape mistakes.
         """
-        is_broadcast = len(resolved_to_agents) > 1 or (to_agents and to_agents[0] == "all")
+        is_broadcast = bool(len(resolved_to_agents) > 1 or (to_agents and to_agents[0] == "all"))
 
-        if not (is_broadcast and from_agent):
+        # Internal calls without a sender — no diagnostic context available.
+        if not from_agent:
             return
 
-        sender_execution = await self._repo.get_execution_by_agent_id(session, tenant_key, from_agent)
-        if not sender_execution:
+        # Fast path: nothing to diagnose AND nothing to flip. Skips the sender
+        # lookup entirely so ordinary direct messages don't pay the DB cost
+        # (and don't add DB calls inside the message-send hot path that other
+        # deadlock-recovery tests assume is quiet post-commit).
+        if not is_broadcast and project.staging_status == "staging_complete":
             return
 
-        # TENANT ISOLATION: Filter by tenant_key
-        sender_job = await self._repo.get_agent_job_by_job_id(session, tenant_key, sender_execution.job_id)
-        if not sender_job:
+        # The staging directive is advisory; a transient DB hiccup looking up the
+        # sender must NOT fail the already-committed send_message call. Wrap the
+        # diagnostic block so any DB error degrades gracefully to "no directive".
+        try:
+            sender_execution = await self._repo.get_execution_by_agent_id(session, tenant_key, from_agent)
+            if not sender_execution:
+                if is_broadcast:
+                    response.staging_directive = StagingDirective(
+                        status="SENDER_NOT_FOUND",
+                        message=(
+                            f"from_agent={from_agent!r} did not resolve to an active execution "
+                            "in this project. Verify you are passing your own agent_id UUID "
+                            "(from get_workflow_status), not a display name or job_id."
+                        ),
+                    )
+                return
+
+            # TENANT ISOLATION: Filter by tenant_key
+            sender_job = await self._repo.get_agent_job_by_job_id(session, tenant_key, sender_execution.job_id)
+            if not sender_job:
+                if is_broadcast:
+                    response.staging_directive = StagingDirective(
+                        status="SENDER_NOT_FOUND",
+                        message=(
+                            "Sender execution exists but its job record was not found "
+                            "(possible cross-tenant lookup or stale execution row)."
+                        ),
+                    )
+                return
+        except Exception:  # noqa: BLE001 — directive is advisory; never fail the send on lookup error
+            self._logger.warning(
+                "[STAGING DIRECTIVE] sender lookup raised; skipping directive check",
+                exc_info=True,
+            )
             return
 
-        # BE-staging-lock Layer 2: keyed on durable project flag, not transient
-        # AgentExecution.status (orchestrator may be working/idle/blocked during staging).
         is_orchestrator = sender_execution.agent_name == "orchestrator"
-        is_staging = project.staging_status != "staging_complete" and is_orchestrator
 
-        if is_staging:
-            project.staging_status = "staging_complete"
-            project.updated_at = datetime.now(UTC)
+        if not is_orchestrator:
+            if is_broadcast:
+                response.staging_directive = StagingDirective(
+                    status="NOT_ORCHESTRATOR",
+                    message=(
+                        f"Sender role is {sender_execution.agent_name!r}; only the "
+                        "orchestrator can complete staging. This broadcast was delivered "
+                        "but did not flip the staging flag."
+                    ),
+                )
+            return
 
+        # Orchestrator sender from here down. BE-staging-lock Layer 2: keyed on durable
+        # project flag, not transient AgentExecution.status (orchestrator may be
+        # working/idle/blocked during staging).
+        if project.staging_status == "staging_complete":
+            if is_broadcast:
+                response.staging_directive = StagingDirective(
+                    status="ALREADY_COMPLETE",
+                    message=(
+                        "Project staging was already completed by an earlier broadcast. "
+                        "This call did not change state. If you are the staging orchestrator "
+                        "and have not yet stopped, stop now — your session is done."
+                    ),
+                )
+            return
+
+        # Staging-phase orchestrator. A single-recipient direct message at this point
+        # is almost always a STAGING_COMPLETE call shape mistake (must use 'all' broadcast).
+        if not is_broadcast:
             response.staging_directive = StagingDirective(
-                status="STAGING_SESSION_COMPLETE",
-                action="STOP",
+                status="NOT_BROADCAST",
                 message=(
-                    "STAGING IS COMPLETE. Your session must end NOW. "
-                    "Do NOT proceed to implementation. Do NOT call Task(). "
-                    "Do NOT call complete_job() or write_360_memory(). "
-                    "The user will click 'Implement' in the dashboard to start "
-                    "a new implementation session with a fresh orchestrator."
+                    "Staging-phase orchestrator sent a single-recipient direct message. "
+                    "STAGING_COMPLETE requires to_agents=['all'] AND message_type='broadcast'. "
+                    "The staging flag was NOT flipped. Resend with the broadcast call shape."
                 ),
-                implementation_gate="LOCKED",
-                next_step="Report staging complete to user and stop.",
             )
-            self._logger.info(
-                f"[STAGING DIRECTIVE] Added STOP directive to staging orchestrator broadcast "
-                f"(agent_id={from_agent}, status=waiting)"
-            )
+            return
+
+        # Success path: orchestrator broadcast during staging — flip the flag.
+        project.staging_status = "staging_complete"
+        project.updated_at = datetime.now(UTC)
+
+        response.staging_directive = StagingDirective(
+            status="STAGING_SESSION_COMPLETE",
+            action="STOP",
+            message=(
+                "STAGING IS COMPLETE. Your session must end NOW. "
+                "Do NOT proceed to implementation. Do NOT call Task(). "
+                "Do NOT call complete_job() or write_360_memory(). "
+                "The user will click 'Implement' in the dashboard to start "
+                "a new implementation session with a fresh orchestrator."
+            ),
+            implementation_gate="LOCKED",
+            next_step="Report staging complete to user and stop.",
+        )
+        self._logger.info(
+            f"[STAGING DIRECTIVE] Added STOP directive to staging orchestrator broadcast "
+            f"(agent_id={from_agent}, status=waiting)"
+        )
 
     async def _handle_send_message_side_effects(
         self,

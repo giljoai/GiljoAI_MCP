@@ -5,36 +5,31 @@
 
 """Unit tests for ``giljo_mcp.services.oauth_token_idempotency``.
 
-The module is a thin set of stateful helpers (cache get/put, signature).
-End-to-end behavior is covered by
-``tests/api/test_oauth_endpoints.py::TestTokenIdempotency`` at the FastAPI
-boundary — these unit tests just lock the building blocks: TTL eviction,
-soft-cap LRU eviction, and signature determinism / discrimination.
+The module routes idempotency-window state through the
+``CacheBackend`` registry (INF-5074). End-to-end behavior is covered
+by ``tests/api/test_oauth_endpoints.py::TestTokenIdempotency`` at the
+FastAPI boundary — these unit tests lock the local building blocks:
+signature determinism / discrimination, and the round-trip through the
+registry-backed cache.
 """
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 import pytest
 
+from giljo_mcp.services import cache_backends
 from giljo_mcp.services import oauth_token_idempotency as idem
 
 
-@pytest.fixture
-def fresh_cache(monkeypatch):
-    """Each test runs against a fresh module-scope cache dict."""
-    fresh: dict = {}
-    monkeypatch.setattr(idem, "_token_idempotency_cache", fresh)
-    return fresh
-
-
-def _make_entry(*, expires_in_seconds: int = 5, signature: str = "sig") -> idem.IdempotencyEntry:
-    return idem.IdempotencyEntry(
-        response_body={"access_token": "tok"},
-        body_signature=signature,
-        expires_at=datetime.now(UTC) + timedelta(seconds=expires_in_seconds),
-    )
+@pytest.fixture(autouse=True)
+def _isolated_registry():
+    """Each test starts from a clean registry so a leaked Redis stub from one
+    test cannot poison the next."""
+    cache_backends.reset_registry_for_tests()
+    yield
+    cache_backends.reset_registry_for_tests()
 
 
 class TestComputeBodySignature:
@@ -56,65 +51,42 @@ class TestComputeBodySignature:
         diff_client = idem.compute_body_signature(client_id="cid2", proof="proof", redirect_uri="https://x/cb")
         diff_proof = idem.compute_body_signature(client_id="cid", proof="proof2", redirect_uri="https://x/cb")
         diff_redir = idem.compute_body_signature(client_id="cid", proof="proof", redirect_uri="https://x/cb2")
-        assert {base, diff_client, diff_proof, diff_redir}.__len__() == 4
+        assert len({base, diff_client, diff_proof, diff_redir}) == 4
 
 
 class TestCacheGetPut:
-    def test_put_then_get_returns_entry(self, fresh_cache):
-        key = ("tk_x", "code-1")
-        entry = _make_entry()
-        idem.cache_put(key, entry)
-        got = idem.cache_get(key, now=datetime.now(UTC))
-        assert got is entry
-
-    @pytest.mark.usefixtures("fresh_cache")
-    def test_miss_returns_none(self):
-        assert idem.cache_get(("tk_x", "missing"), now=datetime.now(UTC)) is None
-
-    def test_lazy_evict_on_expired_entry(self, fresh_cache):
-        key = ("tk_x", "code-1")
-        idem.cache_put(key, _make_entry(expires_in_seconds=-1))
-        # Past expiry → cache_get returns None AND removes the entry.
-        assert idem.cache_get(key, now=datetime.now(UTC)) is None
-        assert key not in fresh_cache
-
-    def test_soft_cap_evicts_oldest_entry(self, fresh_cache, monkeypatch):
-        # Shrink the cap so the test is fast and deterministic.
-        monkeypatch.setattr(idem, "_TOKEN_IDEMPOTENCY_CACHE_MAX_ENTRIES", 3)
-
-        # Fill the cache with three entries with strictly increasing expiry.
-        now = datetime.now(UTC)
-        for i in range(3):
-            idem.cache_put(
-                ("tk_x", f"code-{i}"),
-                idem.IdempotencyEntry(
-                    response_body={"i": i},
-                    body_signature="sig",
-                    expires_at=now + timedelta(seconds=10 + i),
-                ),
-            )
-        assert len(fresh_cache) == 3
-
-        # Inserting a fourth entry with the latest expiry must evict the oldest.
-        idem.cache_put(
-            ("tk_x", "code-3"),
-            idem.IdempotencyEntry(
-                response_body={"i": 3},
-                body_signature="sig",
-                expires_at=now + timedelta(seconds=20),
-            ),
+    @pytest.mark.asyncio
+    async def test_put_then_get_round_trips_entry(self):
+        entry = idem.IdempotencyEntry(
+            response_body={"access_token": "tok"},
+            body_signature="sig-abc",
+            expires_at=datetime.now(UTC),
         )
-        assert len(fresh_cache) == 3
-        assert ("tk_x", "code-0") not in fresh_cache  # oldest evicted
-        assert ("tk_x", "code-3") in fresh_cache
-
-    def test_overwrite_existing_key_does_not_count_toward_cap(self, fresh_cache, monkeypatch):
-        monkeypatch.setattr(idem, "_TOKEN_IDEMPOTENCY_CACHE_MAX_ENTRIES", 1)
-        key = ("tk_x", "code-1")
-        idem.cache_put(key, _make_entry(signature="old"))
-        idem.cache_put(key, _make_entry(signature="new"))
-        # Same key replaced in place; no eviction needed.
-        assert len(fresh_cache) == 1
-        got = idem.cache_get(key, now=datetime.now(UTC))
+        await idem.cache_put("tk_x", "code-1", entry)
+        got = await idem.cache_get("tk_x", "code-1")
         assert got is not None
-        assert got.body_signature == "new"
+        assert got.response_body == {"access_token": "tok"}
+        assert got.body_signature == "sig-abc"
+
+    @pytest.mark.asyncio
+    async def test_miss_returns_none(self):
+        assert await idem.cache_get("tk_x", "missing") is None
+
+    @pytest.mark.asyncio
+    async def test_tenant_scoped_keys_do_not_collide(self):
+        entry_a = idem.IdempotencyEntry(
+            response_body={"who": "tenant_a"},
+            body_signature="sig-a",
+            expires_at=datetime.now(UTC),
+        )
+        entry_b = idem.IdempotencyEntry(
+            response_body={"who": "tenant_b"},
+            body_signature="sig-b",
+            expires_at=datetime.now(UTC),
+        )
+        await idem.cache_put("tk_a", "shared-code", entry_a)
+        await idem.cache_put("tk_b", "shared-code", entry_b)
+        got_a = await idem.cache_get("tk_a", "shared-code")
+        got_b = await idem.cache_get("tk_b", "shared-code")
+        assert got_a is not None and got_a.body_signature == "sig-a"
+        assert got_b is not None and got_b.body_signature == "sig-b"

@@ -265,6 +265,27 @@ async def lifespan(app: FastAPI):
         logger.warning("Optional startup phase [mcp_session_manager] failed: %s — running in degraded mode", e)
         state.degraded_services.append("mcp_session_manager")
 
+    # Phase 8.5: OAuth idempotency / refresh cache backends (SaaS/Demo only — INF-5074).
+    # Replaces the CE in-process dict defaults with Redis-backed implementations so
+    # idempotency-window state is coherent across multiple uvicorn workers. Uses
+    # importlib to satisfy CE/SaaS import boundary (no static import from saas/).
+    if GILJO_MODE in ("saas", "demo"):
+        try:
+            import importlib
+            import os as _os
+
+            _redis_url = _os.environ.get("REDIS_URL", "redis://127.0.0.1:6379/0")
+            _cache_mod = importlib.import_module("giljo_mcp.saas.services.redis_cache_backend")
+            _cache_mod.install_redis_cache_backends(_redis_url)
+            logger.info("OAuth cache backends installed (Redis)")
+        except Exception as e:
+            logger.warning(
+                "Optional startup phase [oauth_cache_backends] failed: %s — "
+                "falling back to in-process dict (NOT multi-worker safe)",
+                e,
+            )
+            state.degraded_services.append("oauth_cache_backends")
+
     # Phase 9: Trial reaper (SaaS/Demo only — SAAS-008)
     # Uses importlib to satisfy CE/SaaS import boundary (no static import from saas/)
     _trial_reaper_task = None

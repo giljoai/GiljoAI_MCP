@@ -25,6 +25,7 @@ Security contract (RFC 6749 §6 + §10.4 + OAuth 2.1 Security BCP):
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 import os
 import secrets
@@ -38,6 +39,7 @@ from sqlalchemy import select, update
 from giljo_mcp.auth.jwt_manager import JWTManager
 from giljo_mcp.models.auth import User
 from giljo_mcp.models.oauth import OAuthRefreshToken
+from giljo_mcp.services.cache_backends import OAUTH_REFRESH_BACKEND_NAME, get_cache_backend
 
 
 if TYPE_CHECKING:
@@ -49,14 +51,13 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 # API-0021l: 5-second idempotency window for /refresh retries. Same shape as
-# the /token primitive in oauth_service. The cache hit suppresses the
-# existing reuse-detection alarm INSIDE the window — that's the whole point:
-# concurrent retries from the same client are not malicious replays.
+# the /token primitive in oauth_token_idempotency. The cache hit suppresses
+# the existing reuse-detection alarm INSIDE the window — that's the whole
+# point: concurrent retries from the same client are not malicious replays.
 #
-# TODO(INF-5074): replace with Redis/DB-backed cache when SaaS goes multi-worker —
-# the current single-worker assumption breaks under uvicorn --workers > 1.
+# State is held in the `oauth_refresh` `CacheBackend` (INF-5074). CE: dict.
+# SaaS: Redis. The swap is transparent to this module.
 OAUTH_REFRESH_IDEMPOTENCY_WINDOW_SECONDS = int(os.environ.get("OAUTH_REFRESH_IDEMPOTENCY_WINDOW_SECONDS", "5"))
-_REFRESH_IDEMPOTENCY_CACHE_MAX_ENTRIES = 1000
 _REFRESH_IDEMPOTENCY_FIELD_SEP = b"\x1f"
 
 
@@ -64,35 +65,41 @@ _REFRESH_IDEMPOTENCY_FIELD_SEP = b"\x1f"
 class _RefreshIdempotencyEntry:
     response_body: dict
     body_signature: str
-    expires_at: datetime
 
 
-_refresh_idempotency_cache: dict[tuple[str, str], _RefreshIdempotencyEntry] = {}
+def _serialize_refresh_entry(entry: _RefreshIdempotencyEntry) -> str:
+    return json.dumps(
+        {
+            "response_body": entry.response_body,
+            "body_signature": entry.body_signature,
+        }
+    )
 
 
-def _refresh_idempotency_cache_get(
-    key: tuple[str, str],
-    *,
-    now: datetime,
-) -> _RefreshIdempotencyEntry | None:
-    entry = _refresh_idempotency_cache.get(key)
-    if entry is None:
+def _deserialize_refresh_entry(raw: str) -> _RefreshIdempotencyEntry:
+    payload = json.loads(raw)
+    return _RefreshIdempotencyEntry(
+        response_body=dict(payload["response_body"]),
+        body_signature=str(payload["body_signature"]),
+    )
+
+
+async def _refresh_idempotency_cache_get(tenant_key: str, token_hash: str) -> _RefreshIdempotencyEntry | None:
+    backend = get_cache_backend(OAUTH_REFRESH_BACKEND_NAME)
+    raw = await backend.get(tenant_key, token_hash)
+    if raw is None:
         return None
-    if entry.expires_at <= now:
-        _refresh_idempotency_cache.pop(key, None)
-        return None
-    return entry
+    return _deserialize_refresh_entry(raw)
 
 
-def _refresh_idempotency_cache_put(
-    key: tuple[str, str],
-    entry: _RefreshIdempotencyEntry,
-) -> None:
-    cache = _refresh_idempotency_cache
-    if len(cache) >= _REFRESH_IDEMPOTENCY_CACHE_MAX_ENTRIES and key not in cache:
-        oldest_key = min(cache, key=lambda k: cache[k].expires_at)
-        cache.pop(oldest_key, None)
-    cache[key] = entry
+async def _refresh_idempotency_cache_put(tenant_key: str, token_hash: str, entry: _RefreshIdempotencyEntry) -> None:
+    backend = get_cache_backend(OAUTH_REFRESH_BACKEND_NAME)
+    await backend.set(
+        tenant_key,
+        token_hash,
+        _serialize_refresh_entry(entry),
+        ttl_seconds=OAUTH_REFRESH_IDEMPOTENCY_WINDOW_SECONDS,
+    )
 
 
 def _compute_refresh_body_signature(
@@ -298,13 +305,12 @@ async def refresh_token_grant(
     # the ``row.revoked`` branch — that's intentional: in-window retries
     # are not malicious replays. Mismatched signature falls through to
     # existing reuse-detection unchanged.
-    refresh_idem_key = (row.tenant_key, token_hash)
     refresh_idem_signature = _compute_refresh_body_signature(
         client_id=client_id,
         client_secret_hash=resolved.client_secret_hash,
         refresh_token_hash=token_hash,
     )
-    cached = _refresh_idempotency_cache_get(refresh_idem_key, now=now)
+    cached = await _refresh_idempotency_cache_get(row.tenant_key, token_hash)
     if cached is not None and cached.body_signature == refresh_idem_signature:
         logger.info(
             "oauth_refresh_idempotency_hit family_id=%s tenant=%s",
@@ -385,12 +391,12 @@ async def refresh_token_grant(
     # window receives the SAME pair instead of triggering a second rotation
     # (which would either orphan an access_token or trip reuse-detection
     # and revoke the family).
-    _refresh_idempotency_cache_put(
-        refresh_idem_key,
+    await _refresh_idempotency_cache_put(
+        row.tenant_key,
+        token_hash,
         _RefreshIdempotencyEntry(
             response_body=dict(response),
             body_signature=refresh_idem_signature,
-            expires_at=datetime.now(UTC) + timedelta(seconds=OAUTH_REFRESH_IDEMPOTENCY_WINDOW_SECONDS),
         ),
     )
 

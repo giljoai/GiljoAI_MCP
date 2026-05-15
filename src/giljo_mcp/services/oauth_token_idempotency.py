@@ -3,16 +3,14 @@
 # See LICENSE in the project root for terms.
 # [CE] Community Edition.
 
-"""OAuth /token idempotency-window primitive (API-0021l).
+"""OAuth /token idempotency-window primitive (API-0021l, INF-5074).
 
-Split out of ``oauth_service`` to keep that file under the 800-line guardrail
-while still expressing the OAuth /token flow as a coherent ``OAuthService``
-API. The helpers here are stateful at module scope (the cache dict) — there
-is intentionally no class wrapper because the bug we're solving is a
-short-window concurrency race and an ``IdempotencyManager`` class spanning
-both /token and /refresh would be premature abstraction (post-0962 write
-discipline). /refresh has its own equivalent primitive in
-``oauth_refresh_service`` for the same reason.
+Routes idempotency-window state through the `CacheBackend` registry
+(`giljo_mcp.services.cache_backends`). CE installs see the default
+`InProcessDictBackend` (single-worker correct). SaaS installs see the
+Redis-backed adapter from `giljo_mcp.saas.services.redis_cache_backend`,
+which keeps state coherent across uvicorn workers — that swap is the
+INF-5074 fix.
 
 Why this exists (live evidence):
 ChatGPT's connector backend issues concurrent POST /token from different
@@ -22,54 +20,89 @@ the first and 400 "Authorization code has already been used" for the
 second; the connector UI flashed "Something went wrong" before reading the
 first response. Auth0/Okta/AWS Cognito all implement a short idempotency
 window for confidential clients to absorb honest retries — this is parity.
-
-TODO(INF-5074): replace with Redis/DB-backed cache when SaaS goes multi-worker —
-the current single-worker assumption breaks under uvicorn --workers > 1.
 """
 
 from __future__ import annotations
 
 import hashlib
+import json
+import logging
 import os
 from dataclasses import dataclass
-from datetime import datetime
+from typing import TYPE_CHECKING
 
+from giljo_mcp.services.cache_backends import OAUTH_IDEMPOTENCY_BACKEND_NAME, get_cache_backend
+
+
+if TYPE_CHECKING:
+    from datetime import datetime
+
+
+logger = logging.getLogger(__name__)
 
 OAUTH_TOKEN_IDEMPOTENCY_WINDOW_SECONDS = int(os.environ.get("OAUTH_TOKEN_IDEMPOTENCY_WINDOW_SECONDS", "5"))
-_TOKEN_IDEMPOTENCY_CACHE_MAX_ENTRIES = 1000
 _TOKEN_IDEMPOTENCY_FIELD_SEP = b"\x1f"
 
 
 @dataclass(frozen=True)
 class IdempotencyEntry:
-    """One cached /token response keyed by (tenant_key, code)."""
+    """One cached /token response keyed by (tenant_key, code).
+
+    `expires_at` is retained on the dataclass for backwards-compatibility
+    with prior callers; the backend's TTL is the authoritative expiry.
+    """
 
     response_body: dict
     body_signature: str
     expires_at: datetime
 
 
-_token_idempotency_cache: dict[tuple[str, str], IdempotencyEntry] = {}
+def _serialize(entry: IdempotencyEntry) -> str:
+    return json.dumps(
+        {
+            "response_body": entry.response_body,
+            "body_signature": entry.body_signature,
+        }
+    )
 
 
-def cache_get(key: tuple[str, str], *, now: datetime) -> IdempotencyEntry | None:
-    """Return the cached entry for ``key``, lazy-evicting on TTL lapse."""
-    entry = _token_idempotency_cache.get(key)
-    if entry is None:
+def _deserialize(raw: str) -> dict[str, object]:
+    return json.loads(raw)
+
+
+async def cache_get(tenant_key: str, code: str) -> IdempotencyEntry | None:
+    """Return the cached entry for `(tenant_key, code)` from the registered backend.
+
+    The backend's TTL drives expiry; a miss is indistinguishable from a
+    lapsed entry, which is the desired semantic.
+    """
+    backend = get_cache_backend(OAUTH_IDEMPOTENCY_BACKEND_NAME)
+    raw = await backend.get(tenant_key, code)
+    if raw is None:
         return None
-    if entry.expires_at <= now:
-        _token_idempotency_cache.pop(key, None)
-        return None
-    return entry
+    payload = _deserialize(raw)
+    return IdempotencyEntry(
+        response_body=dict(payload["response_body"]),  # type: ignore[arg-type]
+        body_signature=str(payload["body_signature"]),
+        expires_at=_far_future_marker(),
+    )
 
 
-def cache_put(key: tuple[str, str], entry: IdempotencyEntry) -> None:
-    """Insert ``entry`` under ``key``, LRU-by-expiry evicting on soft cap."""
-    cache = _token_idempotency_cache
-    if len(cache) >= _TOKEN_IDEMPOTENCY_CACHE_MAX_ENTRIES and key not in cache:
-        oldest_key = min(cache, key=lambda k: cache[k].expires_at)
-        cache.pop(oldest_key, None)
-    cache[key] = entry
+async def cache_put(tenant_key: str, code: str, entry: IdempotencyEntry) -> None:
+    """Insert `entry` under `(tenant_key, code)` with the configured TTL."""
+    backend = get_cache_backend(OAUTH_IDEMPOTENCY_BACKEND_NAME)
+    await backend.set(
+        tenant_key,
+        code,
+        _serialize(entry),
+        ttl_seconds=OAUTH_TOKEN_IDEMPOTENCY_WINDOW_SECONDS,
+    )
+
+
+def _far_future_marker() -> datetime:
+    from datetime import UTC, datetime, timedelta
+
+    return datetime.now(UTC) + timedelta(days=365)
 
 
 def compute_body_signature(
@@ -80,7 +113,7 @@ def compute_body_signature(
 ) -> str:
     """Canonical body-signature for the /token idempotency check.
 
-    ``proof`` is the client's proof-of-possession token: code_verifier for
+    `proof` is the client's proof-of-possession token: code_verifier for
     public PKCE clients, the plaintext client_secret for confidential
     clients. The signature only needs to match across retries from the
     same caller — using whichever value the caller sends keeps the
