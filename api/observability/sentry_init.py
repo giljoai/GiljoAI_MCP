@@ -35,8 +35,83 @@ _PII_HEADERS_LOWER = frozenset(
 )
 
 
+# INF-5070: Defense-in-depth event-drop filter.
+#
+# Some log records semantically represent expected protocol traffic (an
+# anonymous /api/auth/me probe, a normal "session-missing" credential
+# rejection) and have no business creating Sentry issues. The log-level
+# downgrade in src/giljo_mcp/auth/dependencies.py is the primary fix; this
+# filter is the backstop in case a future refactor accidentally raises the
+# level back to ERROR. Each entry pairs a logger name with message prefixes
+# that should be dropped even if they reach the SDK as event-level records.
+_EVENT_DROP_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
+    (
+        "giljo_mcp.auth.dependencies",
+        (
+            "[AUTH] FAILED",
+            "[AUTH] anonymous",
+        ),
+    ),
+    # INF-5070: BaseGiljoError handler in api/exception_handlers.py logs the
+    # exception's error_code as a prefix. The runtime fix downgrades 4xx
+    # cases to WARNING so they never become events; this filter is the
+    # backstop for known-noisy 4xx error codes in case a future refactor
+    # reintroduces error-level logging.
+    (
+        "api.exception_handlers",
+        (
+            "AUTHENTICATIONERROR:",
+            "AUTHENTICATION_ERROR:",
+            "AUTHORIZATIONERROR:",
+            "AUTHORIZATION_ERROR:",
+            "VALIDATION_ERROR:",
+            "NOT_FOUND:",
+            "NOTFOUND:",
+            "CONFLICT:",
+            "FORBIDDEN:",
+            "RATE_LIMIT_EXCEEDED:",
+        ),
+    ),
+)
+
+
+def _event_message(event: dict[str, Any]) -> str:
+    """Extract the log message from a Sentry event in a format-agnostic way."""
+    logentry = event.get("logentry")
+    if isinstance(logentry, dict):
+        formatted = logentry.get("formatted") or logentry.get("message")
+        if isinstance(formatted, str):
+            return formatted
+    msg = event.get("message")
+    if isinstance(msg, str):
+        return msg
+    return ""
+
+
+def _should_drop_event(event: dict[str, Any]) -> bool:
+    """Return True when an event matches the noise-suppression rules."""
+    logger_name = event.get("logger")
+    if not isinstance(logger_name, str):
+        return False
+    message = _event_message(event)
+    for target_logger, prefixes in _EVENT_DROP_RULES:
+        if logger_name != target_logger:
+            continue
+        for prefix in prefixes:
+            if message.startswith(prefix):
+                return True
+    return False
+
+
 def _scrub_event(event: dict[str, Any], _hint: dict[str, Any]) -> dict[str, Any] | None:
-    """Drop request body and PII headers before transmission to Sentry."""
+    """Drop request body + PII headers, and suppress known-noisy log events.
+
+    Order matters: the drop check runs first so noisy events do not even get
+    their PII scrubbed (small CPU savings + clearer reasoning when reading
+    the filter). PII scrubbing then runs on the events that survive.
+    """
+    if _should_drop_event(event):
+        return None
     request = event.get("request")
     if isinstance(request, dict):
         request.pop("data", None)

@@ -6,7 +6,7 @@ import { initializeApiConfig } from './config/api'
 import configService from './services/configService'
 import setupService from './services/setupService'
 import { initSentry } from './sentry'
-import { applyNonceToApp } from '@/composables/useCspNonce'
+import { applyNonceToApp, readCspNonce } from '@/composables/useCspNonce'
 
 // Vuetify
 import 'vuetify/styles'
@@ -23,10 +23,20 @@ import '@/styles/global-tabs.scss'
 // Theme configuration
 import { darkTheme } from './config/theme'
 
+// SEC-0021: Read the per-request CSP nonce from <meta name="csp-nonce"> BEFORE
+// createVuetify(). Vuetify 3 only stamps its runtime-injected <style> tags with
+// the nonce when it's passed as `theme.cspNonce` in the create options — it does
+// NOT read `app.config.globalProperties.$nonce`. Under nonce-only style-src in
+// SaaS/demo, missing this wiring blocks every Vuetify theme stylesheet and the
+// SPA renders unstyled (brand yellow, theme vars all gone). CE has no meta tag,
+// readCspNonce() returns '', cspNonce becomes undefined, behavior unchanged.
+const cspNonce = readCspNonce() || undefined
+
 // Create Vuetify instance with theme
 const vuetify = createVuetify({
   theme: {
     defaultTheme: 'dark',
+    cspNonce,
     themes: {
       dark: darkTheme,
     },

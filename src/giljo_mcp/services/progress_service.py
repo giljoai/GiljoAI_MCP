@@ -445,8 +445,12 @@ class ProgressService:
                     raise ValidationError(
                         message=(
                             f"todo_items regression rejected: incoming list has {incoming_completed} completed "
-                            f"items but DB already has {existing_completed}. todo_items is a FULL REPLACEMENT — "
-                            f"include ALL prior items with their current statuses. Use todo_append to add new items."
+                            f"items but DB already has {existing_completed}. todo_items is a FULL REPLACEMENT. "
+                            f"To ADD new items without resubmitting the existing list, use todo_append — but note "
+                            f"that todo_append CANNOT transition an existing pending item to completed. "
+                            f"To modify the status of an existing item, first read the current list via "
+                            f"fetch_context(categories=['todos'], job_id='{job_id}'), then resubmit the full "
+                            f"reconstructed list via todo_items with the updated statuses."
                         ),
                         context={
                             "method": "report_progress",

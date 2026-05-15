@@ -55,6 +55,11 @@ dependencies = [
     # Vision Document Summarization
     "sumy>=0.11.0",
     "nltk>=3.8",
+
+    # SaaS Edition: per-tenant rate limiting backed by Redis.
+    # CE installer paths never touch Redis; guarded by GILJO_MODE=saas in both
+    # the runtime store (saas/rate_limiting/store.py) and the installer.
+    "redis>=5.0",
 ]
 
 [project.optional-dependencies]

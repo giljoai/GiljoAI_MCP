@@ -100,12 +100,55 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         except (ImportError, AttributeError, KeyError, TypeError):
             logger.debug("Config not available for CSP — using defaults")
 
+        # Sentry ingest origins for connect-src (INF-5070).
+        # The frontend @sentry/vue SDK POSTs events directly to the Sentry
+        # ingest endpoint derived from the DSN host. Without this entry the
+        # browser blocks the request before egress, making frontend error
+        # tracking silently non-functional. Gated by GILJO_MODE so CE keeps
+        # the tighter CSP — CE never has a Sentry DSN configured. Parsing
+        # from the DSN env vars (rather than hard-coding *.ingest.sentry.io)
+        # keeps cross-region (us/eu) and account-migration scenarios working
+        # without a code change.
+        self.sentry_origins: list[str] = self._compute_sentry_origins()
+        if self.sentry_origins:
+            logger.info(f"CSP: sentry ingest allowlisted in connect-src: {self.sentry_origins}")
+
         mode_str = "DEVELOPMENT" if self.is_dev else "PRODUCTION"
         logger.info(f"SecurityHeadersMiddleware initialized in {mode_str} mode")
         logger.info(f"HSTS max-age: {hsts_max_age}s")
 
         if self.is_dev:
             logger.warning("CSP: unsafe-eval enabled for development HMR")
+
+    @staticmethod
+    def _compute_sentry_origins() -> list[str]:
+        """Parse SENTRY_DSN_* env vars and return scheme+host origins for CSP.
+
+        Returns an empty list when GILJO_MODE != saas|demo or when no DSN is
+        set. Each returned origin is the bare scheme://host (no userinfo, no
+        port, no path) suitable for direct concatenation into a CSP allowlist.
+        """
+        if os.getenv("GILJO_MODE", "").lower() not in ("saas", "demo"):
+            return []
+        from urllib.parse import urlparse
+
+        origins: list[str] = []
+        for var in ("SENTRY_DSN_BACKEND", "SENTRY_DSN_FRONTEND"):
+            dsn = os.getenv(var, "").strip()
+            if not dsn:
+                continue
+            try:
+                parsed = urlparse(dsn)
+            except ValueError:
+                continue
+            if parsed.scheme not in ("http", "https"):
+                continue
+            if not parsed.hostname:
+                continue
+            origin = f"{parsed.scheme}://{parsed.hostname}"
+            if origin not in origins:
+                origins.append(origin)
+        return origins
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """
@@ -136,10 +179,14 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # CSP nonce hook (SEC-0021): when SaaS CspNonceMiddleware sets
         # request.state.csp_nonce, swap 'unsafe-inline' for 'nonce-<X>' in
         # style-src so Vuetify's runtime-injected style tags carry the matching
-        # nonce attribute. CE never sets the attribute, so style-src keeps
-        # 'unsafe-inline' — CE behavior is byte-identical to today.
+        # nonce attribute. The static splash <style> block in index.html still
+        # needs its SHA-256 hash listed alongside the nonce — CSP3 allows
+        # nonce + hash hybrid (an inline style is permitted if it matches the
+        # nonce OR any listed hash). Without the hash, the splash CSS is
+        # blocked in SaaS/Demo and the logo fade-in dies. CE never sets the
+        # attribute, so style-src keeps 'unsafe-inline' — CE behavior unchanged.
         nonce = getattr(request.state, "csp_nonce", "")
-        style_src = f"'self' 'nonce-{nonce}'" if nonce else "'self' 'unsafe-inline'"
+        style_src = f"'self' 'nonce-{nonce}' {CSP_STYLE_HASH}" if nonce else "'self' 'unsafe-inline'"
 
         # connect-src: 'self' already covers same-origin API/WebSocket calls
         # (the common case). ws: / wss: allow cross-scheme WebSocket to the
@@ -153,6 +200,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # cloudflareinsights.com is the beacon endpoint paired with the
         # static.cloudflareinsights.com script source above.
         connect_src = "'self' ws: wss: https://cloudflareinsights.com"
+        if self.sentry_origins:
+            connect_src += " " + " ".join(self.sentry_origins)
 
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "

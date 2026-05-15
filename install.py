@@ -509,6 +509,21 @@ class UnifiedInstaller:
                 self.create_desktop_shortcuts()
                 result["steps"].append("shortcuts_created")
 
+            # Step 8.5: SaaS-only Redis provisioning
+            # Only runs when GILJO_MODE=saas; CE paths are byte-identical to before.
+            import os as _os
+
+            if _os.environ.get("GILJO_MODE") == "saas":
+                self._print_header("SaaS Redis Provisioning")
+                redis_result = self._provision_saas_redis()
+                if redis_result.get("success"):
+                    result["steps"].append("saas_redis_provisioned")
+                else:
+                    self._print_warning(
+                        f"Redis provisioning incomplete: {redis_result.get('error', 'unknown')}. "
+                        "Start Redis manually and ensure REDIS_URL is set before starting the server."
+                    )
+
             # Success
             result["success"] = True
             self._print_success_summary()
@@ -2690,6 +2705,154 @@ class UnifiedInstaller:
                 self._print_success(f"Created shortcut: {shortcut}")
         else:
             self._print_warning(f"Shortcut creation: {result.get('message', 'Unknown result')}")
+
+    def _provision_saas_redis(self) -> dict[str, Any]:
+        """Provision Redis for SaaS mode (GILJO_MODE=saas only).
+
+        This method is a no-op on CE paths — it is called only when
+        os.environ['GILJO_MODE'] == 'saas'.  CE installer code above never
+        reaches this call.
+
+        Responsibilities:
+          1. Install the redis-server daemon (platform-specific).
+          2. Enable/start the service.
+          3. Write REDIS_URL to .env if not already set.
+          4. Run redis-cli ping to confirm the daemon is up.
+
+        NOTE: macOS branch uses brew; this branch is NOT validated (no macOS
+        validation box exists at GiljoAI as of 2026-05-14).
+        """
+        import subprocess as _subprocess
+
+        result: dict[str, Any] = {"success": False}
+        plat = platform.system()
+
+        # -----------------------------------------------------------------
+        # 1. Install + start Redis daemon
+        # -----------------------------------------------------------------
+        try:
+            if plat == "Linux":
+                self._print_info("Installing redis-server via apt-get...")
+                _subprocess.run(
+                    ["sudo", "apt-get", "update", "-qq"],
+                    check=True,
+                    stdin=_subprocess.DEVNULL,
+                    capture_output=True,
+                )
+                _subprocess.run(
+                    ["sudo", "apt-get", "install", "-y", "-qq", "redis-server"],
+                    check=True,
+                    stdin=_subprocess.DEVNULL,
+                    capture_output=True,
+                )
+                self._print_success("redis-server installed")
+                self._print_info("Enabling and starting redis-server via systemctl...")
+                _subprocess.run(
+                    ["sudo", "systemctl", "enable", "--now", "redis-server"],
+                    check=True,
+                    stdin=_subprocess.DEVNULL,
+                    capture_output=True,
+                )
+                self._print_success("redis-server enabled and started")
+
+            elif plat == "Windows":
+                # Prefer scoop; if absent, guide operator to WSL Redis.
+                # Do NOT auto-install scoop — too invasive for a server OS.
+                if shutil.which("scoop"):
+                    self._print_info("Installing Redis via scoop...")
+                    _subprocess.run(["scoop", "install", "redis"], check=True, capture_output=True)
+                    self._print_success("Redis installed via scoop")
+                    self._print_info("Start Redis manually: redis-server  (or add to Windows Task Scheduler).")
+                else:
+                    self._print_warning(
+                        "scoop not found. Redis is not installed automatically on Windows SaaS servers "
+                        "without scoop. Options:\n"
+                        "  1. Install scoop (https://scoop.sh) then re-run install.py with GILJO_MODE=saas.\n"
+                        "  2. Use WSL2 and run: sudo apt-get install -y redis-server && "
+                        "sudo systemctl enable --now redis-server\n"
+                        "  3. Use Memurai (https://www.memurai.com/) — Windows-native Redis."
+                    )
+                    result["error"] = (
+                        "scoop absent; Redis not provisioned on Windows. See installer output for options."
+                    )
+                    # Still write REDIS_URL — operator must start Redis manually.
+
+            elif plat == "Darwin":
+                # macOS: brew install redis + brew services start redis.
+                # NOTE: macOS branch is NOT validated (no macOS validation box at
+                # GiljoAI as of 2026-05-14).  Proceed best-effort.
+                self._print_info("Installing Redis via brew (macOS — NOT validated)...")
+                _subprocess.run(["brew", "install", "redis"], check=True, capture_output=True)
+                _subprocess.run(["brew", "services", "start", "redis"], check=True, capture_output=True)
+                self._print_success("Redis installed and started via brew (macOS — unvalidated path)")
+
+            else:
+                self._print_warning(f"Unknown platform '{plat}' — skipping Redis daemon install.")
+                result["error"] = f"Unknown platform: {plat}"
+
+        except _subprocess.CalledProcessError as exc:
+            self._print_error(f"Redis daemon install/start failed: {exc}")
+            _logger.exception("saas_redis_provision daemon failed")
+            result["error"] = str(exc)
+            # Continue to write REDIS_URL — operator can fix daemon manually.
+
+        # -----------------------------------------------------------------
+        # 2. Write REDIS_URL to .env (if not already set)
+        # -----------------------------------------------------------------
+        default_redis_url = "redis://127.0.0.1:6379/0"
+        env_file = self.install_dir / ".env"
+
+        if env_file.exists():
+            env_text = env_file.read_text(encoding="utf-8")
+            if "REDIS_URL=" not in env_text:
+                self._print_info("Writing REDIS_URL to .env...")
+                redis_line = (
+                    "\n# =============================================================================\n"
+                    "# REDIS (SaaS Edition — per-tenant rate limiting)\n"
+                    "# =============================================================================\n"
+                    f"REDIS_URL={default_redis_url}\n"
+                )
+                env_file.write_text(env_text + redis_line, encoding="utf-8")
+                self._print_success(f"REDIS_URL={default_redis_url} written to .env")
+            else:
+                current_url = next(
+                    (line.split("=", 1)[1].strip() for line in env_text.splitlines() if line.startswith("REDIS_URL=")),
+                    default_redis_url,
+                )
+                self._print_info(f"REDIS_URL already set in .env: {current_url}")
+        else:
+            self._print_warning(
+                ".env not found — REDIS_URL not written. "
+                f"Add REDIS_URL={default_redis_url} manually before starting the SaaS server."
+            )
+
+        # -----------------------------------------------------------------
+        # 3. Post-install redis-cli ping
+        # -----------------------------------------------------------------
+        try:
+            ping_proc = _subprocess.run(
+                ["redis-cli", "ping"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+                check=False,
+            )
+            if ping_proc.returncode == 0 and "PONG" in ping_proc.stdout.upper():
+                self._print_success("redis-cli ping → PONG (Redis is up)")
+                result["success"] = True
+            else:
+                self._print_warning(
+                    f"redis-cli ping returned: {ping_proc.stdout.strip() or ping_proc.stderr.strip() or '(no output)'}. "
+                    "Redis may not be running yet. Start it manually and verify before launching the server."
+                )
+                result.setdefault("error", "redis-cli ping did not return PONG")
+        except (FileNotFoundError, _subprocess.TimeoutExpired) as exc:
+            self._print_warning(
+                f"redis-cli not found or timed out ({exc}). Verify Redis is running before starting the SaaS server."
+            )
+            result.setdefault("error", f"redis-cli check failed: {exc}")
+
+        return result
 
     def _get_all_network_ips(self) -> list[str]:
         """Get all non-loopback IPv4 addresses"""

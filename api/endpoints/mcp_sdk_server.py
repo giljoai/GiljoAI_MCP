@@ -1322,7 +1322,8 @@ async def get_workflow_status(
         "Categories: product_core (~100 tokens), vision_documents (0-24K), "
         "tech_stack (200-400), architecture (300-1.5K), testing (0-400), memory_360 "
         "(500-5K), git_history (500-5K), agent_templates (400-2.4K), project (~300), "
-        "self_identity (agent template content). Single tool replaces 9 individual tools."
+        "self_identity (agent template content), tasks (open task list), "
+        "todos (TODO content for a job — pass job_id, used for force-recovery)."
     ),
 )
 async def fetch_context(
@@ -1331,10 +1332,16 @@ async def fetch_context(
     agent_name: Annotated[
         str, Field(description="Agent template name (e.g. 'tdd-implementor') for self_identity category. Optional.")
     ] = "",
+    job_id: Annotated[
+        str,
+        Field(
+            description="Agent job UUID. REQUIRED for the 'todos' category (read-back of an agent's TODO list — sequence + content + status). Ignored by other categories."
+        ),
+    ] = "",
     categories: Annotated[
         list[str] | None,
         Field(
-            description="List of categories to fetch: 'product_core', 'vision_documents', 'tech_stack', 'architecture', 'testing', 'memory_360', 'git_history', 'agent_templates', 'project', 'self_identity'. Must be a list, e.g. ['tech_stack', 'architecture']. Multiple categories supported in one call. Required (do not pass null)."
+            description="List of categories to fetch: 'product_core', 'vision_documents', 'tech_stack', 'architecture', 'testing', 'memory_360', 'git_history', 'agent_templates', 'project', 'self_identity', 'tasks', 'todos'. Must be a list, e.g. ['tech_stack', 'architecture']. Multiple categories supported in one call. Required (do not pass null)."
         ),
     ] = None,
     depth_config: Annotated[
@@ -1354,6 +1361,8 @@ async def fetch_context(
         kwargs["project_id"] = project_id
     if agent_name:
         kwargs["agent_name"] = agent_name
+    if job_id:
+        kwargs["job_id"] = job_id
     if categories is not None:
         kwargs["categories"] = categories
     if depth_config is not None:

@@ -38,6 +38,7 @@ from giljo_mcp.tools.context_tools.get_self_identity import get_self_identity
 from giljo_mcp.tools.context_tools.get_tasks import get_tasks
 from giljo_mcp.tools.context_tools.get_tech_stack import get_tech_stack
 from giljo_mcp.tools.context_tools.get_testing import get_testing
+from giljo_mcp.tools.context_tools.get_todos import get_todos
 from giljo_mcp.tools.context_tools.get_vision_document import get_vision_document
 
 
@@ -56,6 +57,7 @@ CATEGORY_TOOLS = {
     "project": get_project,
     "self_identity": get_self_identity,
     "tasks": get_tasks,
+    "todos": get_todos,
 }
 
 # Derive from canonical source (defaults.py) - single source of truth (Handover 0823)
@@ -73,6 +75,7 @@ DEFAULT_DEPTHS = {
     "project": None,
     "self_identity": None,
     "tasks": None,
+    "todos": None,
 }
 
 ALL_CATEGORIES = list(CATEGORY_TOOLS.keys())
@@ -103,7 +106,7 @@ async def _is_category_enabled(
         True if enabled or no toggle exists, False if explicitly disabled.
     """
     # Categories that are always on (no toggle)
-    always_on = {"product_core", "project", "self_identity", "agent_templates", "tasks"}
+    always_on = {"product_core", "project", "self_identity", "agent_templates", "tasks", "todos"}
     if category in always_on:
         return True
 
@@ -214,6 +217,7 @@ async def fetch_context(
     depth_config: dict[str, Any | None] = None,
     output_format: str = "structured",
     agent_name: str | None = None,
+    job_id: str | None = None,
     db_manager: DatabaseManager | None = None,
 ) -> dict[str, Any]:
     """
@@ -367,6 +371,7 @@ async def fetch_context(
                 project_id=project_id,
                 depth=effective_depths.get(category),
                 agent_name=agent_name,
+                job_id=job_id,
                 db_manager=db_manager,
             )
             # Use sentinel to distinguish "key absent" from "key present but empty"
@@ -530,6 +535,7 @@ async def _fetch_category(
     depth: Any,
     agent_name: str | None,
     db_manager: DatabaseManager,
+    job_id: str | None = None,
 ) -> dict[str, Any]:
     """
     Dispatch to internal tool based on category.
@@ -610,6 +616,19 @@ async def _fetch_category(
         kwargs["tenant_key"] = tenant_key
         if depth and isinstance(depth, int):
             kwargs["limit"] = depth
+
+    elif category == "todos":
+        # INF-5077: TODO read-back. Requires job_id (the agent job whose
+        # TODOs the caller wants to read). product_id is not used.
+        if not job_id:
+            logger.warning("todos_category_missing_job_id")
+            return {
+                "source": "todos",
+                "data": {},
+                "metadata": {"error": "job_id required for 'todos' category"},
+            }
+        kwargs["job_id"] = job_id
+        kwargs["tenant_key"] = tenant_key
 
     else:  # product_core
         kwargs["product_id"] = product_id

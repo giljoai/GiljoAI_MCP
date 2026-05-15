@@ -178,24 +178,14 @@ class JobCompletionService:
 
             closeout_checklist = None
             if job and getattr(job, "job_type", "") == "orchestrator":
+                # INF-5076: orchestrators are coordinators, not committers — commits
+                # flow through close_project_and_update_memory(git_commits=[...])
+                # on the next call, not through complete_job's result. The previous
+                # git-commits warning here fired on every correctly-structured
+                # closeout. Agents that actually commit (implementer, tester) are
+                # not orchestrators and never reached this branch, so removing the
+                # warning loses no coverage.
                 try:
-                    from giljo_mcp.services.settings_service import SettingsService
-
-                    async with self._get_session() as settings_session:
-                        settings_svc = SettingsService(settings_session, tenant_key)
-                        git_settings = await settings_svc.get_setting_value(
-                            "integrations",
-                            "git_integration",
-                            {},
-                        )
-                    git_enabled = git_settings.get("enabled", False)
-                    if git_enabled and "commits" not in (result or {}):
-                        warnings.append(
-                            "Git integration is enabled but no commits were included in the result. "
-                            "Run `git status` to check for uncommitted work, then `git add` and `git commit` "
-                            "before writing 360 memory."
-                        )
-
                     closeout_checklist = self._build_closeout_checklist()
                 except Exception as _exc:  # noqa: BLE001
                     logger.warning(

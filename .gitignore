@@ -244,3 +244,4 @@ config.yaml.pre-lanbind-backup
 # Demo runtime artifacts (plaintext OAuth credentials written by demo/seed_demo_data.py).
 # Already CE-stripped via demo/ STRIP_DIRS — this is defense-in-depth for private history.
 demo/.runtime/
+CLAUDE.md

@@ -24,9 +24,29 @@ def register_exception_handlers(app):
 
     @app.exception_handler(BaseGiljoError)
     async def giljo_exception_handler(request: Request, exc: BaseGiljoError):
-        """Handle all GiljoAI domain exceptions."""
-        logger.error(f"{exc.error_code}: {exc.message}", extra={"context": exc.context})
-        return JSONResponse(status_code=exc.default_status_code, content=exc.to_dict())
+        """Handle all GiljoAI domain exceptions.
+
+        INF-5070: log severity is matched to HTTP status class so that the
+        Sentry LoggingIntegration (event_level=ERROR by default) captures
+        actual server failures while ignoring expected client errors.
+
+        - 4xx: client error (bad credentials, missing field, not found, etc.).
+          These are the normal "user input was wrong" path -- log at WARNING
+          so journalctl still surfaces them but Sentry treats them as
+          breadcrumbs, not as new issues.
+        - 5xx (and anything outside 100-499): server-side failure that
+          deserves an alert -- log at ERROR so Sentry creates an issue.
+
+        Discovered during INF-5070 verification on the demo deployment:
+        every failed /api/auth/login attempt was minting a new
+        AUTHENTICATIONERROR Sentry issue and triggering an alert email.
+        Public-demo traffic + bot probes would burn the 5K/month free-tier
+        quota in days.
+        """
+        status_code = exc.default_status_code
+        log_method = logger.warning if 400 <= status_code < 500 else logger.error
+        log_method(f"{exc.error_code}: {exc.message}", extra={"context": exc.context})
+        return JSONResponse(status_code=status_code, content=exc.to_dict())
 
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(request: Request, exc: RequestValidationError):

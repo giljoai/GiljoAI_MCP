@@ -231,10 +231,29 @@ async def get_current_user(
         except (ValueError, KeyError):
             logger.exception("API key authentication error")
 
-    # No valid authentication found
-    logger.error(
-        f"[AUTH] FAILED - No valid authentication found (path: {request.url.path}, cookie: {bool(access_token)}, api_key: {bool(x_api_key)})"
-    )
+    # No valid authentication found. Two cases — log them at different levels
+    # so the routine anonymous-probe traffic does not drown the real signal:
+    #
+    # 1. No cookie AND no api_key: expected anonymous probe (browser asking
+    #    "am I logged in?", search-engine crawler, OG-image fetch, CDN cold
+    #    load). Not an error. Logged at INFO so CE operators can still see
+    #    it in journalctl, but the SDK's LoggingIntegration treats INFO as a
+    #    breadcrumb and does NOT create a Sentry event for it (event_level
+    #    defaults to ERROR). INF-5070 discovered this floods every demo.giljo.ai
+    #    visit into Sentry's 5K/month free-tier quota.
+    #
+    # 2. Cookie or api_key supplied but failed verification: real security
+    #    signal worth keeping visible (failed brute-force attempt, expired
+    #    session, tampered token). Kept at WARNING — still becomes a Sentry
+    #    breadcrumb, still emails on the legacy log-tail monitoring, but
+    #    short of the ERROR threshold that auto-creates a Sentry issue.
+    credentials_supplied = bool(access_token) or bool(x_api_key)
+    if credentials_supplied:
+        logger.warning(
+            f"[AUTH] FAILED - credentials supplied but invalid (path: {request.url.path}, cookie: {bool(access_token)}, api_key: {bool(x_api_key)})"
+        )
+    else:
+        logger.info(f"[AUTH] anonymous request to {request.url.path} (no cookie, no api_key)")
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Not authenticated. Please login or provide a valid API key.",

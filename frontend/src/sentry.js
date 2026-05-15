@@ -62,7 +62,24 @@ export async function initSentry(app, options = {}) {
     environment: environment || 'unknown',
     tracesSampleRate: 0.1,
     sampleRate: 1.0,
-    integrations: [Sentry.browserTracingIntegration()],
+    // INF-5070: integrations is the callback form, NOT a static array.
+    //
+    // @sentry/vue v8+ replaces (does NOT merge) the default integrations
+    // when `integrations` is passed as a static array. Shipping
+    // `integrations: [browserTracingIntegration()]` therefore dropped
+    // globalHandlersIntegration, breadcrumbsIntegration, linkedErrorsIntegration,
+    // httpContextIntegration, and the rest. Effect: the SDK kept capturing
+    // Vue-tree errors (because passing `app` auto-registers the Vue
+    // errorHandler) but stopped capturing window.onerror, unhandled
+    // Promise rejections, async user code, third-party script errors, and
+    // every other "production-grade" error source. Discovered during the
+    // INF-5070 Gate E verification on demo.giljo.ai.
+    //
+    // Always extend defaults, never replace.
+    integrations: (defaultIntegrations) => [
+      ...defaultIntegrations,
+      Sentry.browserTracingIntegration(),
+    ],
   })
 
   _initialized = true
