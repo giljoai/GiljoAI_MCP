@@ -19,6 +19,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — 2026-05-16 — CE-0026 Orchestrator phase disambiguation
+
+### Changed
+- **`complete_job` is now phase-aware for orchestrators.** The server reads
+  `agent_executions.project_phase` (new column, set at execution creation,
+  immutable) and branches: staging-phase orchestrator → flips
+  `project.staging_status` to `'staging_complete'` and returns a
+  `staging_directive` with `action='STOP'` in the response (enabling the
+  Implement button in the UI); implementation-phase orchestrator → normal
+  closeout; deliverable agents → normal closeout, no phase semantics. The
+  Implement-button launch now creates a fresh `AgentExecution` attached to
+  the same orchestrator `AgentJob` with `project_phase='implementation'`,
+  so each session is its own row.
+- **Single canonical helper for the staging-flag flip.** `mark_staging_complete`
+  in `src/giljo_mcp/services/project_helpers.py` is the one place that mutates
+  `project.staging_status` and emits the `project:staging_complete` WS event.
+  `mission_service.update_agent_mission`'s defensive auto-flip and the new
+  `complete_job` state machine both call it.
+- **Migration `ce_0026`** adds `agent_executions.project_phase`
+  (`'staging' | 'implementation'`, NOT NULL, DEFAULT `'implementation'`,
+  CHECK constraint). Baseline updated. Idempotent.
+
+### Removed
+- **`send_message(to_agents=['all'], message_type='broadcast')` staging-end
+  magic.** The `_check_staging_broadcast_directive` method, its call site in
+  `MessageRoutingService.send_message`, and the five diagnostic statuses
+  (`NOT_BROADCAST`, `NOT_ORCHESTRATOR`, `SENDER_NOT_FOUND`, `ALREADY_COMPLETE`,
+  `STAGING_SESSION_COMPLETE`) are gone. `send_message` is now just messaging.
+- **`SendMessageResult.staging_directive` field.** The new home is
+  `CompleteJobResult.staging_directive`; the `StagingDirective` schema moved
+  from `schemas/responses/message.py` to `schemas/responses/orchestration.py`
+  and was simplified to the single success case.
+- **Orchestrator protocol prompts** (`chapters_startup.py`,
+  `chapters_reference.py`, `staging_prompt_builder.py`) were rewritten to
+  teach `complete_job` at end of staging instead of the broadcast invocation.
+
+### Added
+- **`MissionResponse.project_phase`** so the orchestrator can read its phase
+  at startup. Populated for orchestrator jobs only.
+- **Regression tests** at three layers: service
+  (`tests/services/test_complete_job_state_machine.py`), MCP transport
+  boundary (`tests/integration/test_complete_job_mcp_boundary.py`, per the
+  BE-5042 lesson), and spawn-time
+  (`tests/unit/test_spawn_orchestrator_phase.py`). 14 new tests total.
+
 ## [Unreleased] — 2026-05-06 — INF-5026 /gil_get skill + /gil_add read-mode strip
 
 ### Added

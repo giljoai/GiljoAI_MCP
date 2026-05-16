@@ -15,14 +15,16 @@ Responsibilities:
 - Recipient resolution (display name to agent_id)
 - Auto-blocking completed recipients on direct message
 - WebSocket event emission for sent/received messages
-- Staging broadcast directive detection
 
 For message retrieval, acknowledgment, and status, see MessageService.
+
+CE-0026: staging broadcast directive detection (formerly Layer 5.5) removed.
+The end-of-staging signal is now ``complete_job`` — see
+``JobCompletionService._handle_staging_end``.
 """
 
 import logging
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -41,7 +43,6 @@ from giljo_mcp.repositories.message_repository import MessageRepository
 from giljo_mcp.schemas.service_responses import (
     BroadcastResult,
     SendMessageResult,
-    StagingDirective,
 )
 from giljo_mcp.services.dto import BroadcastMessageContext
 from giljo_mcp.tenant import TenantManager
@@ -209,15 +210,11 @@ class MessageRoutingService:
                     message_type=message_type,
                 )
 
-                await self._check_staging_broadcast_directive(
-                    session,
-                    response,
-                    resolved_to_agents,
-                    to_agents,
-                    from_agent,
-                    tenant_key,
-                    project,
-                )
+                # CE-0026: the staging-broadcast directive logic that used to
+                # live here was removed. The end-of-staging signal moved to
+                # ``complete_job`` (see JobCompletionService._handle_staging_end).
+                # ``send_message`` is now just messaging — no side-effect on
+                # ``project.staging_status``.
 
                 return response
 
@@ -347,138 +344,8 @@ class MessageRoutingService:
             message_id = None
         return messages, message_id
 
-    async def _check_staging_broadcast_directive(
-        self,
-        session: AsyncSession,
-        response: SendMessageResult,
-        resolved_to_agents: list[str],
-        to_agents: list[str],
-        from_agent: str | None,
-        tenant_key: str,
-        project: Any,
-    ) -> None:
-        """Detect staging orchestrator broadcast and enrich response with STOP directive.
-
-        Handover 0709b: Defense-in-depth Layer 5.5 for staging completion.
-
-        Surfaces diagnostic statuses (ALREADY_COMPLETE / NOT_BROADCAST /
-        NOT_ORCHESTRATOR / SENDER_NOT_FOUND) when a staging completion broadcast
-        was attempted but did not fire — replaces the previous silent-null failure
-        mode that left agents unable to distinguish success, idempotent no-op,
-        and call-shape mistakes.
-        """
-        is_broadcast = bool(len(resolved_to_agents) > 1 or (to_agents and to_agents[0] == "all"))
-
-        # Internal calls without a sender — no diagnostic context available.
-        if not from_agent:
-            return
-
-        # Fast path: nothing to diagnose AND nothing to flip. Skips the sender
-        # lookup entirely so ordinary direct messages don't pay the DB cost
-        # (and don't add DB calls inside the message-send hot path that other
-        # deadlock-recovery tests assume is quiet post-commit).
-        if not is_broadcast and project.staging_status == "staging_complete":
-            return
-
-        # The staging directive is advisory; a transient DB hiccup looking up the
-        # sender must NOT fail the already-committed send_message call. Wrap the
-        # diagnostic block so any DB error degrades gracefully to "no directive".
-        try:
-            sender_execution = await self._repo.get_execution_by_agent_id(session, tenant_key, from_agent)
-            if not sender_execution:
-                if is_broadcast:
-                    response.staging_directive = StagingDirective(
-                        status="SENDER_NOT_FOUND",
-                        message=(
-                            f"from_agent={from_agent!r} did not resolve to an active execution "
-                            "in this project. Verify you are passing your own agent_id UUID "
-                            "(from get_workflow_status), not a display name or job_id."
-                        ),
-                    )
-                return
-
-            # TENANT ISOLATION: Filter by tenant_key
-            sender_job = await self._repo.get_agent_job_by_job_id(session, tenant_key, sender_execution.job_id)
-            if not sender_job:
-                if is_broadcast:
-                    response.staging_directive = StagingDirective(
-                        status="SENDER_NOT_FOUND",
-                        message=(
-                            "Sender execution exists but its job record was not found "
-                            "(possible cross-tenant lookup or stale execution row)."
-                        ),
-                    )
-                return
-        except Exception:  # noqa: BLE001 — directive is advisory; never fail the send on lookup error
-            self._logger.warning(
-                "[STAGING DIRECTIVE] sender lookup raised; skipping directive check",
-                exc_info=True,
-            )
-            return
-
-        is_orchestrator = sender_execution.agent_name == "orchestrator"
-
-        if not is_orchestrator:
-            if is_broadcast:
-                response.staging_directive = StagingDirective(
-                    status="NOT_ORCHESTRATOR",
-                    message=(
-                        f"Sender role is {sender_execution.agent_name!r}; only the "
-                        "orchestrator can complete staging. This broadcast was delivered "
-                        "but did not flip the staging flag."
-                    ),
-                )
-            return
-
-        # Orchestrator sender from here down. BE-staging-lock Layer 2: keyed on durable
-        # project flag, not transient AgentExecution.status (orchestrator may be
-        # working/idle/blocked during staging).
-        if project.staging_status == "staging_complete":
-            if is_broadcast:
-                response.staging_directive = StagingDirective(
-                    status="ALREADY_COMPLETE",
-                    message=(
-                        "Project staging was already completed by an earlier broadcast. "
-                        "This call did not change state. If you are the staging orchestrator "
-                        "and have not yet stopped, stop now — your session is done."
-                    ),
-                )
-            return
-
-        # Staging-phase orchestrator. A single-recipient direct message at this point
-        # is almost always a STAGING_COMPLETE call shape mistake (must use 'all' broadcast).
-        if not is_broadcast:
-            response.staging_directive = StagingDirective(
-                status="NOT_BROADCAST",
-                message=(
-                    "Staging-phase orchestrator sent a single-recipient direct message. "
-                    "STAGING_COMPLETE requires to_agents=['all'] AND message_type='broadcast'. "
-                    "The staging flag was NOT flipped. Resend with the broadcast call shape."
-                ),
-            )
-            return
-
-        # Success path: orchestrator broadcast during staging — flip the flag.
-        project.staging_status = "staging_complete"
-        project.updated_at = datetime.now(UTC)
-
-        response.staging_directive = StagingDirective(
-            status="STAGING_SESSION_COMPLETE",
-            action="STOP",
-            message=(
-                "STAGING IS COMPLETE. Your session must end NOW. "
-                "Do NOT proceed to implementation. Do NOT call Task(). "
-                "Do NOT call complete_job() or write_360_memory(). "
-                "The user will click 'Implement' in the dashboard to start "
-                "a new implementation session with a fresh orchestrator."
-            ),
-            implementation_gate="LOCKED",
-            next_step="Report staging complete to user and stop.",
-        )
-        self._logger.info(
-            f"[STAGING DIRECTIVE] Added STOP directive to staging orchestrator broadcast "
-            f"(agent_id={from_agent}, status=waiting)"
-        )
+    # CE-0026: _check_staging_broadcast_directive removed. The staging-end
+    # signal is now ``complete_job`` (see JobCompletionService._handle_staging_end).
 
     async def _handle_send_message_side_effects(
         self,

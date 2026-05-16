@@ -42,7 +42,7 @@ describe('Projects Workflow Integration Tests', () => {
       name: 'Payment Integration',
       status: 'inactive',
       product_id: 'prod-1',
-      mission: 'Integrate Stripe payment processing',
+      mission: 'Integrate Paddle payment processing',
       agent_count: 2,
       created_at: '2024-10-10T10:00:00Z',
       updated_at: '2024-10-28T10:00:00Z',

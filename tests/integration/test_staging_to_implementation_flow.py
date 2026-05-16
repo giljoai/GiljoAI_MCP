@@ -11,7 +11,9 @@ Edition Scope: Both
 Covers two scenarios:
   T2 — Full staging→implementation flow with orchestrator status churn.
        Tests Layer 1 (STAGING_LOCK guard), Layer 1 bypass (report_progress),
-       Layer 2 (prompt endpoint gate), and Layer 2 (staging_directive).
+       and Layer 2 (prompt endpoint gate). CE-0026: Layer 5.5 staging_directive
+       tests removed alongside the broadcast magic — coverage moved to
+       tests/services/test_complete_job_state_machine.py.
   T3 — Dogfood smoke replay for project 4b57c639 (2026-05-05 00:14:50
        broken flow). Asserts that the prompt endpoint returns 200 when
        staging_complete=True AND implementation_launched_at is set,
@@ -29,8 +31,6 @@ from uuid import uuid4
 import pytest
 
 from giljo_mcp.exceptions import AuthorizationError
-from giljo_mcp.schemas.service_responses import SendMessageResult
-from giljo_mcp.services.message_routing_service import MessageRoutingService
 from giljo_mcp.services.orchestration_agent_state_service import (
     OrchestrationAgentStateService,
 )
@@ -68,13 +68,6 @@ def _wire_state_service(svc, execution, job, project):
     return mock_session
 
 
-def _make_routing_service() -> MessageRoutingService:
-    db_manager = MagicMock()
-    tenant = MagicMock()
-    tenant.get_current_tenant.return_value = "tenant-test"
-    return MessageRoutingService(db_manager, tenant)
-
-
 # ---------------------------------------------------------------------------
 # T2 — Full staging→implementation flow with orchestrator status churn
 # ---------------------------------------------------------------------------
@@ -82,7 +75,8 @@ def _make_routing_service() -> MessageRoutingService:
 
 class TestStagingToImplementationFlow:
     """Cross-layer integration: Layer 1 (set_agent_status lock) + Layer 2
-    (prompt endpoint gate + staging_directive).
+    (prompt endpoint gate). CE-0026 removed the broadcast-magic staging
+    directive; coverage moved to test_complete_job_state_machine.py.
 
     Scenario:
         Orchestrator waiting→working→idle→working→idle during staging.
@@ -313,90 +307,11 @@ class TestStagingToImplementationFlow:
         assert exc.value.status_code == 404
 
     # ------------------------------------------------------------------
-    # Step 6: broadcast STAGING_COMPLETE → staging_directive fires (Layer 2)
+    # CE-0026: Step 6 (broadcast STAGING_COMPLETE → staging_directive) DELETED.
+    # The broadcast magic was removed; the staging-end signal moved to
+    # complete_job. Coverage is now in tests/services/test_complete_job_state_machine.py
+    # and tests/integration/test_complete_job_mcp_boundary.py.
     # ------------------------------------------------------------------
-
-    @pytest.mark.asyncio
-    async def test_layer2_staging_directive_fires_for_idle_orchestrator(self):
-        """Layer 2: idle orchestrator broadcasting to 'all' during staging triggers STOP directive."""
-        svc = _make_routing_service()
-
-        sender_exec = MagicMock()
-        sender_exec.agent_name = "orchestrator"
-        sender_exec.status = "idle"
-        sender_exec.job_id = "orch-job-2"
-
-        sender_job = MagicMock()
-        sender_job.project_id = "proj-staging-broadcast"
-
-        svc._repo.get_execution_by_agent_id = AsyncMock(return_value=sender_exec)
-        svc._repo.get_agent_job_by_job_id = AsyncMock(return_value=sender_job)
-
-        project = MagicMock()
-        project.staging_status = "staging"
-
-        response = SendMessageResult(message_id="msg-1", to_agents=["a1", "a2"])
-        session = AsyncMock()
-
-        await svc._check_staging_broadcast_directive(
-            session=session,
-            response=response,
-            resolved_to_agents=["a1", "a2"],
-            to_agents=["all"],
-            from_agent="orch-agent-uuid",
-            tenant_key="tenant-test",
-            project=project,
-        )
-
-        assert response.staging_directive is not None
-        assert response.staging_directive.status == "STAGING_SESSION_COMPLETE"
-        assert response.staging_directive.action == "STOP"
-        # Project flag must be flipped to staging_complete
-        assert project.staging_status == "staging_complete"
-
-    @pytest.mark.asyncio
-    async def test_layer2_staging_directive_does_not_fire_post_staging_complete(self):
-        """Layer 2: staging flag must NOT be re-flipped once staging_status is
-        already staging_complete. Post the silent-null fix, the directive now
-        carries an ALREADY_COMPLETE diagnostic on broadcast attempts so callers
-        can distinguish 'already done' from a successful re-trigger; the durable
-        invariant being protected here is that the project flag is NOT mutated.
-        """
-        svc = _make_routing_service()
-
-        sender_exec = MagicMock()
-        sender_exec.agent_name = "orchestrator"
-        sender_exec.status = "idle"
-        sender_exec.job_id = "orch-job-3"
-
-        sender_job = MagicMock()
-        sender_job.project_id = "proj-post-staging"
-
-        svc._repo.get_execution_by_agent_id = AsyncMock(return_value=sender_exec)
-        svc._repo.get_agent_job_by_job_id = AsyncMock(return_value=sender_job)
-
-        project = MagicMock()
-        project.staging_status = "staging_complete"
-
-        response = SendMessageResult(message_id="msg-2", to_agents=["a1", "a2"])
-        session = AsyncMock()
-
-        await svc._check_staging_broadcast_directive(
-            session=session,
-            response=response,
-            resolved_to_agents=["a1", "a2"],
-            to_agents=["all"],
-            from_agent="orch-agent-uuid",
-            tenant_key="tenant-test",
-            project=project,
-        )
-
-        # Project flag stays — this is the durable Layer 2 guarantee.
-        assert project.staging_status == "staging_complete"
-        # Diagnostic directive identifies the no-op without carrying STOP semantics.
-        assert response.staging_directive is not None
-        assert response.staging_directive.status == "ALREADY_COMPLETE"
-        assert response.staging_directive.action is None
 
     # ------------------------------------------------------------------
     # Step 7: orchestrator still 'blocked' → prompt still 200 (regression guard)

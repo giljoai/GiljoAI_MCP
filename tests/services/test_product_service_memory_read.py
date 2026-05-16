@@ -43,8 +43,8 @@ async def test_product_memory_entries_available_via_repository(db_session, test_
             "source": "close_project_tool",
             "project_name": "Project Beta",
             "summary": "Implemented payment processing",
-            "key_outcomes": ["Stripe integration", "Webhook handling"],
-            "decisions_made": ["Use Stripe for payments"],
+            "key_outcomes": ["Paddle integration", "Webhook handling"],
+            "decisions_made": ["Use Paddle for payments"],
         },
     ]
 

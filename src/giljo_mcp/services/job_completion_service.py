@@ -23,10 +23,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.exceptions import OrchestrationError, ResourceNotFoundError, ValidationError
 from giljo_mcp.models import AgentExecution, AgentJob
+from giljo_mcp.models.projects import Project
 from giljo_mcp.models.tasks import MessageAcknowledgment
 from giljo_mcp.models.user_approval import UserApproval
 from giljo_mcp.repositories.agent_completion_repository import AgentCompletionRepository
-from giljo_mcp.schemas.service_responses import CompleteJobResult
+from giljo_mcp.schemas.service_responses import CompleteJobResult, StagingDirective
+from giljo_mcp.services.project_helpers import mark_staging_complete
 from giljo_mcp.tenant import TenantManager
 
 
@@ -131,6 +133,7 @@ class JobCompletionService:
             old_status = None
             duration_seconds = None
             warnings: list[str] = []
+            staging_directive: StagingDirective | None = None
             repo = AgentCompletionRepository()
             async with self._get_session() as session:
                 execution = await repo.find_active_execution_for_completion(session, tenant_key, job_id)
@@ -161,6 +164,12 @@ class JobCompletionService:
                         tenant_key=tenant_key,
                         warnings=warnings,
                     )
+
+                    # CE-0026: state-machine branch for staging-phase
+                    # orchestrator. Flips project.staging_status (idempotent —
+                    # mission_service may already have flipped it) and
+                    # populates a STOP directive in the response.
+                    staging_directive = await self._handle_staging_end(session, job, execution, tenant_key)
 
                     await repo.commit(session)
                 else:
@@ -201,6 +210,7 @@ class JobCompletionService:
                 warnings=warnings,
                 result_stored=True,
                 closeout_checklist=closeout_checklist,
+                staging_directive=staging_directive,
             )
         except (ValidationError, ResourceNotFoundError):
             raise
@@ -442,6 +452,69 @@ class JobCompletionService:
             await self._agent_state._handle_completion_side_effects(
                 session, job, execution, result, tenant_key, warnings
             )
+
+    async def _handle_staging_end(
+        self,
+        session: AsyncSession,
+        job: AgentJob,
+        execution: AgentExecution,
+        tenant_key: str,
+    ) -> StagingDirective | None:
+        """Detect end-of-staging and flip the staging flag (CE-0026).
+
+        Returns a STOP directive when the staging-phase orchestrator is
+        ending its session via ``complete_job``. Calls the canonical
+        ``mark_staging_complete`` helper (idempotent — ``mission_service``
+        may already have flipped the flag earlier in this session). For all
+        other job types and phases, returns None and the response carries no
+        staging directive.
+
+        Args:
+            session: Active session (will be committed by caller).
+            job: AgentJob being completed.
+            execution: AgentExecution being marked complete.
+            tenant_key: Tenant key for isolation.
+
+        Returns:
+            StagingDirective when this is a staging-end orchestrator call;
+            otherwise None.
+        """
+        if job.job_type != "orchestrator":
+            return None
+        if getattr(execution, "project_phase", None) != "staging":
+            return None
+        if not job.project_id:
+            return None
+
+        stmt = select(Project).where(
+            Project.id == str(job.project_id),
+            Project.tenant_key == tenant_key,
+        )
+        project = (await session.execute(stmt)).scalar_one_or_none()
+        # CE-0026 safeguard: if implementation has already been launched, this
+        # complete_job is NOT a staging-end signal — it's the staging-phase
+        # execution catching up (orch stayed alive across the
+        # staging→implementation transition without complete_job being called
+        # at the right boundary). Treat as a normal closeout; no STOP directive.
+        # This covers the upgrade path and any future protocol drift.
+        if project is not None and project.implementation_launched_at is not None:
+            return None
+        if project is None:
+            self._logger.warning(
+                "[STAGING_END] Project %s not found for staging orchestrator job %s — "
+                "skipping flag flip but still returning STOP directive",
+                job.project_id,
+                job.job_id,
+            )
+            return StagingDirective()
+
+        await mark_staging_complete(
+            session,
+            project,
+            source="complete_job:staging_end",
+            websocket_manager=self._websocket_manager,
+        )
+        return StagingDirective()
 
     # _resolve_action_items removed in INF-5025b
 

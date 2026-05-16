@@ -532,6 +532,9 @@ class ThinClientPromptGenerator:
             )
             self.db.add(agent_job)
 
+            # CE-0026: thin_client_generator creation path is the staging
+            # session — it also flips project.staging_status to 'staging'
+            # below. Mark the execution with project_phase='staging'.
             agent_execution = AgentExecution(
                 agent_id=agent_id,
                 job_id=orchestrator_id,
@@ -541,6 +544,7 @@ class ThinClientPromptGenerator:
                 status="waiting",
                 progress=0,
                 tool_type=tool,
+                project_phase="staging",
             )
             self.db.add(agent_execution)
 

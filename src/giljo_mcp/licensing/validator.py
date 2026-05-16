@@ -16,12 +16,19 @@ must not change in CE without a corresponding update in the commercial build.
 
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import Literal
 
 
 class LicenseEdition(StrEnum):
     CE = "CE"
     # [CE] Commercial editions declared here in the commercial build.
     # Do not add values to this enum in CE.
+
+
+# Runtime license state. Drives the SaaS LicenseEnforcementMiddleware; CE
+# always emits "active". Additive field — not part of the original CE contract,
+# so SaaS subclasses can populate it without breaking commercial consumers.
+LicenseState = Literal["active", "read_only", "denied"]
 
 
 @dataclass(frozen=True)
@@ -31,6 +38,7 @@ class LicenseResult:
     seat_limit: int | None  # None = unlimited (CE)
     licensee: str | None  # None = CE (no licensee)
     message: str
+    state: LicenseState = "active"
 
 
 class LicenseValidator:

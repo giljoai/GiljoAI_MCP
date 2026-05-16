@@ -104,8 +104,9 @@ WORKFLOW:
 5. Spawn specialist agents: mcp__giljo_mcp__spawn_job(agent_display_name, agent_name, mission, '{project_id}')
    → SAVE each response's agent_id UUID - needed for UUID-based messaging
 6. Monitor: mcp__giljo_mcp__get_workflow_status('{project_id}')
-7. Signal complete: mcp__giljo_mcp__send_message(to_agents=['all'], content='STAGING_COMPLETE: Mission created, N agents spawned: [list names]', project_id='{project_id}', message_type='broadcast')
-   → This broadcast enables the Implement button in UI (REQUIRED)
+7. End your staging session: mcp__giljo_mcp__complete_job(job_id='{orchestrator_id}', result={{'summary': 'Mission created, N agents spawned: [list names]'}})
+   → Server flips project.staging_status to 'staging_complete' (enables the Implement button in UI)
+   → Response includes staging_directive.action='STOP' — your session ends NOW
 
 Claude Code: Use TodoWrite tool to track workflow progress.
 

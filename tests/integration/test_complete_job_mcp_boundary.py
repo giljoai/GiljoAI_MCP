@@ -1,0 +1,385 @@
+# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
+# Licensed under the Elastic License 2.0.
+# See LICENSE in the project root for terms.
+# [CE] Community Edition.
+
+"""MCP-transport boundary regression tests for CE-0026 phase-disambiguation.
+
+CLAUDE.md mandates a regression test at the failing layer for every bug-fix /
+refactor project. The CE-0026 staging directive lives inside the FastMCP
+@mcp.tool wrapper's downstream JobCompletionService — this file exercises that
+path through the MCP transport (create_connected_server_and_client_session) so
+the wrapper + _call_tool dispatch + service-layer branch are all covered, not
+just the service in isolation.
+
+Three behaviors under test:
+
+1. staging-end complete_job via MCP returns staging_directive with action=STOP
+   and flips project.staging_status in DB.
+2. implementation-end complete_job via MCP returns no staging_directive.
+3. SendMessageResult contract regression: send_message response no longer has a
+   staging_directive key (CE-0026 removed it from that shape).
+
+Pattern reference: tests/integration/test_complete_job_gate.py
+(same in-memory transport, same _resolve_tenant monkeypatch, same
+shared-session service rebinding).
+"""
+
+from __future__ import annotations
+
+import json
+import random
+from datetime import UTC, datetime, timedelta
+from uuid import uuid4
+
+import pytest
+import pytest_asyncio
+from mcp.shared.memory import create_connected_server_and_client_session
+from sqlalchemy import select
+
+from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from giljo_mcp.models.organizations import Organization
+from giljo_mcp.models.products import Product
+from giljo_mcp.models.projects import Project
+from giljo_mcp.tenant import TenantManager
+
+
+pytestmark = pytest.mark.asyncio
+
+
+# ============================================================================
+# Helpers
+# ============================================================================
+
+
+def _payload(call_tool_result) -> dict:
+    """Extract structured payload from an MCP CallToolResult."""
+    if getattr(call_tool_result, "structuredContent", None):
+        return call_tool_result.structuredContent
+    first_block = call_tool_result.content[0]
+    text = getattr(first_block, "text", None)
+    if text is None:
+        raise AssertionError(f"unexpected content block: {first_block!r}")
+    return json.loads(text)
+
+
+def _error_text(call_tool_result) -> str:
+    parts = []
+    for block in call_tool_result.content:
+        text = getattr(block, "text", None)
+        if text:
+            parts.append(text)
+    return "\n".join(parts)
+
+
+async def _seed_staging_context(
+    db_session,
+    tenant_key: str,
+    *,
+    project_phase: str = "staging",
+    staging_status: str = "staging",
+) -> dict:
+    """Seed a full project context with an orchestrator in the given phase."""
+    suffix = uuid4().hex[:8]
+    org = Organization(
+        name=f"Org {suffix}",
+        slug=f"org-{suffix}",
+        tenant_key=tenant_key,
+        is_active=True,
+    )
+    db_session.add(org)
+    await db_session.flush()
+
+    product = Product(
+        id=str(uuid4()),
+        name=f"Product {suffix}",
+        description="CE-0026 MCP boundary test",
+        tenant_key=tenant_key,
+        is_active=True,
+    )
+    db_session.add(product)
+    await db_session.flush()
+
+    project = Project(
+        id=str(uuid4()),
+        tenant_key=tenant_key,
+        product_id=product.id,
+        name=f"Project {suffix}",
+        description="CE-0026 MCP transport boundary",
+        mission="x",
+        status="active",
+        staging_status=staging_status,
+        series_number=random.randint(1, 999_999_999),
+    )
+    db_session.add(project)
+    await db_session.flush()
+
+    job = AgentJob(
+        job_id=str(uuid4()),
+        tenant_key=tenant_key,
+        project_id=project.id,
+        job_type="orchestrator",
+        mission="CE-0026 staging orchestrator",
+        status="active",
+        created_at=datetime.now(UTC),
+    )
+    db_session.add(job)
+    await db_session.flush()
+
+    now = datetime.now(UTC)
+    execution = AgentExecution(
+        id=str(uuid4()),
+        agent_id=str(uuid4()),
+        job_id=job.job_id,
+        tenant_key=tenant_key,
+        agent_display_name="orchestrator",
+        status="working",
+        started_at=now - timedelta(minutes=3),
+        project_phase=project_phase,
+    )
+    db_session.add(execution)
+    await db_session.commit()
+    return {
+        "org": org,
+        "product": product,
+        "project": project,
+        "job": job,
+        "execution": execution,
+    }
+
+
+async def _seed_message_sender(
+    db_session,
+    tenant_key: str,
+    project_id: str,
+) -> AgentExecution:
+    """Seed a minimal implementer execution so send_message has a valid from_agent."""
+    job_id = str(uuid4())
+    job = AgentJob(
+        job_id=job_id,
+        tenant_key=tenant_key,
+        project_id=project_id,
+        job_type="implementer",
+        mission="send_message sender",
+        status="active",
+        created_at=datetime.now(UTC),
+    )
+    db_session.add(job)
+    await db_session.flush()
+
+    execution = AgentExecution(
+        id=str(uuid4()),
+        agent_id=str(uuid4()),
+        job_id=job_id,
+        tenant_key=tenant_key,
+        agent_display_name="implementer",
+        status="working",
+        started_at=datetime.now(UTC),
+        project_phase="implementation",
+    )
+    db_session.add(execution)
+    await db_session.commit()
+    return execution
+
+
+# ============================================================================
+# Fixture: MCP client wired to the rolled-back test session
+# ============================================================================
+
+
+@pytest_asyncio.fixture
+async def phase_mcp_client(db_manager, db_session, monkeypatch):
+    """Wire JobCompletionService to db_session via ToolAccessor.
+
+    Same pattern as gate_mcp_client in test_complete_job_gate.py:
+    replace the accessor's job_completion_service with a shared-session
+    instance so writes land inside the rolled-back test transaction.
+    """
+    from api import app_state
+    from api.endpoints import mcp_sdk_server
+    from giljo_mcp.services.job_completion_service import JobCompletionService
+    from giljo_mcp.tools.tool_accessor import ToolAccessor
+
+    state = app_state.state
+    prior_tool_accessor = state.tool_accessor
+    prior_tenant_manager = state.tenant_manager
+    prior_db_manager = state.db_manager
+
+    if state.tenant_manager is None:
+        state.tenant_manager = TenantManager()
+    state.db_manager = db_manager
+
+    tenant_key = TenantManager.generate_tenant_key()
+
+    accessor = ToolAccessor(db_manager=db_manager, tenant_manager=state.tenant_manager)
+    accessor._job_completion_service = JobCompletionService(
+        db_manager=db_manager,
+        tenant_manager=state.tenant_manager,
+        test_session=db_session,
+    )
+
+    state.tool_accessor = accessor
+
+    monkeypatch.setattr(mcp_sdk_server, "_resolve_tenant", lambda ctx: tenant_key)
+    monkeypatch.setattr(mcp_sdk_server, "_resolve_user_id", lambda ctx: None)
+
+    def _new_client():
+        return create_connected_server_and_client_session(mcp_sdk_server.mcp)
+
+    try:
+        yield _new_client, tenant_key, db_session
+    finally:
+        state.tool_accessor = prior_tool_accessor
+        state.tenant_manager = prior_tenant_manager
+        state.db_manager = prior_db_manager
+
+
+# ============================================================================
+# Tests
+# ============================================================================
+
+
+async def test_staging_end_via_mcp_returns_stop_directive_and_flips_db(
+    phase_mcp_client,
+    db_session,
+):
+    """(a) End-to-end staging-end via MCP transport.
+
+    Drive complete_job for a staging-phase orchestrator through the FastMCP
+    @mcp.tool wrapper. Assert the response dict carries staging_directive.action
+    == 'STOP' and that project.staging_status flipped to 'staging_complete' in DB.
+
+    This catches any regression where the transport wrapper strips or renames
+    the staging_directive field before it reaches the caller.
+    """
+    new_client, tenant_key, session = phase_mcp_client
+    seed = await _seed_staging_context(
+        session,
+        tenant_key,
+        project_phase="staging",
+        staging_status="staging",
+    )
+
+    async with new_client() as mcp_session:
+        result = await mcp_session.call_tool(
+            "complete_job",
+            {
+                "job_id": seed["job"].job_id,
+                "result": {"summary": "CE-0026 staging session complete"},
+            },
+        )
+
+    assert result.isError is False, f"CE-0026: staging-end complete_job must succeed; got error: {_error_text(result)}"
+    payload = _payload(result)
+
+    assert "staging_directive" in payload, (
+        f"CE-0026: response must contain 'staging_directive' key; keys: {list(payload)}"
+    )
+    directive = payload["staging_directive"]
+    assert directive is not None, "CE-0026: staging_directive must not be null for staging-end"
+    assert directive.get("action") == "STOP", (
+        f"CE-0026: staging_directive.action must be 'STOP', got {directive.get('action')!r}"
+    )
+    assert directive.get("status") == "STAGING_SESSION_COMPLETE", (
+        f"CE-0026: staging_directive.status must be 'STAGING_SESSION_COMPLETE', got {directive.get('status')!r}"
+    )
+
+    # Verify DB flip happened inside the test transaction.
+    refreshed_project = (
+        await session.execute(
+            select(Project).where(
+                Project.id == seed["project"].id,
+                Project.tenant_key == tenant_key,
+            )
+        )
+    ).scalar_one()
+    assert refreshed_project.staging_status == "staging_complete", (
+        f"CE-0026: project.staging_status must be 'staging_complete' after MCP staging-end, "
+        f"got {refreshed_project.staging_status!r}"
+    )
+
+
+async def test_implementation_end_via_mcp_no_staging_directive(
+    phase_mcp_client,
+    db_session,
+):
+    """(b) Implementation-phase orchestrator complete_job via MCP returns no
+    staging_directive.
+
+    CE-0026: _handle_staging_end returns None when project_phase='implementation'.
+    The transport wrapper must not inject or populate the field from another source.
+    """
+    new_client, tenant_key, session = phase_mcp_client
+    seed = await _seed_staging_context(
+        session,
+        tenant_key,
+        project_phase="implementation",
+        staging_status="staging_complete",
+    )
+
+    async with new_client() as mcp_session:
+        result = await mcp_session.call_tool(
+            "complete_job",
+            {
+                "job_id": seed["job"].job_id,
+                "result": {"summary": "CE-0026 implementation session complete"},
+            },
+        )
+
+    assert result.isError is False, f"CE-0026: implementation-end complete_job must succeed; got: {_error_text(result)}"
+    payload = _payload(result)
+
+    # staging_directive should either be absent or explicitly null.
+    directive = payload.get("staging_directive")
+    assert directive is None, (
+        f"CE-0026: implementation-phase complete_job must NOT return a staging_directive; got {directive!r}"
+    )
+
+
+async def test_send_message_response_has_no_staging_directive_key(
+    phase_mcp_client,
+    db_session,
+):
+    """(c) SendMessageResult contract regression guard.
+
+    CE-0026 removed staging_directive from SendMessageResult. Assert that a
+    send_message call via MCP does not return a staging_directive key in its
+    response dict. This locks in the contract change so a future merge can't
+    accidentally re-add the field to the wrong response shape.
+    """
+    new_client, tenant_key, session = phase_mcp_client
+    seed = await _seed_staging_context(
+        session,
+        tenant_key,
+        project_phase="staging",
+        staging_status="staging",
+    )
+    sender = await _seed_message_sender(session, tenant_key, seed["project"].id)
+
+    async with new_client() as mcp_session:
+        result = await mcp_session.call_tool(
+            "send_message",
+            {
+                "to_agents": [seed["execution"].agent_id],
+                "content": "CE-0026 contract regression check",
+                "project_id": seed["project"].id,
+                "from_agent": sender.agent_id,
+                "message_type": "direct",
+            },
+        )
+
+    # send_message should succeed (or fail for an unrelated reason such as
+    # no active recipient — either way, staging_directive must not appear).
+    if result.isError is False:
+        payload = _payload(result)
+        assert "staging_directive" not in payload, (
+            "CE-0026 CONTRACT REGRESSION: SendMessageResult must not carry "
+            f"'staging_directive'; keys present: {list(payload)}"
+        )
+    else:
+        # If send_message errored (e.g. no active recipient in test context),
+        # check the error text does not mention staging_directive as a field.
+        err = _error_text(result)
+        assert "staging_directive" not in err, (
+            f"CE-0026: staging_directive appeared in send_message error text: {err!r}"
+        )

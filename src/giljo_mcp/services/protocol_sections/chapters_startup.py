@@ -45,8 +45,8 @@ CRITICAL DISTINCTION:
 
 PHASE AWARENESS:
 ── STAGING PHASE: THIS SESSION (Steps 1-7) ────────────────────────────────
-Your job: Analyze → Plan → Spawn → Persist → Broadcast
-End with: STAGING_COMPLETE broadcast (see CH2)
+Your job: Analyze → Plan → Spawn → Persist → End-of-staging
+End with: complete_job() on your orchestrator job (see CH2 STEP 7)
 
                          ══════ SESSION BOUNDARY ══════
 
@@ -348,7 +348,7 @@ Don't write down your operating procedures. Write down what the project
 needs to deliver.
 
 Good: "Build authentication API", "Validate inter-agent messaging", "Generate test summary report"
-Bad:  "Spawn api-implementer agent", "Fetch context", "Broadcast STAGING_COMPLETE",
+Bad:  "Spawn api-implementer agent", "Fetch context", "End staging session",
       "Close out project", "Call complete_job", "Drain messages and complete orchestrator"
 
 Aim for 3-7 items. Too few = no visibility. Too many = you're tracking mechanics again.
@@ -412,30 +412,32 @@ Document in YOUR_EXECUTION_STRATEGY:
 
 Why: Fresh orchestrator in implementation phase retrieves this plan
 
-── STEP 7 FINALE: Signal Complete ──────────────────────────────────────────
-Call: send_message(
-          to_agents=['all'],
-          content='STAGING_COMPLETE: Mission created, N agents spawned',
-          project_id='{project_id}',
-          message_type='broadcast'
+── STEP 7 FINALE: End Your Staging Session ─────────────────────────────────
+Call: complete_job(
+          job_id='<your orchestrator job_id from get_workflow_status>',
+          result={{
+              'summary': 'Mission persisted, N sub-agents spawned',
+              'decisions_made': [...],  # any staging-time decisions
+          }}
       )
 
-This broadcast enables the "Implement" button in UI (REQUIRED)
+This is the canonical end-of-staging signal (CE-0026). The server detects that
+you are the staging-phase orchestrator (execution.project_phase='staging') and:
 
-The server will respond with a `staging_directive` field. Read its `status`:
+  1. Flips project.staging_status to 'staging_complete' (enables the "Implement"
+     button in the UI). The flip is idempotent — if update_agent_mission already
+     triggered the auto-flip, this is a no-op.
+  2. Marks your execution as complete.
+  3. Returns a `staging_directive` field with status='STAGING_SESSION_COMPLETE'
+     and action='STOP'.
 
-  • "STAGING_SESSION_COMPLETE" → success. Your session is DONE. Stop immediately.
-  • "ALREADY_COMPLETE"        → an earlier broadcast already flipped the flag.
-                                 If you are the staging orchestrator, stop now.
-  • "NOT_BROADCAST"           → call shape error. Resend with to_agents=['all']
-                                 AND message_type='broadcast' (both required).
-  • "NOT_ORCHESTRATOR"        → only the orchestrator can complete staging.
-  • "SENDER_NOT_FOUND"        → from_agent did not resolve. Pass YOUR agent_id
-                                 UUID from get_workflow_status, not a display name.
+When you see `staging_directive.action == 'STOP'` in the response:
 
-Do NOT retry on ALREADY_COMPLETE — the flag is one-shot. Read the `message`
-field on any non-success status; it explains the exact problem.
+  ⚠️  STAGING ENDS HERE — DO NOT call write_360_memory().
+     Your session is DONE. Stop immediately.
+     A NEW orchestrator execution will be spawned in a fresh session when the
+     user clicks "Implement" in the dashboard.
 
-⚠️  STAGING ENDS HERE - DO NOT call complete_job() or write_360_memory()
-   Your session is done. Implementation happens in a new session.
+Do NOT use send_message(broadcast) for the staging-end signal. That mechanism
+was removed in CE-0026; `send_message` is now just messaging.
 """

@@ -46,7 +46,7 @@
           <li><strong>Cloudflare</strong> — DNS, CDN, and DDoS protection in front of the hosted edition.</li>
           <li><strong>PostgreSQL</strong> — primary data store, hosted on GiljoAI LLC infrastructure.</li>
         </ul>
-        <!-- PATRIK: review wording — add Stripe/billing processor here when payments go live. -->
+        <!-- PATRIK: review wording — add Paddle (Merchant of Record) as the billing processor here when payments go live; Paddle handles tax compliance globally. -->
       </section>
 
       <section class="mb-6">

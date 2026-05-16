@@ -1266,6 +1266,16 @@ def upgrade() -> None:
             nullable=True,
             comment="Heartbeat timestamp for agent activity tracking",
         ),
+        sa.Column(
+            "project_phase",
+            sa.String(length=20),
+            nullable=False,
+            server_default="implementation",
+            comment=(
+                "Lifecycle phase this orchestrator execution belongs to: "
+                "'staging' or 'implementation'. Set at execution creation."
+            ),
+        ),
         sa.CheckConstraint(
             "status IN ('waiting', 'working', 'blocked', 'complete', 'closed', 'silent', 'decommissioned', 'idle', 'sleeping')",
             name="ck_agent_execution_status",
@@ -1277,6 +1287,10 @@ def upgrade() -> None:
         sa.CheckConstraint(
             "health_status IN ('unknown', 'healthy', 'warning', 'critical', 'timeout')",
             name="ck_agent_execution_health_status",
+        ),
+        sa.CheckConstraint(
+            "project_phase IN ('staging', 'implementation')",
+            name="ck_agent_execution_project_phase",
         ),
         sa.ForeignKeyConstraint(["job_id"], ["agent_jobs.job_id"]),
         sa.PrimaryKeyConstraint("id"),

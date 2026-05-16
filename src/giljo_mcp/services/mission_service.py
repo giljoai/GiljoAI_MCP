@@ -584,6 +584,10 @@ class MissionService:
             full_protocol += "\n" + _build_ch6_auto_checkin(auto_checkin_interval)
 
         # Handover 0731c: Typed return (MissionResponse)
+        # CE-0026: surface execution.project_phase for orchestrators so the
+        # orch knows which phase it is at startup (staging vs implementation).
+        # Non-orchestrator agents don't have phase semantics — leave None.
+        phase_for_response = getattr(execution, "project_phase", None) if job.job_type == "orchestrator" else None
         return MissionResponse(
             job_id=job.job_id,
             agent_id=execution.agent_id,
@@ -599,6 +603,7 @@ class MissionService:
             thin_client=True,
             full_protocol=full_protocol,
             current_team_state=current_team_state,
+            project_phase=phase_for_response,
         )
 
     async def get_orchestrator_instructions(self, job_id: str, tenant_key: str) -> dict[str, Any]:
@@ -673,39 +678,29 @@ class MissionService:
                     except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                         logger.warning(f"[WEBSOCKET] Failed to broadcast job:mission_updated: {ws_error}")
 
-                # Handover 0826: Server-side staging completion signal
+                # Handover 0826 / CE-0026: Server-side staging completion signal.
                 # When an orchestrator persists its mission and sub-agents exist,
-                # staging is structurally complete -- emit a deterministic signal
-                # so the UI doesn't rely solely on the LLM sending a broadcast message.
+                # staging is structurally complete -- delegate to the shared
+                # ``mark_staging_complete`` helper so this path, ``complete_job``,
+                # and any future caller all converge on a single canonical
+                # implementation (CE-0026: helper extracted to project_helpers).
                 if job.job_type == "orchestrator" and job.project_id:
                     agent_count = await self._repo.count_non_orchestrator_agents(session, tenant_key, job.project_id)
 
                     if agent_count > 0:
                         project = await self._repo.get_project_by_id(session, tenant_key, job.project_id)
-                        if project and project.staging_status != "staging_complete":
-                            project.staging_status = "staging_complete"
-                            project.updated_at = datetime.now(UTC)
-                            await self._repo.commit(session)
+                        if project:
+                            from giljo_mcp.services.project_helpers import mark_staging_complete
 
-                            if self._websocket_manager:
-                                try:
-                                    await self._websocket_manager.broadcast_to_tenant(
-                                        tenant_key=tenant_key,
-                                        event_type="project:staging_complete",
-                                        data={
-                                            "project_id": str(job.project_id),
-                                            "agent_count": agent_count,
-                                            "staging_status": "staging_complete",
-                                        },
-                                    )
-                                    logger.info(
-                                        f"[STAGING_COMPLETE] project={job.project_id} agents={agent_count}",
-                                        extra={"project_id": str(job.project_id), "tenant_key": tenant_key},
-                                    )
-                                except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience
-                                    logger.warning(
-                                        f"[WEBSOCKET] Failed to broadcast project:staging_complete: {ws_error}"
-                                    )
+                            flipped = await mark_staging_complete(
+                                session,
+                                project,
+                                source="mission_service.update_agent_mission",
+                                websocket_manager=self._websocket_manager,
+                                agent_count=agent_count,
+                            )
+                            if flipped:
+                                await self._repo.commit(session)
 
                 logger.info(
                     f"[UPDATE_AGENT_MISSION] Updated mission for job {job_id}",

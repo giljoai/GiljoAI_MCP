@@ -296,14 +296,27 @@ backend calculates percent and step counts automatically.
 **Description:** Mark a job as completed with results. The agent stores a structured
 result that the orchestrator can retrieve via `get_agent_result()`.
 
+**Phase-aware for orchestrator (CE-0026):** the server reads
+`execution.project_phase` (set at spawn time, immutable) and branches:
+
+| Phase | Behavior |
+|-------|----------|
+| Staging orchestrator (`project_phase='staging'`) | Server flips `project.staging_status` to `'staging_complete'` (enables the Implement button in the UI) and returns `staging_directive.action='STOP'`. Orchestrator session ends here. A new execution is spawned in a fresh session when the user clicks Implement. **Do not call `write_360_memory()` or `close_project_and_update_memory()` from the staging session.** |
+| Implementation orchestrator (`project_phase='implementation'`) | Normal closeout. No `staging_directive` in response. Project closeout still happens via a separate `close_project_and_update_memory()` call (unchanged). |
+| Deliverable agent (any non-orchestrator job_type) | Normal closeout, no phase semantics. |
+
 **Parameters:**
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | job_id | str | Yes | The agent's job ID. |
 | result | dict | Yes | Structured result containing `summary`, `artifacts`, and `commits`. |
+| acknowledge_closeout_todo | bool | No | Auto-completes any incomplete TODO whose content describes the closeout itself. Use from orchestrator closeout where the closeout TODO IS the very call being made. Default `false`. |
+| acknowledge_messages_on_complete | bool | No | Drain (mark `acknowledged`) all unread messages addressed to this agent in the project+tenant before evaluating the gate. Default `false`. |
 
-**Returns:** Confirmation of job completion.
+**Returns:** Confirmation of job completion. For a staging-phase orchestrator,
+the response additionally carries a `staging_directive` field with
+`action='STOP'`.
 
 ---
 

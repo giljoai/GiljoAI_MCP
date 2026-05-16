@@ -27,7 +27,7 @@
         <ul class="legal-list">
           <li><strong>Community Edition (CE)</strong> — self-hosted. Free under the {{ licenseName }}. Run it yourself, run it for your team, run it inside your company. The license restricts only: providing the software to third parties as a hosted/managed service, tampering with license-key functionality, and removing or altering license/copyright notices.</li>
           <li><strong>Demo</strong> — hosted by GiljoAI LLC. Read-mostly, may be reset or rate-limited at any time. Intended for evaluation only.</li>
-          <li><strong>Solo / Team (SaaS)</strong> — hosted commercial subscriptions provided by GiljoAI LLC under a separate Commercial License. Subject to the subscription terms accepted at sign-up. <!-- PATRIK: review wording — confirm subscription terms reference once Stripe/Polar is live. --></li>
+          <li><strong>Solo / Team (SaaS)</strong> — hosted commercial subscriptions provided by GiljoAI LLC under a separate Commercial License. Subject to the subscription terms accepted at sign-up. <!-- PATRIK: review wording — confirm subscription terms reference once Paddle is live (Paddle is Merchant of Record; Paddle's MoR terms apply alongside ours). --></li>
         </ul>
       </section>
 

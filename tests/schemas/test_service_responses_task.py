@@ -193,7 +193,6 @@ class TestSendMessageResult:
         assert result.message_id is None
         assert result.to_agents == []
         assert result.message_type == "direct"
-        assert result.staging_directive is None
 
     def test_creation_with_message_id(self):
         result = SendMessageResult(message_id="msg-1")

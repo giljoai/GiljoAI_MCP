@@ -12,7 +12,7 @@
 </template>
 
 <script setup>
-// Stub view -- intentionally empty. FE-0017 will wire Stripe billing here.
+// Stub view -- intentionally empty. FE-0017 will wire Paddle billing here.
 </script>
 
 <style lang="scss" scoped>

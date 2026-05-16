@@ -262,6 +262,10 @@ class ProjectLifecycleRepository:
             status="waiting",
             progress=0,
             health_status="unknown",
+            # CE-0026: fixture is created on project activation, before staging
+            # has begun. The first orchestrator execution always belongs to the
+            # staging phase.
+            project_phase="staging",
         )
         session.add(agent_execution)
 

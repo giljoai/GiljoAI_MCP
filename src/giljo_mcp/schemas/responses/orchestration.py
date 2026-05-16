@@ -97,6 +97,14 @@ class MissionResponse(BaseModel):
         default=None,
         description="Orchestrator-only. Live team state with agent statuses. Null for non-orchestrator agents.",
     )
+    project_phase: str | None = Field(
+        default=None,
+        description=(
+            "CE-0026: Lifecycle phase for orchestrator executions — 'staging' or "
+            "'implementation'. Set at execution creation, immutable. Null for "
+            "non-orchestrator agents (they don't have phase semantics)."
+        ),
+    )
     blocked: bool = False
     error: str | None = None
     user_instruction: str | None = Field(
@@ -132,10 +140,44 @@ class ProgressResult(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class StagingDirective(BaseModel):
+    """Staging-session-end directive returned by ``complete_job`` (CE-0026).
+
+    Populated only when the staging-phase orchestrator calls ``complete_job``
+    to end its staging session. Tells the orchestrator agent to stop and
+    informs it that the Implementation phase gate is now open.
+
+    Historical note: previously emitted by the ``send_message`` broadcast
+    magic with five diagnostic statuses (NOT_BROADCAST, NOT_ORCHESTRATOR,
+    SENDER_NOT_FOUND, ALREADY_COMPLETE, STAGING_SESSION_COMPLETE). That
+    mechanism was removed in CE-0026; the success path is the only meaningful
+    case once ``complete_job`` is the canonical phase-transition tool.
+    """
+
+    status: str = "STAGING_SESSION_COMPLETE"
+    action: str = "STOP"
+    implementation_gate: str = "OPEN"
+    message: str = (
+        "STAGING IS COMPLETE. Your session must end NOW. "
+        "Do NOT proceed to implementation in this session. "
+        "The user will click 'Implement' in the dashboard to start "
+        "a new implementation session with a fresh orchestrator execution."
+    )
+    next_step: str = "Report staging complete to user and stop."
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class CompleteJobResult(BaseModel):
     """Job completion result.
 
     Fields match OrchestrationService.complete_job() output.
+
+    CE-0026: ``staging_directive`` is populated only when the staging-phase
+    orchestrator calls ``complete_job`` (i.e., ``execution.project_phase ==
+    'staging'`` and ``project.staging_status`` transitions to
+    ``staging_complete``). For all other complete_job calls (implementation
+    phase, deliverable agents) it remains None.
     """
 
     status: str = "success"
@@ -146,6 +188,10 @@ class CompleteJobResult(BaseModel):
     closeout_checklist: dict | None = Field(
         default=None,
         description="HITL closeout checklist (orchestrator jobs only)",
+    )
+    staging_directive: StagingDirective | None = Field(
+        default=None,
+        description="STOP directive for end-of-staging orchestrator (CE-0026)",
     )
 
     model_config = ConfigDict(from_attributes=True)

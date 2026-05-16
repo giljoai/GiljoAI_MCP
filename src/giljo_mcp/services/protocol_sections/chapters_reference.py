@@ -141,7 +141,9 @@ into the successor's mission. The id is the existing job_id returned by the
 prior spawn_job — no new id type, just reuse what you already have.
 
 MESSAGING: Always use agent_id UUIDs in to_agents (from spawn_job response).
-Orchestrator has NO active role after STAGING_COMPLETE broadcast.
+Orchestrator's staging session ends when it calls complete_job() on its own
+orchestrator job (CE-0026); a fresh execution is spawned when the user clicks
+"Implement" in the dashboard.
 """
 
     return f"""════════════════════════════════════════════════════════════════════════════

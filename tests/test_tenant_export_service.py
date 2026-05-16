@@ -125,26 +125,27 @@ async def test_export_strips_platform_metadata(db_session: AsyncSession) -> None
     """PLATFORM_METADATA_STRIP values must not appear in data/*.json bytes."""
     tenant_key = TenantManager.generate_tenant_key()
     user = await _seed_user(db_session, tenant_key)
-    # stripe_customer_id lives on Organization in SaaS; in CE we synthetically set
-    # the attribute on the in-memory instance via setattr to simulate platform
-    # metadata that MIGHT exist if the column were ever added. Since CE has no
-    # such column, the strip filter must operate by NAME (not by presence) so
-    # that SaaS rows surviving in a CE export still get scrubbed.
-    needle = "cus_NEEDLE_STRIPE_CUSTOMER"
+    # customer_id lives on Organization in SaaS (provider-agnostic; populated by
+    # the Paddle webhook handler). In CE we synthetically set the attribute on
+    # the in-memory instance via setattr to simulate platform metadata that
+    # MIGHT exist if the column were ever added. Since CE has no such column,
+    # the strip filter must operate by NAME (not by presence) so that SaaS rows
+    # surviving in a CE export still get scrubbed.
+    needle = "ctm_NEEDLE_BILLING_CUSTOMER"
     # Inject into Configuration JSONB (a tenant-scoped table) as a worst-case carrier.
     from giljo_mcp.models import Configuration
 
     cfg = Configuration(
         tenant_key=tenant_key,
-        key="billing.stripe_customer_id",
+        key="billing.customer_id",
         value=needle,  # JSONB scalar; preserved by serializer (mission says preserve JSONB)
         category="billing",
     )
     db_session.add(cfg)
     # And as a real PLATFORM_METADATA_STRIP test, set a User attribute that IS in the strip list.
-    # User has no stripe_customer_id column today, so we add it dynamically — the strip filter
+    # User has no customer_id column today, so we add it dynamically — the strip filter
     # must remove it regardless of column existence.
-    object.__setattr__(user, "stripe_customer_id", "cus_FIELD_NEEDLE_USER")
+    object.__setattr__(user, "customer_id", "ctm_FIELD_NEEDLE_USER")
     await db_session.commit()
 
     service = TenantExportService(db_session=db_session)
@@ -258,7 +259,7 @@ async def test_export_excludes_ops_tables(db_session: AsyncSession) -> None:
     with zipfile.ZipFile(zip_path, "r") as zf:
         names = set(zf.namelist())
         assert "data/ops_audit_log.json" not in names
-        assert "data/ops_stripe_links.json" not in names
+        assert "data/ops_billing_links.json" not in names
 
 
 async def test_manifest_sha256_matches_contents(db_session: AsyncSession) -> None:

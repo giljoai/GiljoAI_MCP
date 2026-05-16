@@ -97,15 +97,15 @@ CREDENTIAL_STRIP: frozenset[str] = frozenset(
 
 PLATFORM_METADATA_STRIP: frozenset[str] = frozenset(
     {
-        "stripe_customer_id",
-        "stripe_subscription_id",
+        "customer_id",
+        "subscription_id",
         "trial_status",
         "trial_started_at",
         "trial_expires_at",
     }
 )
 
-OPS_EXCLUDE_TABLES: frozenset[str] = frozenset({"ops_audit_log", "ops_stripe_links"})
+OPS_EXCLUDE_TABLES: frozenset[str] = frozenset({"ops_audit_log", "ops_billing_links"})
 
 EPHEMERAL_EXCLUDE_MODELS: frozenset[str] = frozenset(
     {

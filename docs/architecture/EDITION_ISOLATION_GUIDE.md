@@ -93,7 +93,7 @@ src/giljo_mcp/
 ├── saas/                        # *** SaaS-ONLY -- never imported by CE code ***
 │   ├── __init__.py              # Feature registry (conditional loading)
 │   ├── auth/                    # OAuth, SSO, LDAP, MFA, 2FA (TOTP)
-│   ├── billing/                 # Stripe, plan enforcement, usage metering
+│   ├── billing/                 # Paddle (Merchant of Record), plan enforcement, usage metering
 │   ├── org/                     # Multi-org management, team features
 │   ├── notifications/           # Transactional email, push notifications
 │   ├── analytics/               # Usage analytics, metering dashboards
@@ -190,7 +190,7 @@ Use this decision tree for every new feature:
 
 ```
 Does this feature require infrastructure a solo developer wouldn't have?
-(Stripe account, SMTP relay, LDAP server, OAuth provider)
+(Paddle account, SMTP relay, LDAP server, OAuth provider)
     --> YES --> saas/ directory
 
 Is this Demo trial management? (registration, tenant provisioning,
@@ -379,7 +379,7 @@ Demo mode (`GILJO_MODE=demo`) is the bridge between CE and SaaS. It uses real Sa
 
 ### What Demo Does NOT Have
 
-- Stripe / billing (free trial, no payment)
+- Paddle / billing (free trial, no payment)
 - OAuth / SSO / LDAP
 - Team management (single admin per trial tenant)
 - Usage analytics / metering

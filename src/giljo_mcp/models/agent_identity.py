@@ -301,6 +301,19 @@ class AgentExecution(Base):
         comment="Human-readable display name for UI",
     )
 
+    # Lifecycle phase (CE-0026): which phase of the project this execution
+    # belongs to. Set at execution creation, never mutated.
+    project_phase = Column(
+        String(20),
+        nullable=False,
+        default="implementation",
+        server_default="implementation",
+        comment=(
+            "Lifecycle phase this orchestrator execution belongs to: "
+            "'staging' or 'implementation'. Set at execution creation."
+        ),
+    )
+
     # Relationships
     job = relationship("AgentJob", back_populates="executions")
 
@@ -329,6 +342,10 @@ class AgentExecution(Base):
         CheckConstraint(
             "health_status IN ('unknown', 'healthy', 'warning', 'critical', 'timeout')",
             name="ck_agent_execution_health_status",
+        ),
+        CheckConstraint(
+            "project_phase IN ('staging', 'implementation')",
+            name="ck_agent_execution_project_phase",
         ),
     )
 

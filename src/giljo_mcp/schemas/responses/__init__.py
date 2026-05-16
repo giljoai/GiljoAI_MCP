@@ -35,7 +35,6 @@ from giljo_mcp.schemas.responses.message import (
     MessageListResult,
     MessageStatusResult,
     SendMessageResult,
-    StagingDirective,
 )
 from giljo_mcp.schemas.responses.orchestration import (
     AgentTodoCounts,
@@ -51,6 +50,7 @@ from giljo_mcp.schemas.responses.orchestration import (
     ProgressResult,
     ReactivationResult,
     SpawnResult,
+    StagingDirective,
     SuccessionContextResult,
     SuccessionResult,
     SuccessionStatus,
