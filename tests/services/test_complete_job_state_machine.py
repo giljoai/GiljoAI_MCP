@@ -26,7 +26,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from giljo_mcp.models.agent_identity import AgentExecution, AgentJob, AgentTodoItem
 from giljo_mcp.models.products import Product
 from giljo_mcp.models.projects import Project
 from giljo_mcp.services.job_completion_service import JobCompletionService
@@ -353,3 +353,176 @@ async def test_mark_staging_complete_called_exactly_once_on_staging_end(
         f"CE-0026: mark_staging_complete must be called with source='complete_job:staging_end', "
         f"got source={kwargs.get('source')!r}"
     )
+
+
+# ============================================================================
+# CE-0027 regression tests — phase-aware gate + phase-aware closeout_checklist
+# ============================================================================
+
+
+async def _seed_incomplete_todos(
+    db_session: AsyncSession,
+    tenant_key: str,
+    job_id: str,
+    count: int = 3,
+) -> list[AgentTodoItem]:
+    """Seed `count` pending TODO items for a job — simulates deliverable plan."""
+    todos: list[AgentTodoItem] = []
+    for i in range(count):
+        todo = AgentTodoItem(
+            job_id=job_id,
+            tenant_key=tenant_key,
+            content=f"CE-0027 deliverable item {i + 1}",
+            status="pending",
+            sequence=i,
+        )
+        db_session.add(todo)
+        todos.append(todo)
+    await db_session.commit()
+    return todos
+
+
+@pytest.mark.asyncio
+async def test_staging_orchestrator_complete_job_bypasses_incomplete_todos_gate(
+    db_session: AsyncSession,
+    completion_service: JobCompletionService,
+    test_tenant_key: str,
+    test_product: Product,
+):
+    """CE-0027 (f): staging-phase orchestrator's complete_job must NOT be
+    blocked by incomplete TODOs.
+
+    Reason: the orchestrator protocol instructs the staging orch to write
+    deliverable-shaped TODOs (e.g., "Build PaddleService") that are meant to
+    survive into implementation. The pre-CE-0027 gate blocked staging-close
+    on these, forcing the agent to lie about completion status. CE-0027
+    makes the gate phase-aware.
+    """
+    project = await _seed_project(db_session, test_tenant_key, test_product.id, staging_status="staging")
+    job, _ = await _seed_orchestrator_job(db_session, test_tenant_key, project.id, project_phase="staging")
+    await _seed_incomplete_todos(db_session, test_tenant_key, job.job_id, count=3)
+
+    result = await completion_service.complete_job(
+        job_id=job.job_id,
+        result={"summary": "Staging done; 3 deliverable TODOs survive into impl"},
+        tenant_key=test_tenant_key,
+    )
+
+    assert result.status == "success", "CE-0027: staging orch must close successfully despite incomplete TODOs"
+    assert result.staging_directive is not None, "CE-0027: staging close should still return STOP directive"
+    assert result.staging_directive.action == "STOP"
+
+
+@pytest.mark.asyncio
+async def test_implementation_orchestrator_complete_job_still_blocks_on_incomplete_todos(
+    db_session: AsyncSession,
+    completion_service: JobCompletionService,
+    test_tenant_key: str,
+    test_product: Product,
+):
+    """CE-0027 (f) regression: implementation-phase orchestrator with
+    incomplete TODOs MUST still be blocked (the gate's original purpose —
+    preventing premature closure — still applies in impl phase).
+    """
+    from giljo_mcp.exceptions import ValidationError
+
+    project = await _seed_project(db_session, test_tenant_key, test_product.id, staging_status="staging_complete")
+    job, _ = await _seed_orchestrator_job(db_session, test_tenant_key, project.id, project_phase="implementation")
+    await _seed_incomplete_todos(db_session, test_tenant_key, job.job_id, count=2)
+
+    with pytest.raises(ValidationError) as exc_info:
+        await completion_service.complete_job(
+            job_id=job.job_id,
+            result={"summary": "Tried to close impl with incomplete TODOs"},
+            tenant_key=test_tenant_key,
+        )
+
+    assert "COMPLETION_BLOCKED" in str(exc_info.value), (
+        f"CE-0027 regression: impl orch with incomplete TODOs must still raise COMPLETION_BLOCKED, "
+        f"got: {exc_info.value!r}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_deliverable_agent_still_blocks_on_incomplete_todos(
+    db_session: AsyncSession,
+    completion_service: JobCompletionService,
+    test_tenant_key: str,
+    test_product: Product,
+):
+    """CE-0027 (f) regression: non-orchestrator agents (implementer, tester,
+    etc.) MUST still be blocked by incomplete TODOs regardless of phase.
+    The phase-aware bypass applies only to orchestrators.
+    """
+    from giljo_mcp.exceptions import ValidationError
+
+    project = await _seed_project(db_session, test_tenant_key, test_product.id, staging_status="staging_complete")
+    job, _ = await _seed_deliverable_job(
+        db_session, test_tenant_key, project.id, job_type="implementer", project_phase="staging"
+    )
+    await _seed_incomplete_todos(db_session, test_tenant_key, job.job_id, count=2)
+
+    with pytest.raises(ValidationError) as exc_info:
+        await completion_service.complete_job(
+            job_id=job.job_id,
+            result={"summary": "Implementer trying to close with pending work"},
+            tenant_key=test_tenant_key,
+        )
+
+    assert "COMPLETION_BLOCKED" in str(exc_info.value), (
+        "CE-0027 regression: implementer agent must still be blocked on incomplete TODOs"
+    )
+
+
+@pytest.mark.asyncio
+async def test_staging_orchestrator_response_has_no_closeout_checklist(
+    db_session: AsyncSession,
+    completion_service: JobCompletionService,
+    test_tenant_key: str,
+    test_product: Product,
+):
+    """CE-0027 (g): staging-phase orchestrator's complete_job response must
+    NOT include closeout_checklist. The checklist content (request_approval,
+    deferred findings) is impl-phase guidance and confused the staging agent
+    on the dogfood Paddle test.
+    """
+    project = await _seed_project(db_session, test_tenant_key, test_product.id, staging_status="staging")
+    job, _ = await _seed_orchestrator_job(db_session, test_tenant_key, project.id, project_phase="staging")
+
+    result = await completion_service.complete_job(
+        job_id=job.job_id,
+        result={"summary": "Staging close — should not get impl-phase checklist"},
+        tenant_key=test_tenant_key,
+    )
+
+    assert result.staging_directive is not None
+    assert result.closeout_checklist is None, (
+        f"CE-0027: staging orch response must not carry closeout_checklist, got {result.closeout_checklist!r}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_implementation_orchestrator_response_has_closeout_checklist(
+    db_session: AsyncSession,
+    completion_service: JobCompletionService,
+    test_tenant_key: str,
+    test_product: Product,
+):
+    """CE-0027 (g) regression: impl-phase orchestrator's response STILL
+    includes closeout_checklist (impl-phase guidance is preserved for the
+    audience it's actually for).
+    """
+    project = await _seed_project(db_session, test_tenant_key, test_product.id, staging_status="staging_complete")
+    job, _ = await _seed_orchestrator_job(db_session, test_tenant_key, project.id, project_phase="implementation")
+
+    result = await completion_service.complete_job(
+        job_id=job.job_id,
+        result={"summary": "Impl close — should still get checklist"},
+        tenant_key=test_tenant_key,
+    )
+
+    assert result.staging_directive is None, "Impl orch should not get staging_directive"
+    assert result.closeout_checklist is not None, (
+        "CE-0027 regression: impl orch response must still carry closeout_checklist"
+    )
+    assert "instruction" in result.closeout_checklist or "follow_up_items" in result.closeout_checklist

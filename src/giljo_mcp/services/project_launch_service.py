@@ -135,14 +135,21 @@ class ProjectLaunchService:
 
             existing = await self._find_existing_orchestrator(session, project_id, tenant_key)
             if existing:
-                # CE-0026: When the staging orchestrator has completed AND the
-                # project has finished staging, the Implement-button launch
-                # gets a brand-new execution for the implementation session —
+                # CE-0027: When the orchestrator has completed AND the project
+                # has finished staging, the Implement-button launch gets a
+                # brand-new execution for the implementation session —
                 # phase='implementation', attached to the same AgentJob. The
-                # staging execution stays in the history (phase='staging',
-                # status='complete') for audit and observability.
+                # prior execution stays in the history for audit/observability.
+                #
+                # Trigger keys on role + status + project flag, NOT on the
+                # prior execution's project_phase column. This is intentional:
+                # the phase column was wrong on some pre-CE-0026 rows whose
+                # default ('implementation') didn't match their actual phase,
+                # and would have stuck users on a completed execution. Using
+                # status + project flag is robust across the migration
+                # backfill window and any future similar drift.
                 if (
-                    existing.project_phase == "staging"
+                    existing.agent_display_name == "orchestrator"
                     and existing.status == "complete"
                     and project.staging_status == "staging_complete"
                 ):

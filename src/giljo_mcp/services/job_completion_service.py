@@ -186,7 +186,16 @@ class JobCompletionService:
                 )
 
             closeout_checklist = None
-            if job and getattr(job, "job_type", "") == "orchestrator":
+            # CE-0027: closeout_checklist content (request_approval, deferred
+            # findings) is implementation-phase closeout guidance. Skip it
+            # for staging-phase orchestrators — they get the staging_directive
+            # instead, which carries the correct end-of-staging semantics.
+            is_impl_phase_orch = (
+                job
+                and getattr(job, "job_type", "") == "orchestrator"
+                and (execution is None or getattr(execution, "project_phase", None) != "staging")
+            )
+            if is_impl_phase_orch:
                 # INF-5076: orchestrators are coordinators, not committers — commits
                 # flow through close_project_and_update_memory(git_commits=[...])
                 # on the next call, not through complete_job's result. The previous
@@ -331,6 +340,28 @@ class JobCompletionService:
             unread_messages = []
 
         incomplete_todos = await repo.get_incomplete_todos(session, tenant_key, job_id)
+
+        # CE-0027: Staging-phase orchestrator TODOs ARE the deliverable plan
+        # for downstream implementer/tester agents. The orchestrator writes
+        # them during staging precisely BECAUSE they are not yet done; the
+        # plan is what survives into implementation. Blocking the
+        # staging-end complete_job on these would force the agent to lie
+        # about completion status to get past the gate (we saw this happen
+        # on the dogfood Paddle test). Skip the TODOs gate entirely for
+        # staging-phase orchestrators. The unread-messages gate still
+        # applies — orchestrators should not abandon their inbox at
+        # staging-end.
+        is_staging_orchestrator = (
+            job.job_type == "orchestrator" and getattr(execution, "project_phase", None) == "staging"
+        )
+        if is_staging_orchestrator and incomplete_todos:
+            self._logger.info(
+                "[STAGING] Bypassing incomplete-TODOs gate for staging-phase orchestrator "
+                "(%d deliverable TODOs survive into implementation)",
+                len(incomplete_todos),
+                extra={"job_id": job_id, "tenant_key": tenant_key},
+            )
+            incomplete_todos = []
 
         if acknowledge_closeout_todo and incomplete_todos:
             closeout_todos = [t for t in incomplete_todos if CLOSEOUT_TODO_PATTERN.search(t.content or "")]
