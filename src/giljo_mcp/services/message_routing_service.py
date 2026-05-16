@@ -130,8 +130,9 @@ class MessageRoutingService:
             tenant_key: Tenant key for multi-tenant isolation (required for security)
 
         Returns:
-            SendMessageResult with message_id, to_agents, message_type,
-            and optional staging_directive
+            SendMessageResult with message_id, to_agents, message_type.
+            CE-0026: no longer carries a ``staging_directive`` — the
+            end-of-staging signal moved to ``complete_job``.
         """
         try:
             async with self._get_session() as session:
