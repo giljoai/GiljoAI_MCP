@@ -526,3 +526,82 @@ async def test_implementation_orchestrator_response_has_closeout_checklist(
         "CE-0027 regression: impl orch response must still carry closeout_checklist"
     )
     assert "instruction" in result.closeout_checklist or "follow_up_items" in result.closeout_checklist
+
+
+@pytest.mark.asyncio
+async def test_staging_orchestrator_complete_job_leaves_job_status_active(
+    db_session: AsyncSession,
+    completion_service: JobCompletionService,
+    test_tenant_key: str,
+    test_product: Product,
+):
+    """CE-0028 (h): the staging→implementation transition must preserve
+    ``AgentJob.status='active'``.
+
+    The orchestrator AgentJob is long-lived across both phases — the
+    implementation execution re-attaches to the same job_id (CE-0026
+    ``_spawn_implementation_execution``). Flipping job.status='completed' at
+    staging-end made the UI treat the project as fully done (CloseoutModal +
+    360-memory poll) and blocked the Implement (play) button flow.
+
+    The staging-phase AgentExecution itself still marks complete (it IS
+    finished as a session); only the parent job status is preserved.
+    """
+    project = await _seed_project(db_session, test_tenant_key, test_product.id, staging_status="staging")
+    job, _ = await _seed_orchestrator_job(db_session, test_tenant_key, project.id, project_phase="staging")
+
+    result = await completion_service.complete_job(
+        job_id=job.job_id,
+        result={"summary": "Staging end — should NOT flip job.status"},
+        tenant_key=test_tenant_key,
+    )
+
+    assert result.status == "success"
+    assert result.staging_directive is not None and result.staging_directive.action == "STOP"
+
+    refreshed_job = (await db_session.execute(select(AgentJob).where(AgentJob.job_id == job.job_id))).scalar_one()
+    assert refreshed_job.status == "active", (
+        f"CE-0028: staging-end must leave job.status='active', got {refreshed_job.status!r}"
+    )
+    assert refreshed_job.completed_at is None, (
+        f"CE-0028: staging-end must leave job.completed_at unset, got {refreshed_job.completed_at!r}"
+    )
+
+    refreshed_exec = (
+        await db_session.execute(select(AgentExecution).where(AgentExecution.job_id == job.job_id))
+    ).scalar_one()
+    assert refreshed_exec.status == "complete", (
+        "Staging execution must still mark itself complete — only the parent job is preserved"
+    )
+
+
+@pytest.mark.asyncio
+async def test_implementation_orchestrator_complete_job_marks_job_completed(
+    db_session: AsyncSession,
+    completion_service: JobCompletionService,
+    test_tenant_key: str,
+    test_product: Product,
+):
+    """CE-0028 negative case: implementation-phase orchestrator completion
+    MUST still flip ``AgentJob.status='completed'``. The CE-0028 bypass is
+    scoped tightly to the staging→implementation transition; impl-phase
+    closeout is the real project-completion event.
+    """
+    project = await _seed_project(db_session, test_tenant_key, test_product.id, staging_status="staging_complete")
+    job, _ = await _seed_orchestrator_job(db_session, test_tenant_key, project.id, project_phase="implementation")
+
+    result = await completion_service.complete_job(
+        job_id=job.job_id,
+        result={"summary": "Impl close — should flip job.status='completed'"},
+        tenant_key=test_tenant_key,
+    )
+
+    assert result.status == "success"
+    assert result.staging_directive is None
+
+    refreshed_job = (await db_session.execute(select(AgentJob).where(AgentJob.job_id == job.job_id))).scalar_one()
+    assert refreshed_job.status == "completed", (
+        f"CE-0028 regression guard: impl-phase orch completion MUST flip job.status='completed', "
+        f"got {refreshed_job.status!r}"
+    )
+    assert refreshed_job.completed_at is not None, "Impl-phase completion must set job.completed_at"

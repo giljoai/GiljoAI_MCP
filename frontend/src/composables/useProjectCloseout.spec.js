@@ -154,6 +154,80 @@ describe('useProjectCloseout', () => {
       const { allJobsTerminal } = useProjectCloseout({ project, projectId: computed(() => 'proj-1'), sortedJobs: makeJobs(jobs) })
       expect(allJobsTerminal.value).toBe(true)
     })
+
+    // CE-0028: at the staging→implementation handoff the orchestrator's
+    // staging execution is 'complete' but the project is NOT done. Closeout
+    // must be suppressed until the Implement button is clicked and the
+    // implementation phase has actually launched.
+    it('returns false when staging_complete and implementation has not launched (CE-0028)', () => {
+      const project = makeProject({
+        staging_status: 'staging_complete',
+        implementation_launched_at: null,
+      })
+      const jobs = [{ agent_display_name: 'orchestrator', status: 'complete' }]
+      const { allJobsTerminal } = useProjectCloseout({
+        project,
+        projectId: computed(() => 'proj-1'),
+        sortedJobs: makeJobs(jobs),
+      })
+      expect(allJobsTerminal.value).toBe(false)
+    })
+
+    it('returns true when staging_complete AND implementation_launched_at is set (CE-0028)', () => {
+      const project = makeProject({
+        staging_status: 'staging_complete',
+        implementation_launched_at: '2026-05-17T10:00:00Z',
+      })
+      const jobs = [{ agent_display_name: 'orchestrator', status: 'complete' }]
+      const { allJobsTerminal } = useProjectCloseout({
+        project,
+        projectId: computed(() => 'proj-1'),
+        sortedJobs: makeJobs(jobs),
+      })
+      expect(allJobsTerminal.value).toBe(true)
+    })
+  })
+
+  // CE-0028: when staging just finished and Implement hasn't been clicked,
+  // none of the closeout UI should fire — no modal, no memory polling, no
+  // closeout button. These are integration-style checks across the
+  // composable's surface.
+  describe('CE-0028 staging→implementation handoff', () => {
+    it('does not surface closeout button while staging_complete + implementation not launched', () => {
+      const project = makeProject({
+        product_id: 'prod-1',
+        staging_status: 'staging_complete',
+        implementation_launched_at: null,
+      })
+      const jobs = [{ agent_display_name: 'orchestrator', status: 'complete' }]
+      const { showCloseoutButton, showMemoryPending } = useProjectCloseout({
+        project,
+        projectId: computed(() => 'proj-1'),
+        sortedJobs: makeJobs(jobs),
+      })
+      expect(showCloseoutButton.value).toBe(false)
+      expect(showMemoryPending.value).toBe(false)
+    })
+
+    it('does not start memory polling at staging_complete pre-Implement', async () => {
+      const api = (await import('@/services/api')).default
+      api.products.getMemoryEntries.mockClear()
+
+      const project = makeProject({
+        product_id: 'prod-1',
+        staging_status: 'staging_complete',
+        implementation_launched_at: null,
+      })
+      const jobsRef = ref([{ agent_display_name: 'orchestrator', status: 'working' }])
+      const sortedJobs = computed(() => jobsRef.value)
+      useProjectCloseout({ project, projectId: computed(() => 'proj-1'), sortedJobs })
+
+      jobsRef.value = [{ agent_display_name: 'orchestrator', status: 'complete' }]
+      await nextTick()
+      await nextTick()
+
+      expect(api.products.getMemoryEntries).not.toHaveBeenCalled()
+    })
   })
 
   describe('showCloseoutButton', () => {

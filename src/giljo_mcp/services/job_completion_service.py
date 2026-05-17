@@ -152,9 +152,20 @@ class JobCompletionService:
                         acknowledge_messages_on_complete=acknowledge_messages_on_complete,
                     )
 
+                    # CE-0028: detect the staging→implementation transition
+                    # once and reuse downstream. Single source of truth shared
+                    # by _finalize_job_if_last_execution (preserves
+                    # job.status='active' across the phase boundary) and
+                    # _handle_staging_end (emits the STOP directive).
+                    is_staging_end, staging_end_project = await self._is_staging_end_orchestrator_call(
+                        session, job, execution, tenant_key
+                    )
+
                     old_status, duration_seconds = self._apply_completion_status(execution, result)
 
-                    await self._finalize_job_if_last_execution(session, job, execution, tenant_key, job_id)
+                    await self._finalize_job_if_last_execution(
+                        session, job, execution, tenant_key, job_id, is_staging_end=is_staging_end
+                    )
 
                     await self._handle_completion_side_effects(
                         session=session,
@@ -169,7 +180,14 @@ class JobCompletionService:
                     # orchestrator. Flips project.staging_status (idempotent —
                     # mission_service may already have flipped it) and
                     # populates a STOP directive in the response.
-                    staging_directive = await self._handle_staging_end(session, job, execution, tenant_key)
+                    staging_directive = await self._handle_staging_end(
+                        session,
+                        job,
+                        execution,
+                        tenant_key,
+                        is_staging_end=is_staging_end,
+                        project=staging_end_project,
+                    )
 
                     await repo.commit(session)
                 else:
@@ -434,8 +452,23 @@ class JobCompletionService:
         execution: AgentExecution,
         tenant_key: str,
         job_id: str,
+        *,
+        is_staging_end: bool = False,
     ) -> None:
-        """Mark job as completed if no other active executions remain."""
+        """Mark job as completed if no other active executions remain.
+
+        CE-0028: when this complete_job call is the staging→implementation
+        transition for the orchestrator, preserve ``job.status='active'``.
+        The same AgentJob carries the orchestrator across both phases; the
+        implementation-phase execution attaches to this row and the job's
+        completion only fires when the implementation session closes. Flipping
+        the job to 'completed' at staging-end made the UI treat the project
+        as fully done (closeout modal + 360-memory poll), blocking the
+        Implement (play) button flow.
+        """
+        if is_staging_end:
+            return
+
         repo = AgentCompletionRepository()
         other_active = await repo.find_other_active_executions_by_agent_id(
             session, tenant_key, job_id, execution.agent_id
@@ -484,38 +517,39 @@ class JobCompletionService:
                 session, job, execution, result, tenant_key, warnings
             )
 
-    async def _handle_staging_end(
+    async def _is_staging_end_orchestrator_call(
         self,
         session: AsyncSession,
         job: AgentJob,
         execution: AgentExecution,
         tenant_key: str,
-    ) -> StagingDirective | None:
-        """Detect end-of-staging and flip the staging flag (CE-0026).
+    ) -> tuple[bool, Project | None]:
+        """Detect whether this complete_job is the staging→implementation
+        transition for an orchestrator. Single source of truth for CE-0026
+        (STOP directive) and CE-0028 (preserve job.status='active').
 
-        Returns a STOP directive when the staging-phase orchestrator is
-        ending its session via ``complete_job``. Calls the canonical
-        ``mark_staging_complete`` helper (idempotent — ``mission_service``
-        may already have flipped the flag earlier in this session). For all
-        other job types and phases, returns None and the response carries no
-        staging directive.
+        Returns ``(is_staging_end, project)``. When ``is_staging_end`` is True,
+        callers must:
+          * preserve ``job.status='active'`` (do NOT flip to 'completed'); and
+          * emit a STOP ``staging_directive`` in the response.
+
+        The Project (possibly None) is returned so callers can reuse it
+        without a second lookup. A None project on a staging-end call is
+        anomalous — ``_handle_staging_end`` logs a warning but still returns
+        the directive.
 
         Args:
-            session: Active session (will be committed by caller).
+            session: Active session.
             job: AgentJob being completed.
             execution: AgentExecution being marked complete.
             tenant_key: Tenant key for isolation.
-
-        Returns:
-            StagingDirective when this is a staging-end orchestrator call;
-            otherwise None.
         """
         if job.job_type != "orchestrator":
-            return None
+            return False, None
         if getattr(execution, "project_phase", None) != "staging":
-            return None
+            return False, None
         if not job.project_id:
-            return None
+            return False, None
 
         stmt = select(Project).where(
             Project.id == str(job.project_id),
@@ -527,9 +561,43 @@ class JobCompletionService:
         # execution catching up (orch stayed alive across the
         # staging→implementation transition without complete_job being called
         # at the right boundary). Treat as a normal closeout; no STOP directive.
-        # This covers the upgrade path and any future protocol drift.
         if project is not None and project.implementation_launched_at is not None:
+            return False, project
+        return True, project
+
+    async def _handle_staging_end(
+        self,
+        session: AsyncSession,
+        job: AgentJob,
+        execution: AgentExecution,
+        tenant_key: str,
+        *,
+        is_staging_end: bool,
+        project: Project | None,
+    ) -> StagingDirective | None:
+        """Flip the staging flag and return the STOP directive (CE-0026).
+
+        Detection is performed once by ``_is_staging_end_orchestrator_call``
+        and the result is passed in. This method only mutates and shapes the
+        response. Calls the canonical ``mark_staging_complete`` helper
+        (idempotent — ``mission_service`` may already have flipped the flag
+        earlier in this session).
+
+        Args:
+            session: Active session (will be committed by caller).
+            job: AgentJob being completed.
+            execution: AgentExecution being marked complete.
+            tenant_key: Tenant key for isolation.
+            is_staging_end: Output of ``_is_staging_end_orchestrator_call``.
+            project: Project loaded by the detector (may be None on the
+                anomalous staging-end-without-project case).
+
+        Returns:
+            StagingDirective when ``is_staging_end`` is True; otherwise None.
+        """
+        if not is_staging_end:
             return None
+
         if project is None:
             self._logger.warning(
                 "[STAGING_END] Project %s not found for staging orchestrator job %s — "

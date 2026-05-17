@@ -36,6 +36,19 @@ export function useProjectCloseout({ project, projectId, sortedJobs, onComplete 
 
   const allJobsTerminal = computed(() => {
     if (['completed', 'terminated', 'cancelled'].includes(project.value?.status)) return false
+    // CE-0028: at the staging→implementation handoff the orchestrator's
+    // staging execution reports status='complete' (it IS finished as a
+    // session) but the project is NOT done — the user still needs to click
+    // Implement. Suppress the project-level closeout flow until the
+    // implementation phase has actually launched. Once
+    // implementation_launched_at is set, normal closeout logic resumes for
+    // the impl-phase completion that ends the project.
+    if (
+      project.value?.staging_status === 'staging_complete' &&
+      !project.value?.implementation_launched_at
+    ) {
+      return false
+    }
     const jobs = sortedJobs.value || []
     if (!jobs.length) return false
     const isTerminal = (status) =>
