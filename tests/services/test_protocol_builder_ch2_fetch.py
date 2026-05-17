@@ -107,25 +107,22 @@ class TestCH2InlineFetchCalls:
 
     def test_ch2_contains_context_fetch_philosophy(self):
         """HO1024: CH2 Step 2 must teach context-fetch judgment, not prescribe
-        fetch-all. Replaces the legacy 'essential context / configured by the
-        user' framing that pushed orchestrators to batch-fetch every enabled
-        category regardless of whether the project actually needed it.
+        fetch-all. CE-0031 trimmed this section — the canonical right-sizing
+        rule moved to the identity prompt's "Right-Sizing Your Work" section;
+        CH2 now keeps the headline sizing heuristic + idempotency note + the
+        thin-description inverse rule.
         """
         ch2 = self._build_ch2()
-        assert "CONTEXT-FETCH PHILOSOPHY" in ch2
-        assert "SIZING" in ch2
+        # Sizing heuristic remains.
+        assert "SIZE the project FIRST" in ch2 or "SIZING" in ch2
         # Idempotency safety-net language must surface so agents feel safe defaulting low.
         assert "idempotent" in ch2
-        # Anti-over-fetch directive (case-insensitive — prose may evolve).
-        assert "pre-fetch defensively" in ch2.lower()
-        # Per-category usage hints must render for at least one category.
-        assert "[needed if:" in ch2
-        # Inverse heuristic: if the user wrote a vague description, the orchestrator
-        # must know to fetch MORE to compensate (not less). This guards against the
-        # under-specified-project failure mode where sizing alone would mislead.
-        assert "INVERSE" in ch2
-        assert "vague" in ch2 or "thin" in ch2
-        # Regression guard: the legacy "fetch all" framing must NOT return.
+        # Inverse heuristic: thin/vague descriptions → fetch BROADLY.
+        assert "thin" in ch2 or "vague" in ch2
+        assert "BROADLY" in ch2
+        # Per-category usage hints must still render (now in compact form).
+        assert "[" in ch2 and "]" in ch2
+        # Regression guards: legacy framing must NOT return.
         assert "fetch all" not in ch2.lower()
         assert "essential context" not in ch2
 
@@ -218,19 +215,21 @@ class TestCH2InlineFetchCalls:
         assert "depth_config" not in result, "vision_documents fetch call should not contain depth_config (0823b)"
 
     def test_ch2_framing_memory_360_generic(self):
-        """Framing text for memory_360 should be generic, not depth-specific (0823b)."""
+        """Framing text for memory_360 should be generic, not depth-specific (0823b).
+        CE-0031 trimmed the framing copy — assert generic-ness, not exact wording."""
         toggles = {"memory_360": True}
         depth = {"memory_360": 3}
         ch2 = self._build_ch2(field_toggles=toggles, depth_config=depth)
-        assert "Recent product project closeouts" in ch2
+        assert "Recent project closeouts" in ch2 or "project closeouts" in ch2
         assert "Last 3" not in ch2
 
     def test_ch2_framing_git_history_generic(self):
-        """Framing text for git_history should be generic, not depth-specific (0823b)."""
+        """Framing text for git_history should be generic, not depth-specific (0823b).
+        CE-0031 trimmed the framing copy."""
         toggles = {"git_history": True}
         depth = {"git_history": 50}
         ch2 = self._build_ch2(field_toggles=toggles, depth_config=depth)
-        assert "Recent git commits" in ch2
+        assert "Recent commits" in ch2
         assert "Last 50" not in ch2
 
     def test_ch2_non_depth_categories_omit_depth_config(self):
@@ -510,10 +509,11 @@ class TestCH2CategoryMetadata:
                 "product_core": {"modified": "2026-04-13T20:22"},
             },
         )
-        # product_core has Modified, tech_stack does not
+        # product_core has Modified, tech_stack does not. CE-0031 trimmed the
+        # framing copy — match on a stable prefix instead of full sentence.
         lines = result.split("\n")
         product_core_framing = [line for line in lines if "Product name" in line]
-        tech_stack_framing = [line for line in lines if "Programming languages" in line]
+        tech_stack_framing = [line for line in lines if "Languages" in line]
 
         assert len(product_core_framing) == 1
         assert "Modified:" in product_core_framing[0]
@@ -521,7 +521,9 @@ class TestCH2CategoryMetadata:
         assert "Modified:" not in tech_stack_framing[0]
 
     def test_protocol_text_allows_skipping_unchanged(self):
-        """Protocol text contains the new 'may skip' wording when field_toggles provided."""
+        """Protocol text must allow skipping unchanged categories when field_toggles provided.
+        CE-0031 trimmed the "Skip aggressively" headline; semantics preserved by a "Skip
+        categories whose Modified date hasn't changed" sentence."""
         from giljo_mcp.services.protocol_sections.chapters_startup import _build_ch2_startup
 
         ch2 = _build_ch2_startup(
@@ -533,11 +535,11 @@ class TestCH2CategoryMetadata:
             tenant_key="tk_test",
             category_metadata={"product_core": {"modified": "2026-04-13T20:22"}},
         )
-        assert "Skip aggressively" in ch2
+        assert "Skip categories" in ch2 and "Modified date hasn't changed" in ch2
         assert "MUST call each one" not in ch2
 
     def test_protocol_text_backward_compat_without_metadata(self):
-        """Without category_metadata, protocol text still uses the new skip wording."""
+        """Without category_metadata, protocol text still allows the skip path."""
         from giljo_mcp.services.protocol_sections.chapters_startup import _build_ch2_startup
 
         ch2 = _build_ch2_startup(
@@ -548,5 +550,4 @@ class TestCH2CategoryMetadata:
             product_id="prod-123",
             tenant_key="tk_test",
         )
-        # The new wording is always used when field_toggles are provided
-        assert "Skip aggressively" in ch2
+        assert "Skip categories" in ch2 and "Modified date hasn't changed" in ch2

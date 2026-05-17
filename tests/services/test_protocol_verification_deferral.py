@@ -65,13 +65,14 @@ class TestCH3VerificationDeferral:
     def test_ch3_contains_staging_prohibition(self):
         """CH3 must state verification agents are NOT spawned during staging."""
         result = _build_ch3_spawning_rules()
-        assert "Verification agents (tester, reviewer) are NOT spawned during staging" in result
+        # CE-0031 trimmed the phrasing; semantics preserved.
+        assert "tester/reviewer are NOT spawned in staging" in result
 
     def test_ch3_contains_implementation_phase_instructions(self):
         """CH3 must describe the implementation phase spawning sequence."""
         result = _build_ch3_spawning_rules()
         assert "get_agent_result" in result
-        assert "spawn_job()" in result
+        assert "spawn_job" in result
 
     def test_ch3_deferral_present_for_all_tools(self):
         """Deferral text must appear regardless of tool platform."""
@@ -84,8 +85,9 @@ class TestCH3VerificationDeferral:
         result = _build_ch3_spawning_rules()
         assert "CH3: AGENT SPAWNING RULES" in result
         assert "PARAMETER REQUIREMENTS" in result
-        assert "SPAWNING LIMITS" in result
-        assert "VALIDATION BEFORE SPAWNING" in result
+        # CE-0031 trim: spawning-limits inlined into VALIDATE BEFORE SPAWNING line.
+        assert "VALIDATE BEFORE SPAWNING" in result
+        assert "Recommended max" in result
 
 
 class TestPhase2VerificationSpawnAction:

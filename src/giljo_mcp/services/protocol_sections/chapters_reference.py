@@ -155,68 +155,30 @@ orchestrator job (CE-0026); a fresh execution is spawned when the user clicks
 PARAMETER REQUIREMENTS:
 
 ── agent_name (CRITICAL) ───────────────────────────────────────────────────
-MUST exactly match template name from agent_templates (returned by get_orchestrator_instructions)
-This is the SINGLE SOURCE OF TRUTH for agent identity
-Example: 'tdd-implementor' (not 'TDD Implementor' or 'implementer')
+Exact match against agent_templates from get_orchestrator_instructions (e.g.
+'tdd-implementor', NOT 'implementer' or display_name). File mapping: {file_mapping}.
 
-File mapping: {file_mapping}
+── agent_display_name ──────────────────────────────────────────────────────
+UI label only — implementer | tester | analyzer | documenter | reviewer.
 
-Common mistakes:
-  ✗ Using agent_display_name value for agent_name parameter
-  ✗ Inventing names not in agent_templates
-  ✗ Case mismatch ('TDD-Implementor' vs 'tdd-implementor')
+── mission ─────────────────────────────────────────────────────────────────
+Focused agent-specific instructions, 200-500 tokens target.
+
+── phase (optional, ordering metadata) ────────────────────────────────────
+Same phase number = parallel siblings. Higher phase number = waits on lower
+phases. Pair with predecessor_job_id when a successor needs prior output
+(server renders the preamble in multi_terminal mode; subagent modes splice
+inline).
 
 {platform_note}
 
-── agent_display_name ──────────────────────────────────────────────────────
-Display category for UI (user-facing label)
-Options: implementer, tester, analyzer, documenter, reviewer
-This is for UI display only - does NOT affect template selection
+VERIFICATION AGENT DEFERRAL: tester/reviewer are NOT spawned in staging. In implementation,
+after deliverable agents complete: call get_agent_result(job_id) for each, build the
+verification mission from REAL artifacts (files, commits, APIs), then spawn_job. Skip
+verification entirely for doc-only / analysis-only projects.
 
-── mission ─────────────────────────────────────────────────────────────────
-Agent-specific instructions (what THIS agent should do)
-Should be focused and actionable
-Target: 200-500 tokens per agent mission
-
-── phase (optional, ordering metadata) ────────────────────────────────────
-Same phase number = sibling agents intended to run in parallel.
-Higher phase number = depends on lower phases completing first.
-  - multi_terminal mode: dashboard groups Play buttons by phase; user is
-    expected to start same-phase terminals together and wait on lower phases.
-  - subagent modes (Claude/Codex/Gemini CLI): you (the orchestrator) manage
-    ordering directly via Task() / spawn_agent() / @-syntax invocation order.
-    Phase here is informational metadata for the audit trail and dashboard.
-Tip: pair `phase` with `predecessor_job_id` when a successor needs the
-predecessor's output (server handles the context preamble).
-
-SPAWNING LIMITS:
-
-- Max recommended: 2-5 agents for typical projects
-- Max agent_display_names: 8 total
-- Max instances per type: Unlimited (can spawn multiple 'implementer' agents)
-- Budget awareness: Each agent costs ~1,253 tokens for thin prompt
-
-VERIFICATION AGENT DEFERRAL:
-
-Verification agents (tester, reviewer) are NOT spawned during staging.
-Spawn only deliverable agents: implementer, analyzer, documenter.
-
-During IMPLEMENTATION PHASE, after all deliverable agents complete:
-1. Call get_agent_result(job_id) for each completed deliverable agent
-2. Build a precise verification mission from REAL results (files, commits, APIs)
-3. Call spawn_job() for tester/reviewer with the data-driven mission
-4. Launch the verification agent
-
-This ensures testers receive precise missions instead of speculative ones.
-The orchestrator may skip verification agents entirely for documentation-only
-or analysis-only projects where no code was produced.
-
-VALIDATION BEFORE SPAWNING:
-
-1. Verify agent_name exists in agent_templates from get_orchestrator_instructions()
-2. Check you haven't exceeded recommended limits
-3. Ensure mission is specific to this agent's role
-4. Confirm project_id and tenant_key are correct
+VALIDATE BEFORE SPAWNING: agent_name exists in agent_templates, project_id/tenant_key
+correct, mission scoped to this agent. Recommended max 2-5 agents, 8 display_names.
 """
 
 
@@ -226,90 +188,60 @@ def _build_ch4_error_handling() -> str:
                        CH4: ERROR HANDLING
 ════════════════════════════════════════════════════════════════════════════
 
-COMMON ERRORS AND RESPONSES:
+COMMON ERRORS:
 
 ── MCP Connection Lost ─────────────────────────────────────────────────────
-Symptom: Tools not responding, timeouts
-Action: Abort staging immediately
-Notify: Tell the USER inline via your CLI ("MCP connection lost — staging
-        aborted"). During staging, set_agent_status is server-locked for
-        the orchestrator (returns 403 STAGING_LOCK), so the inline ask
-        IS the notification.
-Do NOT: Attempt to continue spawning agents
+Tools not responding / timeouts. Abort staging; tell the user inline (staging-
+phase set_agent_status is server-locked, 403 STAGING_LOCK, so the inline ask
+IS the notification). Do NOT continue spawning agents.
 
 ── Invalid Agent Name ──────────────────────────────────────────────────────
-Symptom: spawn_job() returns error "agent not found"
-Action: Check agent_name against agent_templates from get_orchestrator_instructions()
-Common cause: Typo, case mismatch, using display_name instead of name
-Fix: Use exact agent_name from get_orchestrator_instructions() response
+spawn_job "agent not found" → re-check agent_name against agent_templates;
+exact match, not display_name; mind case.
 
 ── Spawn Failure ───────────────────────────────────────────────────────────
-Symptom: spawn_job() fails for any reason
-Action: Tell the USER inline; do NOT continue spawning. set_agent_status
-        is locked during staging so the inline ask IS the log.
-Why: Partial spawns create incomplete agent teams
-Recovery: User must fix issue and restart staging
+spawn_job fails → tell the USER inline, do NOT continue; partial spawns create
+incomplete teams. set_agent_status is locked during staging.
 
 ── Mission Too Large ───────────────────────────────────────────────────────
-Symptom: Generated mission exceeds 10K tokens
-Action: Condense mission further, focus on essentials
-Technique: Reference vision docs instead of embedding content
-Target: <5K tokens for mission plan
+Mission >10K tokens → condense, reference vision docs instead of embedding.
+Target <5K.
 
-── Agent Templates Empty ───────────────────────────────────────────────────
-Symptom: agent_templates list from get_orchestrator_instructions() is empty
-Cause: No active agent templates in database
-Action: Report to user - template configuration required
-Fix: User must activate templates in My Settings → Agent Templates
+── Agent Templates Empty ──────────────────────────────────────────────────
+agent_templates list empty → tell the user to activate templates in
+My Settings → Agent Templates.
 
 ── STATUS TRANSITIONS ──────────────────────────────────────────────────────
 
 Staging phase (orchestrator only, project.staging_status != 'staging_complete'):
-  waiting  ─[get_agent_mission()]──────────────→ working (auto on first fetch)
-  working  ─[report_progress()]────────────────→ working (updates progress/todos)
-  working  ─[complete_job()]───────────────────→ complete
+  waiting →[get_agent_mission]→ working   working →[report_progress]→ working
+  working →[complete_job]→ complete
   ⚠ set_agent_status is SERVER-LOCKED for the orchestrator during staging
-    (returns 403 STAGING_LOCK). Use the inline-ask + report_progress pattern
-    instead — see "If Requirements Are Unclear" in your identity prompt.
+    (403 STAGING_LOCK). Use the inline-ask + report_progress pattern instead —
+    see "If Requirements Are Unclear" in your identity prompt.
 
 Implementation phase (all agents, post-staging-complete):
-  waiting  ─[get_agent_mission()]──────────────→ working (auto on first fetch)
-  working  ─[report_progress()]────────────────→ working (updates progress/todos)
-  working  ─[complete_job()]───────────────────→ complete
-  working  ─[set_agent_status("blocked")]──────→ blocked
-  working  ─[set_agent_status("idle")]─────────→ idle
-  working  ─[set_agent_status("sleeping")]─────→ sleeping
-  idle     ─[report_progress()/any active MCP]─→ working (auto-wake)
-  sleeping ─[report_progress()/any active MCP]─→ working (auto-wake)
-  blocked  ─[report_progress()]────────────────→ working (auto-wake)
-  blocked  ─[complete_job()]───────────────────→ complete
-  complete ─[message received]────────────────→ blocked  (auto, Handover 0827b)
-  blocked  ─[reactivate_job()]───────────────→ working  (resume path)
-  blocked  ─[dismiss_reactivation()]──────────→ complete (informational msg)
+  waiting →[get_agent_mission]→ working   working →[report_progress]→ working
+  working →[complete_job]→ complete
+  working →[set_agent_status("blocked")]→ blocked
+  working →[set_agent_status("idle")]→ idle
+  working →[set_agent_status("sleeping")]→ sleeping
+  idle / sleeping / blocked →[report_progress or any active MCP]→ working
+  complete →[message received]→ blocked (auto, HO0827b)
+  blocked →[reactivate_job | dismiss_reactivation]→ working | complete
 
-Note: Spawned non-orchestrator agents (implementer/tester/analyzer/documenter/
-reviewer) bypass the staging lock entirely — the implementation-phase diagram
-applies to them at all times.
+Note: spawned non-orchestrator agents bypass the staging lock entirely.
 
 GENERAL ERROR PROTOCOL:
-
-1. Log error with context (agent_id, job_id, tenant_key)
+1. Log error with context (agent_id, job_id, tenant_key).
 2. Persist error state:
-     - Implementation phase OR you are NOT the orchestrator:
-         call set_agent_status(status="blocked", reason="...")
-     - Staging phase AND you are the orchestrator:
-         tell the USER inline via your CLI; set_agent_status is locked
-         (403 STAGING_LOCK) until staging completes
-3. Send broadcast message to notify user (when applicable)
-4. Do NOT attempt to continue workflow after critical errors
-5. Wait for user intervention
+   - Implementation phase OR not the orchestrator → set_agent_status("blocked", reason).
+   - Staging phase AND you are the orchestrator → tell the USER inline; set_agent_status
+     is locked (403 STAGING_LOCK) until staging completes.
+3. Do NOT continue workflow after critical errors. Wait for user intervention.
 
-ERROR SEVERITY LEVELS:
-
-- CRITICAL: MCP connection lost, database errors → Abort immediately
-- HIGH: Spawn failures, invalid agent names → Stop spawning, report
-- MEDIUM: Mission size warnings → Continue but log warning
-- LOW: Context optimization suggestions → Continue normally
+Severity: CRITICAL (MCP/DB lost) → abort. HIGH (spawn/agent-name) → stop and report.
+MEDIUM (mission size) → log and continue. LOW (context hints) → continue.
 """
 
 

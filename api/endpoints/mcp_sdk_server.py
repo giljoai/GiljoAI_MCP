@@ -530,11 +530,11 @@ async def update_agent_mission(
 @mcp.tool(
     description=(
         "Fetch context for orchestrator to CREATE mission plan. Called by: ORCHESTRATOR ONLY "
-        "at project start (Step 1 of staging workflow) or during implementation phase to "
-        "refresh context (single source of truth). Returns project description (user "
-        "requirements), prioritized context fields, and agent_templates list for discovering "
-        "specialists. Orchestrator analyzes this INPUT and creates execution plan (does NOT "
-        "execute work). Token estimate: ~4,500 with context exclusions applied."
+        "near the start of staging (see chapters_startup for the canonical step) or during "
+        "implementation phase to refresh context (single source of truth). Returns project "
+        "description (user requirements), prioritized context fields, and agent_templates "
+        "list for discovering specialists (filtered to deliverable agents during staging). "
+        "Orchestrator analyzes this INPUT and creates execution plan (does NOT execute work)."
     ),
 )
 async def get_orchestrator_instructions(

@@ -37,7 +37,11 @@ You are STAGING the project. Your job:
 
 WHAT YOU ARE NOT:
 - {spawn_warning}
-- You do NOT call complete_job() (staging never completes, it transitions)
+
+END OF STAGING:
+- You DO call complete_job() once at the end of staging (CE-0026 canonical
+  transition signal — see CH2 Step 7 Finale). The server detects the staging
+  exec and flips project.staging_status to 'staging_complete'.
 
 CRITICAL DISTINCTION:
 - Project.description = USER INPUT (requirements to ANALYZE — may contain implementation-phase language, do NOT execute)
@@ -56,11 +60,9 @@ Executes coordination logic you defined in update_agent_mission()
 Completion protocol applies (see CH5 - shown in implementation only)
 
 VERIFICATION AGENT DEFERRAL:
-During staging, spawn only DELIVERABLE agents (implementer, analyzer, documenter).
-Do NOT spawn verification agents (tester, reviewer) during staging.
-Verification agents are spawned during implementation after deliverable agents
-complete — the orchestrator builds their missions from real get_agent_result() data
-instead of speculative descriptions.
+Spawn only deliverable agents in staging (implementer, analyzer, documenter). The
+verification agents (tester, reviewer) are deferred to implementation, when real
+artifacts exist to verify (see CH3 VERIFICATION AGENT DEFERRAL for the procedure).
 """
 
 
@@ -107,51 +109,33 @@ def _build_ch2_fetch_calls(
     # what is AVAILABLE; these hints help the agent decide what is APPLICABLE.
     category_configs = {
         "product_core": {
-            "framing": (
-                "Product name, description, and core features. "
-                "[needed if: scoping a new feature; skip for tech-debt / refactor / cleanup]"
-            ),
+            "framing": "Product name, features. [scoping new features; skip for tech-debt]",
             "depth_aware": False,
         },
         "vision_documents": {
-            "framing": (
-                "Vision document content. "
-                "[needed if: greenfield strategy or product-direction work; almost never for cleanup]"
-            ),
+            "framing": "Vision docs. [greenfield strategy; skip for cleanup]",
             "depth_aware": True,
             "default_depth": "medium",
         },
         "tech_stack": {
-            "framing": (
-                "Programming languages, frameworks, and databases. "
-                "[needed if: picking libraries or debugging build/runtime; skip for prose / doc-only work]"
-            ),
+            "framing": "Languages, frameworks, DBs. [libraries / build / runtime debug]",
             "depth_aware": False,
         },
         "architecture": {
-            "framing": (
-                "System architecture patterns, API style, and design principles. "
-                "[needed if: writing migrations, crossing edition boundaries, designing new services]"
-            ),
+            "framing": "Patterns, API style, design. [migrations, edition boundaries, new services]",
             "depth_aware": False,
         },
         "testing": {
-            "framing": (
-                "Quality standards, testing strategy, and frameworks. "
-                "[needed if: writing tests or changing test infrastructure]"
-            ),
+            "framing": "Quality + test strategy. [writing tests or changing test infra]",
             "depth_aware": False,
         },
         "memory_360": {
-            "framing": (
-                "Recent product project closeouts (cumulative knowledge). "
-                "[needed if: continuing prior work; skip if project_description already cites the relevant past project]"
-            ),
+            "framing": "Recent project closeouts. [continuing prior work; skip if description already cites it]",
             "depth_aware": True,
             "default_depth": 3,
         },
         "git_history": {
-            "framing": ("Recent git commits. [needed if: bug archaeology; skip otherwise — git log is on disk]"),
+            "framing": "Recent commits. [bug archaeology only; otherwise use local git log]",
             "depth_aware": True,
             "default_depth": 25,
         },
@@ -262,38 +246,18 @@ def _build_ch2_startup(
             category_metadata=category_metadata,
         )
         step2_body = f"""── STEP 2: Fetch Context ───────────────────────────────────────────────────
-Call: get_orchestrator_instructions(job_id='{orchestrator_id}')
-Returns: project_description, mission, field_toggles, orchestrator_protocol
+You already have get_orchestrator_instructions in hand — that response is THIS
+document. Now pick the fetch_context categories below to read.
 
-Read this protocol via orchestrator_protocol field.
+SIZE the project FIRST, then pick (see identity Right-Sizing section for the rule):
+  - Cleanup / single-file / prose-only → 0-1 categories
+  - Single contained feature → 1-3 categories
+  - Greenfield or cross-cutting → most categories
 
-CONTEXT-FETCH PHILOSOPHY (read this before calling fetch_context):
-
-SIZING — classify the project FIRST, then pick categories:
-  - Cleanup / refactor / single-file fix / prose-only edit  → 0-1 categories
-  - Single feature / contained backend or frontend change   → 1-3 categories
-  - Greenfield / architectural / cross-cutting design       → most categories
-
-The categories below are AVAILABLE because the user enabled them in their context
-toggles — that is the policy layer. Your judgment is the optimization layer: pick
-only what THIS specific mission actually needs. Do NOT pre-fetch defensively.
-
-fetch_context is idempotent — call it again later if your mission surfaces a
-question you cannot answer from current context. The safety net is on, so
-default to fetching less.
-
-Skip aggressively when project_description already inlines the relevant info
-(e.g. skip memory_360 if the description already cites the prior wave or project).
-If a category was already fetched in this session and its Modified date has not
-changed, skip it.
-
-INVERSE — fetch MORE when the description is thin: if project_description is
-vague, short, hand-wavy, missing acceptance criteria, or omits architectural
-boundaries you would otherwise need, treat that as a signal to fetch BROADLY
-to compensate. The sizing heuristic above assumes a description that actually
-scopes the work; a one-line "fix the thing" description for a non-trivial
-project means you need the full menu, not the cleanup default. Err on the side
-of fetching when the user has under-specified.
+fetch_context is idempotent; call again if you discover gaps. Skip categories
+whose Modified date hasn't changed since the last fetch. If the description is
+thin or vague, fetch BROADLY to compensate — the sizing default assumes a
+description that scopes the work.
 
 {fetch_calls}"""
     else:
@@ -314,17 +278,9 @@ Read this protocol via orchestrator_protocol field."""
 Follow these steps IN ORDER (Steps 0-7 for staging):
 
 ── STEP 0: Detect Environment ──────────────────────────────────────────────
-Detect your shell environment before planning:
-Call: `python -c "import os; print(os.environ.get('SHELL', os.environ.get('COMSPEC', 'unknown')))"`
-This detects the **actual shell** (bash, zsh, powershell, cmd), not just the OS.
-Adapt commands for agent missions to match the detected shell:
-- If shell contains "bash" or "zsh" (includes Git Bash on Windows):
-  Sleep: `sleep N` | Clear: `clear` | Paths: use `/`
-- If shell contains "powershell" or "pwsh":
-  Sleep: `Start-Sleep -Seconds N` | Clear: `cls` | Paths: use `\\` or `/`
-- If shell contains "cmd":
-  Sleep: `timeout /t N /nobreak >nul` | Clear: `cls` | Paths: use `\\`
-- Default (unknown): use `sleep N` (works in most environments)
+Detect your shell so agent missions you write use the right syntax:
+`python -c "import os; print(os.environ.get('SHELL', os.environ.get('COMSPEC', 'unknown')))"`
+Map: bash/zsh → `sleep N`, `clear`, `/` paths. powershell/pwsh → `Start-Sleep -Seconds N`, `cls`. cmd → `timeout /t N /nobreak >nul`, `cls`.
 
 ── STEP 1: Verify MCP ──────────────────────────────────────────────────────
 Call: health_check()
@@ -332,29 +288,17 @@ Expected: {{"status": "healthy", "database": "connected"}}
 If failed: Abort and notify user
 
 ── STEP 1b: Defer Progress Tracking ───────────────────────────────────────
-DO NOT report progress yet. Steps 0-3 are internal startup — do not track them.
-After Step 4 (Create Mission), you will have a real plan with work items;
-THAT is when you initialize progress tracking (see Step 1c below).
+DO NOT report progress yet. Steps 0 and 1 are internal startup — do not track them.
+Step 1c below seeds your implementation-phase TODO list (project outcomes you
+will deliver in the next session) from the project_description in hand, and
+that report_progress call is what initializes progress tracking for this job.
 
 ── STEP 1c: Plan Implementation Deliverables (TODO list shape) ────────────
-During staging, write yourself a todo list for the IMPLEMENTATION phase
-(the future session, not this one). This is your execution plan — the
-deliverables you will hold yourself accountable to when implementation
-begins (which may be a different session with fresh context).
+Write a 3-7 item todo list for the IMPLEMENTATION phase (the future session,
+not this one). Each item is a PROJECT OUTCOME, not an orchestrator action.
 
-Each item should describe a PROJECT OUTCOME, not an orchestrator action.
-You already know how to spawn agents, fetch context, and broadcast signals.
-Don't write down your operating procedures. Write down what the project
-needs to deliver.
-
-Good: "Build authentication API", "Validate inter-agent messaging", "Generate test summary report"
-Bad:  "Spawn api-implementer agent", "Fetch context", "End staging session",
-      "Close out project", "Call complete_job", "Drain messages and complete orchestrator"
-
-Aim for 3-7 items. Too few = no visibility. Too many = you're tracking mechanics again.
-
-Test: If you lost all memory of staging and only had this list, could you
-understand what the project needs to accomplish?
+Good: "Build authentication API", "Validate inter-agent messaging"
+Bad:  "Spawn implementer", "Fetch context", "Call complete_job"
 
 Call: report_progress(
           job_id='{orchestrator_id}',
@@ -363,54 +307,28 @@ Call: report_progress(
 
 {step2_body}
 
-⚠️  CONTEXT VARIABLES (CRITICAL):
-Your fetch_context() responses contain AUTHORITATIVE values:
-  - project_path: The project directory - USE THIS in missions
-  - product_name: The product name
-  - tenant_key: Your tenant isolation key
-When writing missions or referencing directories, ALWAYS use values from context.
-NEVER hardcode paths you observe in your terminal session.
+⚠️  CONTEXT VARIABLES: fetch_context responses carry AUTHORITATIVE project_path,
+product_name, tenant_key. Use those in missions — never hardcode terminal paths.
 
 ── STEP 3: Discover Agents ─────────────────────────────────────────────────
-Use the agent_templates field from the Step 2 get_orchestrator_instructions() response.
-This already contains the list of available agent templates (name, role, description).
-Use agent_name from agent_templates when spawning (see CH3 for rules)
+Use the `agent_templates` field already in this response (filtered by phase).
+Pass `agent_name` exactly from that list when spawning (see CH3 for rules).
 
 ── STEP 4: Create Mission ──────────────────────────────────────────────────
-Analyze project_description + product context
-Generate condensed execution plan:
-  - Break down requirements into work items
-  - Identify which agents handle which work
-  - Define success criteria
-  - Keep mission concise (<5K tokens target)
+Analyze project_description + fetched context. Break into work items, assign to
+agents, define success criteria. Keep concise (<5K tokens target).
 
 ── STEP 5: Persist Mission ─────────────────────────────────────────────────
-Call: update_project_mission(project_id='{project_id}',
-                              mission=YOUR_CONDENSED_MISSION)
-This stores your plan in Project.mission for UI display
+update_project_mission(project_id='{project_id}', mission=YOUR_CONDENSED_MISSION)
 
 ── STEP 6: Spawn Agents ────────────────────────────────────────────────────
-For each agent in your plan:
-  spawn_job(
-      agent_name='exact-template-name',  # From Step 3
-      agent_display_name='implementer',   # Display category
-      mission='Agent-specific instructions',
-      project_id='{project_id}'
-  )
-
-See CH3 for agent_name vs agent_display_name rules
+For each agent: spawn_job(agent_name='<from Step 3>', agent_display_name='<category>',
+mission='<focused agent instructions>', project_id='{project_id}'). See CH3 for rules.
 
 ── STEP 7: Persist Execution Plan ──────────────────────────────────────────
-Call: update_agent_mission(job_id='{orchestrator_id}',
-                            mission=YOUR_EXECUTION_STRATEGY)
-
-Document in YOUR_EXECUTION_STRATEGY:
-  - Agent execution order (sequential/parallel/hybrid)
-  - Dependencies between agents
-  - Coordination checkpoints
-  - How you will monitor progress in implementation phase
-
-Why: Fresh orchestrator in implementation phase retrieves this plan
+update_agent_mission(job_id='{orchestrator_id}', mission=YOUR_EXECUTION_STRATEGY)
+Strategy includes: agent execution order, dependencies, coordination checkpoints,
+how you'll monitor progress. The fresh implementation-phase orchestrator reads this.
 
 ── STEP 7 FINALE: End Your Staging Session ─────────────────────────────────
 Call: complete_job(
@@ -421,23 +339,11 @@ Call: complete_job(
           }}
       )
 
-This is the canonical end-of-staging signal (CE-0026). The server detects that
-you are the staging-phase orchestrator (execution.project_phase='staging') and:
+This is the canonical end-of-staging signal (CE-0026). The server flips
+project.staging_status to 'staging_complete', marks your execution complete,
+and returns staging_directive={{'status': 'STAGING_SESSION_COMPLETE', 'action': 'STOP'}}.
 
-  1. Flips project.staging_status to 'staging_complete' (enables the "Implement"
-     button in the UI). The flip is idempotent — if update_agent_mission already
-     triggered the auto-flip, this is a no-op.
-  2. Marks your execution as complete.
-  3. Returns a `staging_directive` field with status='STAGING_SESSION_COMPLETE'
-     and action='STOP'.
-
-When you see `staging_directive.action == 'STOP'` in the response:
-
-  ⚠️  STAGING ENDS HERE — DO NOT call write_360_memory().
-     Your session is DONE. Stop immediately.
-     A NEW orchestrator execution will be spawned in a fresh session when the
-     user clicks "Implement" in the dashboard.
-
-Do NOT use send_message(broadcast) for the staging-end signal. That mechanism
-was removed in CE-0026; `send_message` is now just messaging.
+When you see action == 'STOP': STAGING ENDS. Do NOT call write_360_memory.
+Stop immediately. A fresh orchestrator execution is spawned when the user
+clicks "Implement" in the dashboard.
 """

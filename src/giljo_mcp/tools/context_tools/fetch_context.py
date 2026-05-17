@@ -142,6 +142,67 @@ async def _is_category_enabled(
         return True  # Fail open — don't block context on toggle errors
 
 
+async def _build_last_modified_map(
+    product_id: str,
+    tenant_key: str,
+    db_manager: DatabaseManager,
+) -> dict[str, str]:
+    """
+    CE-0031 Task 4: build a category -> last_modified timestamp map for the
+    fetch_context response. Lets warm orchestrators detect stale caches
+    without re-reading the get_orchestrator_instructions catalog.
+
+    Product-level categories (product_core, vision_documents, tech_stack,
+    architecture, testing, agent_templates) share product.updated_at.
+    memory_360 uses MAX(created_at) over ProductMemoryEntry. git_history
+    has no server-side authority (lives on the local disk) — omitted.
+
+    Returns ISO-8601 timestamps truncated to minute precision, matching the
+    format threaded into the orchestrator protocol by
+    MissionOrchestrationService._build_category_metadata.
+    """
+    from sqlalchemy import and_, func, select
+
+    from giljo_mcp.models.product_memory_entry import ProductMemoryEntry
+    from giljo_mcp.models.products import Product
+
+    last_modified: dict[str, str] = {}
+
+    try:
+        async with db_manager.get_session_async() as session:
+            product_row = await session.execute(
+                select(Product.updated_at).where(and_(Product.id == product_id, Product.tenant_key == tenant_key))
+            )
+            product_updated = product_row.scalar_one_or_none()
+            if product_updated:
+                ts = product_updated.strftime("%Y-%m-%dT%H:%M")
+                for cat in (
+                    "product_core",
+                    "vision_documents",
+                    "tech_stack",
+                    "architecture",
+                    "testing",
+                    "agent_templates",
+                ):
+                    last_modified[cat] = ts
+
+            mem_row = await session.execute(
+                select(func.max(ProductMemoryEntry.created_at)).where(
+                    and_(
+                        ProductMemoryEntry.product_id == product_id,
+                        ProductMemoryEntry.tenant_key == tenant_key,
+                    )
+                )
+            )
+            mem_max = mem_row.scalar_one_or_none()
+            if mem_max:
+                last_modified["memory_360"] = mem_max.strftime("%Y-%m-%dT%H:%M")
+    except Exception:  # Broad catch: best-effort enrichment, never fails the fetch
+        logger.exception("last_modified_map_failed product_id=%s tenant_key=%s", product_id, tenant_key)
+
+    return last_modified
+
+
 async def _load_user_depth_config(
     tenant_key: str,
     db_manager: DatabaseManager,
@@ -414,6 +475,15 @@ async def fetch_context(
             else:
                 response_data[str(type(cat_data))] = cat_data
 
+    # CE-0031 Task 4: per-category last_modified timestamps so warm orchestrators
+    # can detect a stale cache without re-pulling the get_orchestrator_instructions
+    # catalog. Best-effort; omits a category when no authoritative server-side
+    # timestamp exists (e.g. git_history, todos).
+    last_modified: dict[str, str] = {}
+    if db_manager:
+        full_map = await _build_last_modified_map(product_id, tenant_key, db_manager)
+        last_modified = {c: ts for c, ts in full_map.items() if c in categories_returned}
+
     response: dict[str, Any] = {
         "source": "fetch_context",
         "categories_requested": list(categories),
@@ -422,6 +492,7 @@ async def fetch_context(
         # callers can distinguish "fetched with data" from "fetched but empty".
         "categories_empty": categories_empty,
         "data": response_data,
+        "last_modified": last_modified,
         "metadata": {
             "format": output_format,
             "depth_config_applied": depth_applied,

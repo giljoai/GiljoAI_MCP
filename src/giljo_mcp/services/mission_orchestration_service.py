@@ -388,6 +388,10 @@ class MissionOrchestrationService:
             }
         return None
 
+    # CE-0031 Task 1: verification roles forbidden during staging.
+    # Keyed on AgentTemplate.role (not name) so it survives template renames.
+    _STAGING_FORBIDDEN_ROLES: frozenset[str] = frozenset({"tester", "reviewer"})
+
     def _build_orchestrator_response(self, ctx: dict[str, Any], job_id: str, tenant_key: str) -> dict[str, Any]:
         """Assemble the orchestrator instructions response from gathered context."""
         execution = ctx["execution"]
@@ -399,7 +403,27 @@ class MissionOrchestrationService:
         depth_config = ctx["depth_config"]
         templates = ctx["templates"]
 
-        template_list = [{"name": t.name, "role": t.role, "description": t.description or ""} for t in templates]
+        # CE-0031 Task 1: phase-aware agent_templates filter.
+        # Staging-phase orchestrators must not spawn verification agents
+        # (tester, reviewer) — the protocol forbids it and the templates list
+        # was a footgun. We filter on execution.project_phase rather than
+        # project.staging_status because those values can diverge (the project
+        # may have been re-opened while this exec was staged).
+        phase = getattr(execution, "project_phase", "implementation")
+        if phase == "staging":
+            visible_templates = [t for t in templates if t.role not in self._STAGING_FORBIDDEN_ROLES]
+            phase_filter_note = (
+                "Filtered to deliverable agents only because you are in the staging phase. "
+                "Verification agents (tester, reviewer) become available in the implementation phase, "
+                "after deliverable agents complete and produce real artifacts to verify."
+            )
+        else:
+            visible_templates = list(templates)
+            phase_filter_note = None
+
+        template_list = [
+            {"name": t.name, "role": t.role, "description": t.description or ""} for t in visible_templates
+        ]
 
         project_path = None
         if product is not None:
@@ -429,6 +453,7 @@ class MissionOrchestrationService:
                 "project_path": project_path,
             },
             "agent_templates": template_list,
+            "phase_filter_note": phase_filter_note,
             # Handover 0966: Comprehensive tool list for orchestrator awareness
             "mcp_tools_available": [
                 "health_check",
@@ -461,9 +486,13 @@ class MissionOrchestrationService:
             },
         }
 
-        # Handover 0351 / 0411a: Execution-mode-specific fields
+        # Handover 0351 / 0411a: Execution-mode-specific fields.
+        # CE-0031 Task 1: pass `visible_templates` so cli_mode_rules.allowed_agent_names
+        # honors the staging phase filter — the example agents must match the
+        # filtered list, otherwise CLI mode would surface tester/reviewer as
+        # spawn examples in staging.
         execution_mode = getattr(project, "execution_mode", None) or metadata.get("execution_mode", "multi_terminal")
-        response.update(self._build_execution_mode_fields(execution_mode, templates, job_id))
+        response.update(self._build_execution_mode_fields(execution_mode, visible_templates, job_id))
 
         # Handover 0415: Add chapter-based orchestrator protocol
         cli_execution_modes = ("claude_code_cli", "codex_cli", "gemini_cli")

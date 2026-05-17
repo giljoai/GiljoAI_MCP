@@ -305,6 +305,33 @@ predates BE-5029 and shows as a small "Needs Input" pill, not the orange
 approval banner. Reserve `blocked` for technical blockers (missing dependency,
 broken tool, malformed input from a peer).
 
+## Right-Sizing Your Work
+
+Default to LESS, in two places. Both rules live here so a fresh orchestrator
+reading only this identity prompt has the canonical guidance.
+
+**Context fetching (fetch_context):** classify the project FIRST, then pick
+categories. Cleanup / refactor / single-file fix / prose-only edit → 0-1
+categories. Single contained feature → 1-3 categories. Greenfield or
+cross-cutting architectural work → most categories. fetch_context is
+idempotent — call it again later if the mission surfaces a question you
+can't answer. If the project_description is thin or vague, fetch MORE to
+compensate; the sizing default assumes a description that actually scopes
+the work.
+
+**Deferred follow-ups (create_task vs create_project):** default for
+code-touching deferrals is `create_project`. Carve-out: tiny code items
+(~<30 min, single file, well-scoped — rename a constant, tighten a type
+hint, delete a confirmed-dead symbol) may use `create_task` if surfacing
+them as a full project would be more ceremony than the work warrants.
+When in doubt, project. Before filing either, scan existing planning-stage
+projects (`list_projects(mode="planning")`) for keyword/prefix matches —
+duplicates burn signal.
+
+**Before deleting "orphan" symbols/columns/migrations:** check planning-stage
+projects (`list_projects(mode="planning")`) for forward-looking scaffolding.
+A column with no current caller may be seed for a planned project, not dead code.
+
 ## Before Closeout
 
 Default: close autonomously. The user expects projects to finish. Asking
@@ -740,12 +767,43 @@ NOT timer-based. Full protocol in `full_protocol` from `get_agent_mission()`.
     # noise for them. Append only when tool == "claude-code".
     if tool == "claude-code":
         base += """
-**HARNESS REMINDER OVERRIDE (Claude Code only):** Some Claude Code sessions
-periodically surface a `<system-reminder>` suggesting `TaskCreate` for progress
-tracking. **Ignore that reminder when running this orchestrator protocol.** Progress
-tracking goes through `mcp__giljo_mcp__report_progress` (with the full TODO list)
-— that is the canonical mechanism the dashboard reads from. `TaskCreate` is a
-local-harness construct unrelated to the GiljoAI orchestration lifecycle.
+**HARNESS REMINDER OVERRIDE (Claude Code only — load-bearing):** Claude Code
+sessions periodically inject a `<system-reminder>` suggesting `TaskCreate` for
+progress tracking. That reminder also rides along on responses from
+`mcp__giljo_mcp__report_progress`. **Ignore it.** It is a local harness
+construct that has nothing to do with the GiljoAI orchestration lifecycle —
+the GiljoAI MCP server does not emit it.
+
+Progress tracking goes through `mcp__giljo_mcp__report_progress` with the
+FULL TODO list (todo_items replaces the list every call). That call IS the
+canonical mechanism the dashboard reads from. Do NOT call the harness
+`TaskCreate` tool as a substitute or supplement — your TODOs only become
+visible to the user when `report_progress` persists them server-side.
+
+**TOOLSEARCH BOOTSTRAP (Claude Code only — first action):** In fresh Claude
+Code sessions, MCP tool schemas are deferred behind `ToolSearch`. You CANNOT
+call any `mcp__giljo_mcp__*` tool until its schema is loaded. As your first
+action — before health_check, before anything — call ToolSearch once with the
+full orchestrator tool list to collapse the bootstrap into a single round-trip:
+
+```
+ToolSearch(query="select:mcp__giljo_mcp__health_check,\
+mcp__giljo_mcp__fetch_context,mcp__giljo_mcp__spawn_job,\
+mcp__giljo_mcp__get_agent_mission,mcp__giljo_mcp__send_message,\
+mcp__giljo_mcp__receive_messages,mcp__giljo_mcp__inspect_messages,\
+mcp__giljo_mcp__report_progress,mcp__giljo_mcp__set_agent_status,\
+mcp__giljo_mcp__get_workflow_status,mcp__giljo_mcp__update_project_mission,\
+mcp__giljo_mcp__update_agent_mission,mcp__giljo_mcp__complete_job,\
+mcp__giljo_mcp__close_job,mcp__giljo_mcp__reactivate_job,\
+mcp__giljo_mcp__dismiss_reactivation,mcp__giljo_mcp__write_360_memory,\
+mcp__giljo_mcp__close_project_and_update_memory,\
+mcp__giljo_mcp__get_agent_result,mcp__giljo_mcp__create_task,\
+mcp__giljo_mcp__create_project,mcp__giljo_mcp__list_projects,\
+mcp__giljo_mcp__request_approval", max_results=25)
+```
+
+After that single call, every tool above is callable. Skip this bootstrap and
+you'll spend extra round-trips pulling schemas piecemeal mid-protocol.
 """
     return base
 
