@@ -136,6 +136,14 @@ class ProjectStagingService:
 
             project.staging_status = None
             project.execution_mode = "multi_terminal"
+            # CE-0032: restage is a clean-slate "new staging cycle, all prior
+            # impl progress discarded" semantic. Stale impl_launched_at from
+            # a prior completed cycle would otherwise stick the next
+            # staging-end inside complete_job's TODOs-bypass key (which
+            # checks `implementation_launched_at IS NULL`), regressing the
+            # CE-0027 fix on restage-after-completion. Clearing here pairs
+            # with the staging_status reset and the orch decommission below.
+            project.implementation_launched_at = None
             project.updated_at = datetime.now(UTC)
 
             if orchestrator:

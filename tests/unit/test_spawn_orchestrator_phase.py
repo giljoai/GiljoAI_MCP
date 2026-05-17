@@ -4,15 +4,19 @@
 # [CE] Community Edition.
 
 """
-Unit tests for CE-0026: spawn-time project_phase setting.
+Unit tests for CE-0026 + CE-0032: orchestrator project_phase invariants.
 
-Six behaviors:
+Behaviors covered:
   a. create_orchestrator_fixture sets project_phase='staging'.
   b. ProjectLaunchService._spawn_orchestrator (via launch_project) sets phase='staging'.
   c. ThinClientPromptGenerator._find_or_create_orchestrator (create path) sets phase='staging'.
-  d. ProjectLaunchService._spawn_implementation_execution sets phase='implementation'.
+  d. (CE-0032) launch_project reuses the same orch row across phases; no second exec is spawned.
   e. Back-compat default: AgentExecution without explicit project_phase reads as 'implementation'.
   f. CHECK constraint: inserting project_phase='garbage' raises an IntegrityError.
+
+Under CE-0032's single-orchestrator-entity model, every spawn path writes
+project_phase='staging' (the column persists for back-compat; new logic
+keys on project flags). No code ever writes 'implementation' to a new row.
 """
 
 from __future__ import annotations
@@ -218,112 +222,32 @@ async def test_thin_prompt_generator_creates_orchestrator_with_staging_phase(
 
 
 # ============================================================================
-# (d) ProjectLaunchService._spawn_implementation_execution sets phase='implementation'
+# (d) Was: _spawn_implementation_execution tests.
+#     CE-0032 removed the helper and the multi-exec model entirely; under the
+#     single-orchestrator-entity model launch_project reuses the existing orch
+#     exec across phases (waiting at staging-end, working at impl start). The
+#     spawn-time tests below were deleted in CE-0032 along with the helper.
+#     CE-0027 Paddle-unstick + idempotency-for-active tests also deleted
+#     (msg-006 in handovers/agentcomms.json) because the bug class no longer
+#     exists once the multi-exec model is gone.
 # ============================================================================
 
 
 @pytest.mark.asyncio
-async def test_spawn_implementation_execution_sets_implementation_phase(
+async def test_launch_project_reuses_orch_across_phases_ce_0032(
     db_session: AsyncSession,
     test_tenant_key: str,
 ):
-    """_spawn_implementation_execution (the Implement-button path) must attach
-    a new AgentExecution with project_phase='implementation' to the same
-    AgentJob that hosted the staging execution.
+    """CE-0032 single-orchestrator-entity invariant.
 
-    CE-0026: When existing execution has project_phase='staging', status='complete',
-    and project.staging_status='staging_complete', launch_project branches into
-    _spawn_implementation_execution.
-    """
-    product = await _seed_product(db_session, test_tenant_key)
-    project = await _seed_active_project(db_session, test_tenant_key, product.id, staging_status="staging_complete")
+    Pre-CE-0032 launch_project would call _spawn_implementation_execution
+    when it saw a completed staging orch + staging_complete project. Under
+    CE-0032 the same orch row persists; launch_project must NOT create a
+    second exec row regardless of the existing orch's status.
 
-    # Seed the completed staging orchestrator job + execution.
-    job_id = str(uuid4())
-    job = AgentJob(
-        job_id=job_id,
-        tenant_key=test_tenant_key,
-        project_id=project.id,
-        job_type="orchestrator",
-        mission="CE-0026 staging orchestrator",
-        status="completed",
-        created_at=datetime.now(UTC),
-    )
-    db_session.add(job)
-    now = datetime.now(UTC)
-    staging_exec = AgentExecution(
-        agent_id=str(uuid4()),
-        job_id=job_id,
-        tenant_key=test_tenant_key,
-        agent_display_name="orchestrator",
-        status="complete",
-        started_at=now - timedelta(hours=1),
-        completed_at=now - timedelta(minutes=5),
-        project_phase="staging",
-    )
-    db_session.add(staging_exec)
-    await db_session.commit()
-
-    svc = _make_launch_service(db_session, test_tenant_key)
-    result = await svc.launch_project(project_id=project.id)
-
-    # The result must still point to the same job_id.
-    assert result.orchestrator_job_id == job_id, "CE-0026: _spawn_implementation_execution must reuse the same AgentJob"
-
-    # A NEW execution with project_phase='implementation' must exist.
-    executions = (
-        (
-            await db_session.execute(
-                select(AgentExecution).where(
-                    AgentExecution.job_id == job_id,
-                    AgentExecution.tenant_key == test_tenant_key,
-                )
-            )
-        )
-        .scalars()
-        .all()
-    )
-
-    impl_executions = [e for e in executions if e.project_phase == "implementation"]
-    assert len(impl_executions) == 1, (
-        f"CE-0026: exactly one implementation-phase execution expected, "
-        f"got {len(impl_executions)}: {[(e.id, e.project_phase) for e in executions]}"
-    )
-    impl_exec = impl_executions[0]
-    assert impl_exec.status == "waiting", (
-        f"CE-0026: new implementation execution must start as 'waiting', got {impl_exec.status!r}"
-    )
-    # Staging execution must remain intact.
-    staging_still = next((e for e in executions if e.id == staging_exec.id), None)
-    assert staging_still is not None, "Staging execution must not be deleted"
-    assert staging_still.project_phase == "staging"
-    assert staging_still.status == "complete"
-
-
-# ============================================================================
-# CE-0027 regression: trigger fires for completed orch regardless of phase
-# ============================================================================
-
-
-@pytest.mark.asyncio
-async def test_spawn_implementation_execution_fires_when_phase_was_wrong(
-    db_session: AsyncSession,
-    test_tenant_key: str,
-):
-    """CE-0027 (Paddle unstick): the _spawn_implementation_execution branch must
-    fire even when the existing execution has project_phase='implementation'
-    (the wrong default from CE-0026 backfill).
-
-    Scenario reproduced from dogfood: orchestrator existed pre-CE-0026, got
-    the 'implementation' default, then called complete_job at staging-end
-    (status went to 'complete'), and project.staging_status flipped to
-    'staging_complete' via mission_service auto-flip. User clicks Implement.
-    The pre-CE-0027 trigger required project_phase='staging' on the prior
-    execution → branch didn't fire → user got a completed-exec prompt that
-    couldn't be used.
-
-    Post-CE-0027: trigger keys on role + status + project flag, NOT on the
-    prior execution's phase. New impl exec should be spawned.
+    Seeds a post-staging orch at status='waiting' (the truth post-CE-0032)
+    and confirms launch_project returns _build_reuse_result with the same
+    row and no new exec is created.
     """
     product = await _seed_product(db_session, test_tenant_key)
     project = await _seed_active_project(db_session, test_tenant_key, product.id, staging_status="staging_complete")
@@ -334,96 +258,29 @@ async def test_spawn_implementation_execution_fires_when_phase_was_wrong(
         tenant_key=test_tenant_key,
         project_id=project.id,
         job_type="orchestrator",
-        mission="CE-0027 Paddle-unstick regression",
-        status="completed",
-        created_at=datetime.now(UTC),
-    )
-    db_session.add(job)
-    now = datetime.now(UTC)
-    # The prior execution has phase='implementation' (the wrong CE-0026 default)
-    # AND status='complete'. CE-0027 must still recognize this as a staging-done
-    # state and spawn a fresh implementation execution.
-    prior_exec = AgentExecution(
-        agent_id=str(uuid4()),
-        job_id=job_id,
-        tenant_key=test_tenant_key,
-        agent_display_name="orchestrator",
-        status="complete",
-        started_at=now - timedelta(hours=1),
-        completed_at=now - timedelta(minutes=5),
-        project_phase="implementation",  # ← the buggy backfill value
-    )
-    db_session.add(prior_exec)
-    await db_session.commit()
-
-    svc = _make_launch_service(db_session, test_tenant_key)
-    result = await svc.launch_project(project_id=project.id)
-
-    assert result.orchestrator_job_id == job_id
-
-    executions = (
-        (
-            await db_session.execute(
-                select(AgentExecution).where(
-                    AgentExecution.job_id == job_id,
-                    AgentExecution.tenant_key == test_tenant_key,
-                )
-            )
-        )
-        .scalars()
-        .all()
-    )
-
-    # Exactly one NEW execution must exist (status='waiting'), in addition
-    # to the prior completed one.
-    waiting_executions = [e for e in executions if e.status == "waiting"]
-    assert len(waiting_executions) == 1, (
-        f"CE-0027: must spawn exactly one fresh impl execution despite buggy phase value; "
-        f"got {len(waiting_executions)} waiting execution(s)"
-    )
-    assert waiting_executions[0].project_phase == "implementation"
-
-
-@pytest.mark.asyncio
-async def test_spawn_implementation_execution_does_not_fire_for_active_orch(
-    db_session: AsyncSession,
-    test_tenant_key: str,
-):
-    """CE-0027 regression: the trigger MUST NOT fire when the existing
-    orchestrator execution is still active (status != 'complete'). Idempotent
-    Implement-button clicks must reuse the existing execution, not spawn
-    duplicates.
-    """
-    product = await _seed_product(db_session, test_tenant_key)
-    project = await _seed_active_project(db_session, test_tenant_key, product.id, staging_status="staging_complete")
-
-    job_id = str(uuid4())
-    job = AgentJob(
-        job_id=job_id,
-        tenant_key=test_tenant_key,
-        project_id=project.id,
-        job_type="orchestrator",
-        mission="CE-0027 idempotency regression",
+        mission="CE-0032 single-exec reuse",
         status="active",
         created_at=datetime.now(UTC),
     )
     db_session.add(job)
-    active_exec = AgentExecution(
+    orch_exec = AgentExecution(
         agent_id=str(uuid4()),
         job_id=job_id,
         tenant_key=test_tenant_key,
         agent_display_name="orchestrator",
-        status="working",
-        started_at=datetime.now(UTC),
-        project_phase="implementation",
+        status="waiting",  # CE-0032 truth: orch row sits at 'waiting' post-staging
+        started_at=datetime.now(UTC) - timedelta(minutes=10),
+        project_phase="staging",
     )
-    db_session.add(active_exec)
+    db_session.add(orch_exec)
     await db_session.commit()
 
     svc = _make_launch_service(db_session, test_tenant_key)
-    await svc.launch_project(project_id=project.id)
+    result = await svc.launch_project(project_id=project.id)
 
-    executions = (
+    assert result.orchestrator_job_id == job_id, "CE-0032: launch_project must reuse the same AgentJob"
+
+    executions = list(
         (
             await db_session.execute(
                 select(AgentExecution).where(
@@ -436,8 +293,9 @@ async def test_spawn_implementation_execution_does_not_fire_for_active_orch(
         .all()
     )
     assert len(executions) == 1, (
-        f"CE-0027: no new execution should be spawned when an active one exists; got {len(executions)}"
+        f"CE-0032: launch_project MUST NOT spawn a second orch exec; got {len(executions)} rows"
     )
+    assert executions[0].agent_id == orch_exec.agent_id
 
 
 # ============================================================================
@@ -622,6 +480,7 @@ async def _seed_orch_for_backfill(
     return execution
 
 
+@pytest.mark.skip(reason="CE-0027 backfill superseded by CE-0032 single-exec model — kept for migration audit trail")
 @pytest.mark.asyncio
 async def test_ce_0027_backfill_flips_active_orch_on_staging_project(
     db_session: AsyncSession,
@@ -646,6 +505,7 @@ async def test_ce_0027_backfill_flips_active_orch_on_staging_project(
     )
 
 
+@pytest.mark.skip(reason="CE-0027 backfill superseded by CE-0032 single-exec model — kept for migration audit trail")
 @pytest.mark.asyncio
 async def test_ce_0027_backfill_skips_completed_orch(
     db_session: AsyncSession,
@@ -668,6 +528,7 @@ async def test_ce_0027_backfill_skips_completed_orch(
     assert execution.project_phase == "implementation", "CE-0027: completed orch must not be modified by backfill"
 
 
+@pytest.mark.skip(reason="CE-0027 backfill superseded by CE-0032 single-exec model — kept for migration audit trail")
 @pytest.mark.asyncio
 async def test_ce_0027_backfill_skips_staging_complete_project(
     db_session: AsyncSession,
@@ -693,6 +554,7 @@ async def test_ce_0027_backfill_skips_staging_complete_project(
     )
 
 
+@pytest.mark.skip(reason="CE-0027 backfill superseded by CE-0032 single-exec model — kept for migration audit trail")
 @pytest.mark.asyncio
 async def test_ce_0027_backfill_is_idempotent(
     db_session: AsyncSession,
@@ -727,6 +589,7 @@ async def test_ce_0027_backfill_is_idempotent(
     )
 
 
+@pytest.mark.skip(reason="CE-0027 backfill superseded by CE-0032 single-exec model — kept for migration audit trail")
 @pytest.mark.asyncio
 async def test_ce_0027_backfill_skips_non_orchestrator_agents(
     db_session: AsyncSession,

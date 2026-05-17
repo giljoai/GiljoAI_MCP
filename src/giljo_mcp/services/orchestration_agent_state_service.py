@@ -103,7 +103,14 @@ class OrchestrationAgentStateService:
                         "agent_display_name": execution.agent_display_name,
                         "agent_name": execution.agent_name,
                         "old_status": old_status,
-                        "status": "complete",
+                        # CE-0032: broadcast the ACTUAL post-mutation status.
+                        # Was hardcoded 'complete' which only happened to be
+                        # right because _apply_completion_status always set
+                        # status='complete' too. CE-0032's staging-end leaves
+                        # the orch's exec at 'waiting'; the hardcoded literal
+                        # would lie to the frontend and undo the backend
+                        # truth, re-introducing the UI Complete-label bug.
+                        "status": execution.status,
                         "completed_at": execution.completed_at.isoformat() if execution.completed_at else None,
                         "duration_seconds": duration_seconds,
                         "has_result": True,

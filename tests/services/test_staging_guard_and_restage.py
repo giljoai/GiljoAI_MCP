@@ -238,6 +238,42 @@ class TestRestage:
             await lifecycle_service.restage(str(uuid4()))
 
     @pytest.mark.asyncio
+    async def test_restage_clears_implementation_launched_at_ce_0032(self, lifecycle_service, mock_db_manager):
+        """CE-0032: restage MUST clear project.implementation_launched_at.
+
+        Scenario the fix prevents:
+          1. User completes a project (impl_launched_at = <v1 timestamp>).
+          2. User restores + restages for v2.
+          3. Without the clear, the new staging-end complete_job sees
+             impl_launched_at non-null and the CE-0032 TODOs-bypass key
+             evaluates False — regressing the CE-0027 fix on restage-after-
+             completion.
+        """
+        _, session = mock_db_manager
+        project = _make_project(staging_status="staging")
+        # Simulate a stale v1 impl timestamp surviving from a prior completed cycle.
+        project.implementation_launched_at = datetime.now(UTC)
+        orchestrator = _make_orchestrator_execution(status="waiting")
+
+        mock_project_result = MagicMock()
+        mock_project_result.scalar_one_or_none = MagicMock(return_value=project)
+        mock_orch_result = MagicMock()
+        mock_orch_result.scalar_one_or_none = MagicMock(return_value=orchestrator)
+        session.execute = AsyncMock(side_effect=[mock_project_result, mock_orch_result])
+
+        with patch.object(lifecycle_service, "_ensure_orchestrator_fixture", new_callable=AsyncMock) as mock_fixture:
+            mock_fixture.return_value = {"job_id": str(uuid4()), "agent_id": str(uuid4())}
+            await lifecycle_service.restage(project.id)
+
+        assert project.implementation_launched_at is None, (
+            "CE-0032: restage must clear project.implementation_launched_at to None — "
+            "stale v1 timestamps would regress the CE-0027 TODOs-bypass on restage-after-completion"
+        )
+        # Sibling invariants still hold.
+        assert project.staging_status is None
+        assert project.execution_mode == "multi_terminal"
+
+    @pytest.mark.asyncio
     async def test_restage_creates_fresh_orchestrator_fixture(self, lifecycle_service, mock_db_manager):
         """Restage should call _ensure_orchestrator_fixture to create a new one."""
         _, session = mock_db_manager

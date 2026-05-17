@@ -39,7 +39,7 @@ from giljo_mcp.models.projects import Project
 from giljo_mcp.repositories.project_lifecycle_repository import ProjectLifecycleRepository
 from giljo_mcp.repositories.project_repository import ProjectRepository
 from giljo_mcp.schemas.service_responses import ProjectLaunchResult
-from giljo_mcp.services.project_helpers import _build_ws_project_data, spawn_implementation_orchestrator
+from giljo_mcp.services.project_helpers import _build_ws_project_data
 from giljo_mcp.tenant import TenantManager
 
 
@@ -135,25 +135,15 @@ class ProjectLaunchService:
 
             existing = await self._find_existing_orchestrator(session, project_id, tenant_key)
             if existing:
-                # CE-0027: When the orchestrator has completed AND the project
-                # has finished staging, the Implement-button launch gets a
-                # brand-new execution for the implementation session —
-                # phase='implementation', attached to the same AgentJob. The
-                # prior execution stays in the history for audit/observability.
-                #
-                # Trigger keys on role + status + project flag, NOT on the
-                # prior execution's project_phase column. This is intentional:
-                # the phase column was wrong on some pre-CE-0026 rows whose
-                # default ('implementation') didn't match their actual phase,
-                # and would have stuck users on a completed execution. Using
-                # status + project flag is robust across the migration
-                # backfill window and any future similar drift.
-                if (
-                    existing.agent_display_name == "orchestrator"
-                    and existing.status == "complete"
-                    and project.staging_status == "staging_complete"
-                ):
-                    return await self._spawn_implementation_execution(session, project, existing.job_id, tenant_key)
+                # CE-0032: single orchestrator entity. No second exec is ever
+                # spawned. The same row persists across the project lifetime —
+                # staging-end leaves it at status='waiting' (see
+                # job_completion_service._apply_completion_status), and the
+                # impl session's first get_agent_mission flips it back to
+                # 'working' (mission_service.py:174). _build_reuse_result
+                # handles every reachable case: staging-in-flight (working),
+                # post-staging (waiting), impl-in-flight (working), and the
+                # legacy pre-CE-0032 'complete' state on already-shipped data.
                 return self._build_reuse_result(project, existing)
 
             return await self._spawn_orchestrator(
@@ -279,66 +269,6 @@ class ProjectLaunchService:
             Existing AgentExecution if found, None otherwise
         """
         return await self._lifecycle_repo.find_non_decommissioned_orchestrator(session, tenant_key, project_id)
-
-    async def _spawn_implementation_execution(
-        self,
-        session: AsyncSession,
-        project: Project,
-        job_id: str,
-        tenant_key: str,
-    ) -> ProjectLaunchResult:
-        """Create a new implementation-phase orchestrator execution (CE-0026).
-
-        Called from ``launch_project`` when the user clicks the Implement
-        button after staging has completed. The staging execution is left
-        intact (status='complete', phase='staging') and a brand-new execution
-        — phase='implementation', status='waiting' — is attached to the same
-        orchestrator AgentJob. The orchestrator resumes in a fresh session
-        with full context budget, reading its mission from the unchanged
-        AgentJob row.
-
-        CE-0028c: delegates the spawn to the canonical helper in
-        ``project_helpers.spawn_implementation_orchestrator`` so this path
-        shares idempotency semantics with the
-        ``PATCH /launch-implementation`` endpoint. Both call sites get the
-        same find-or-create behavior.
-
-        Args:
-            session: Active database session.
-            project: Project model instance.
-            job_id: Existing orchestrator AgentJob.job_id (unchanged across
-                phases). Kept in the return value for caller convenience;
-                the helper itself rediscovers it from the staging exec.
-            tenant_key: Tenant key for isolation.
-
-        Returns:
-            ProjectLaunchResult with the same job_id and a fresh launch prompt.
-        """
-        impl_execution = await spawn_implementation_orchestrator(session, str(project.id), tenant_key)
-        if impl_execution is None:
-            # Defensive: the caller verified an existing orchestrator before
-            # invoking this method, so the helper should always find one.
-            # If we get here, the state is genuinely broken — surface clearly.
-            raise RuntimeError(
-                f"spawn_implementation_orchestrator returned None for project {project.id} "
-                "despite the caller's existence check. Data state is inconsistent."
-            )
-        await self._lifecycle_repo.commit(session)
-
-        self._logger.info(
-            "[LAUNCH] Spawned implementation-phase orchestrator execution %s for project %s (job %s reused)",
-            impl_execution.agent_id,
-            project.id,
-            job_id,
-        )
-
-        return ProjectLaunchResult(
-            project_id=project.id,
-            orchestrator_job_id=job_id,
-            launch_prompt=self._generate_launch_prompt(project.name, project.id, project.mission, job_id),
-            status=project.status,
-            staging_status=project.staging_status,
-        )
 
     def _build_reuse_result(self, project: Project, existing: AgentExecution) -> ProjectLaunchResult:
         """Build launch result for reusing an existing orchestrator.

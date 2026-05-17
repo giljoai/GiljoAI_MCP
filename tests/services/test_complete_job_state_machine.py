@@ -30,7 +30,6 @@ from giljo_mcp.models.agent_identity import AgentExecution, AgentJob, AgentTodoI
 from giljo_mcp.models.products import Product
 from giljo_mcp.models.projects import Project
 from giljo_mcp.services.job_completion_service import JobCompletionService
-from giljo_mcp.services.project_helpers import spawn_implementation_orchestrator
 
 
 # ============================================================================
@@ -182,13 +181,19 @@ async def test_staging_end_orchestrator_returns_stop_directive_and_flips_status(
     """(a) Staging-phase orchestrator complete_job returns STOP directive and
     flips project.staging_status to 'staging_complete'.
 
-    CE-0026: the _handle_staging_end branch triggers when:
+    CE-0026 + CE-0032: the _handle_staging_end branch triggers when:
       - job.job_type == 'orchestrator'
-      - execution.project_phase == 'staging'
+      - execution.project_phase == 'staging' (vestigial column; spawn paths
+        still set it)
       - project.staging_status != 'staging_complete' (flip needed)
+      - project.implementation_launched_at IS NULL (safeguard against
+        treating impl-end as staging-end)
+
+    CE-0032: the staging-end branch sets exec.status='waiting' (NOT
+    'complete') so the same orch row carries forward into impl session.
     """
     project = await _seed_project(db_session, test_tenant_key, test_product.id, staging_status="staging")
-    job, _ = await _seed_orchestrator_job(db_session, test_tenant_key, project.id, project_phase="staging")
+    job, execution = await _seed_orchestrator_job(db_session, test_tenant_key, project.id, project_phase="staging")
 
     result = await completion_service.complete_job(
         job_id=job.job_id,
@@ -210,6 +215,36 @@ async def test_staging_end_orchestrator_returns_stop_directive_and_flips_status(
         f"CE-0026: staging_status must be flipped to 'staging_complete', got {refreshed.staging_status!r}"
     )
 
+    # CE-0032: exec.status stays 'waiting'; the orch row persists across the
+    # staging→impl boundary. No completed_at set.
+    refreshed_exec = (
+        await db_session.execute(select(AgentExecution).where(AgentExecution.id == execution.id))
+    ).scalar_one()
+    assert refreshed_exec.status == "waiting", (
+        f"CE-0032: staging-end must leave exec.status='waiting', got {refreshed_exec.status!r}"
+    )
+    assert refreshed_exec.completed_at is None, (
+        f"CE-0032: staging-end must leave exec.completed_at unset, got {refreshed_exec.completed_at!r}"
+    )
+
+    # CE-0032: exactly one orch exec on the job — no pre-spawn second row.
+    orch_execs = list(
+        (
+            await db_session.execute(
+                select(AgentExecution).where(
+                    AgentExecution.job_id == job.job_id,
+                    AgentExecution.tenant_key == test_tenant_key,
+                    AgentExecution.agent_display_name == "orchestrator",
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert len(orch_execs) == 1, (
+        f"CE-0032: single orchestrator entity — exactly one orch exec must remain, got {len(orch_execs)}"
+    )
+
 
 @pytest.mark.asyncio
 async def test_staging_end_already_flipped_still_returns_directive(
@@ -224,9 +259,19 @@ async def test_staging_end_already_flipped_still_returns_directive(
 
     CE-0026: mark_staging_complete returns False when already complete, but
     _handle_staging_end still returns StagingDirective() regardless.
+
+    CE-0032: this is also the regression guard for "second staging-end
+    complete_job MUST NOT flip exec.status to 'complete'". The same row that
+    was set to 'waiting' on the first call stays at 'waiting' — defensive
+    re-calls are no-ops for the row.
     """
     project = await _seed_project(db_session, test_tenant_key, test_product.id, staging_status="staging_complete")
-    job, _ = await _seed_orchestrator_job(db_session, test_tenant_key, project.id, project_phase="staging")
+    job, execution = await _seed_orchestrator_job(db_session, test_tenant_key, project.id, project_phase="staging")
+    # Simulate the post-first-call state: exec was already flipped to 'waiting'
+    # by an earlier staging-end. The second call is the idempotent re-entry.
+    execution.status = "waiting"
+    await db_session.commit()
+    await db_session.refresh(execution)
 
     result = await completion_service.complete_job(
         job_id=job.job_id,
@@ -243,6 +288,14 @@ async def test_staging_end_already_flipped_still_returns_directive(
         await db_session.execute(select(Project).where(Project.id == project.id, Project.tenant_key == test_tenant_key))
     ).scalar_one()
     assert refreshed.staging_status == "staging_complete"
+
+    # CE-0032: exec.status stays 'waiting' on the idempotent re-call.
+    refreshed_exec = (
+        await db_session.execute(select(AgentExecution).where(AgentExecution.id == execution.id))
+    ).scalar_one()
+    assert refreshed_exec.status == "waiting", (
+        f"CE-0032 idempotency: exec.status must stay 'waiting' on re-entry, got {refreshed_exec.status!r}"
+    )
 
 
 @pytest.mark.asyncio
@@ -424,10 +477,18 @@ async def test_implementation_orchestrator_complete_job_still_blocks_on_incomple
     """CE-0027 (f) regression: implementation-phase orchestrator with
     incomplete TODOs MUST still be blocked (the gate's original purpose —
     preventing premature closure — still applies in impl phase).
+
+    CE-0032 update: impl-phase is signaled by project.implementation_launched_at
+    being non-null, not by the vestigial execution.project_phase column.
     """
     from giljo_mcp.exceptions import ValidationError
 
     project = await _seed_project(db_session, test_tenant_key, test_product.id, staging_status="staging_complete")
+    # CE-0032: impl_launched_at non-null is the disqualifier for the TODOs bypass.
+    project.implementation_launched_at = datetime.now(UTC)
+    await db_session.commit()
+    await db_session.refresh(project)
+
     job, _ = await _seed_orchestrator_job(db_session, test_tenant_key, project.id, project_phase="implementation")
     await _seed_incomplete_todos(db_session, test_tenant_key, job.job_id, count=2)
 
@@ -536,17 +597,15 @@ async def test_staging_orchestrator_complete_job_leaves_job_status_active(
     test_tenant_key: str,
     test_product: Product,
 ):
-    """CE-0028 (h): the staging→implementation transition must preserve
-    ``AgentJob.status='active'``.
+    """CE-0028 (h) + CE-0032: the staging→implementation transition must
+    preserve ``AgentJob.status='active'`` AND leave the orchestrator's
+    single AgentExecution row at ``status='waiting'``.
 
-    The orchestrator AgentJob is long-lived across both phases — the
-    implementation execution re-attaches to the same job_id (CE-0026
-    ``_spawn_implementation_execution``). Flipping job.status='completed' at
-    staging-end made the UI treat the project as fully done (CloseoutModal +
-    360-memory poll) and blocked the Implement (play) button flow.
-
-    The staging-phase AgentExecution itself still marks complete (it IS
-    finished as a session); only the parent job status is preserved.
+    CE-0028 fixed job.status='active' preservation across the phase
+    boundary; CE-0032 collapsed the multi-exec model so the SAME exec row
+    (no second row spawned) transitions Working→Waiting at staging-end and
+    Waiting→Working when the impl session's first get_agent_mission call
+    fires.
     """
     project = await _seed_project(db_session, test_tenant_key, test_product.id, staging_status="staging")
     job, _ = await _seed_orchestrator_job(db_session, test_tenant_key, project.id, project_phase="staging")
@@ -568,271 +627,169 @@ async def test_staging_orchestrator_complete_job_leaves_job_status_active(
         f"CE-0028: staging-end must leave job.completed_at unset, got {refreshed_job.completed_at!r}"
     )
 
-    # CE-0029 Item 2: there are now TWO execs on this job — the historical
-    # staging exec (complete) and the newly pre-spawned impl exec (waiting).
-    # Filter by phase to assert each independently.
+    # CE-0032: exactly one orch exec row, status='waiting'. The CE-0029 Item 2
+    # pre-spawn is gone — same row transitions across phases.
     refreshed_execs = list(
         (await db_session.execute(select(AgentExecution).where(AgentExecution.job_id == job.job_id))).scalars().all()
     )
-    by_phase = {e.project_phase: e for e in refreshed_execs}
-    assert by_phase["staging"].status == "complete", (
-        "Staging execution must still mark itself complete — only the parent job is preserved"
+    assert len(refreshed_execs) == 1, (
+        f"CE-0032 single-exec: expected 1 orch exec on the job, got {len(refreshed_execs)} "
+        f"(statuses: {[e.status for e in refreshed_execs]})"
     )
-    assert by_phase["implementation"].status == "waiting", (
-        "CE-0029 Item 2: pre-spawned impl exec must be 'waiting' immediately at staging-end"
+    assert refreshed_execs[0].status == "waiting", (
+        f"CE-0032: staging-end orch exec must end at status='waiting', got {refreshed_execs[0].status!r}"
     )
 
 
 # ============================================================================
-# CE-0029 Item 2 regression tests — pre-spawn impl exec at staging-end
+# CE-0032 — single-orchestrator-entity restoration
 # ============================================================================
 
 
 @pytest.mark.asyncio
-async def test_staging_end_prespawns_impl_exec(
+async def test_impl_phase_complete_job_marks_exec_complete(
     db_session: AsyncSession,
     completion_service: JobCompletionService,
     test_tenant_key: str,
     test_product: Product,
 ):
-    """CE-0029 Item 2: after a successful staging-end complete_job, exactly
-    one waiting impl-phase orchestrator execution exists alongside the
-    now-complete staging execution.
+    """CE-0032 negative case: an impl-phase orchestrator's complete_job
+    completes the orchestrator entity for real — status='complete',
+    completed_at set, AgentJob flipped to 'completed'.
 
-    Both execs attach to the same AgentJob (orchestrator job survives the
-    phase boundary, per CE-0028 ``job.status='active'`` preservation).
+    Under CE-0032's single-exec model the orch's row was created with
+    project_phase='staging' (spawn paths still set that vestigial value)
+    and now has implementation_launched_at non-null on the project. The
+    detector's safeguard returns is_staging_end=False; _apply_completion_status
+    sets status='complete' and _finalize_job_if_last_execution flips the job.
     """
-    project = await _seed_project(db_session, test_tenant_key, test_product.id, staging_status="staging")
-    job, _ = await _seed_orchestrator_job(db_session, test_tenant_key, project.id, project_phase="staging")
+    project = await _seed_project(db_session, test_tenant_key, test_product.id, staging_status="staging_complete")
+    # Simulate the impl-launched state: this is what distinguishes "impl end"
+    # from "staging end" under CE-0032's project-flag-driven detector.
+    project.implementation_launched_at = datetime.now(UTC) - timedelta(hours=1)
+    await db_session.commit()
+    await db_session.refresh(project)
+
+    job, execution = await _seed_orchestrator_job(db_session, test_tenant_key, project.id, project_phase="staging")
 
     result = await completion_service.complete_job(
         job_id=job.job_id,
-        result={"summary": "Staging end — pre-spawn impl exec"},
+        result={"summary": "Impl close — project end"},
         tenant_key=test_tenant_key,
     )
 
     assert result.status == "success"
-    assert result.staging_directive is not None
-    assert result.staging_directive.action == "STOP"
+    assert result.staging_directive is None, (
+        "CE-0032: impl-end (impl_launched_at non-null) must NOT return a staging_directive"
+    )
 
-    # Two executions on the same job: the historical staging exec (complete)
-    # and the freshly-spawned impl exec (waiting).
-    execs = list(
-        (
-            await db_session.execute(
-                select(AgentExecution).where(
-                    AgentExecution.job_id == job.job_id,
-                    AgentExecution.tenant_key == test_tenant_key,
-                )
-            )
-        )
-        .scalars()
-        .all()
+    refreshed_exec = (
+        await db_session.execute(select(AgentExecution).where(AgentExecution.id == execution.id))
+    ).scalar_one()
+    assert refreshed_exec.status == "complete", (
+        f"CE-0032 impl-end: exec.status must be 'complete', got {refreshed_exec.status!r}"
     )
-    assert len(execs) == 2, f"Expected 2 execs on job {job.job_id}, got {len(execs)}: {[e.status for e in execs]}"
+    assert refreshed_exec.completed_at is not None, "CE-0032 impl-end: exec.completed_at must be set"
 
-    by_phase = {e.project_phase: e for e in execs}
-    assert "staging" in by_phase and "implementation" in by_phase, (
-        f"Expected one staging + one implementation exec, got phases: {[e.project_phase for e in execs]}"
+    refreshed_job = (await db_session.execute(select(AgentJob).where(AgentJob.job_id == job.job_id))).scalar_one()
+    assert refreshed_job.status == "completed", (
+        f"CE-0032 impl-end: job.status must be 'completed', got {refreshed_job.status!r}"
     )
-    assert by_phase["staging"].status == "complete", (
-        f"Staging exec must be 'complete', got {by_phase['staging'].status!r}"
-    )
-    assert by_phase["implementation"].status == "waiting", (
-        f"Impl exec must be 'waiting', got {by_phase['implementation'].status!r}"
-    )
-    # Both share the AgentJob.
-    assert by_phase["implementation"].job_id == job.job_id
-    assert by_phase["staging"].job_id == job.job_id
+    assert refreshed_job.completed_at is not None, "CE-0032 impl-end: job.completed_at must be set"
 
 
 @pytest.mark.asyncio
-async def test_staging_end_prespawn_is_idempotent(
+async def test_staging_end_no_second_exec_spawned(
     db_session: AsyncSession,
     completion_service: JobCompletionService,
     test_tenant_key: str,
     test_product: Product,
 ):
-    """CE-0029 Item 2: a second staging-end complete_job (defensive — should
-    not happen in practice) does NOT create a second impl exec. The helper's
-    Branch 1 detects the existing waiting impl exec and returns it.
-
-    The second call also exits the staging-end branch via the
-    ``project.implementation_launched_at`` safeguard if the test set it; we
-    don't set that here — the second call lands in _handle_staging_end again
-    and the helper's idempotency carries the test.
+    """CE-0032 regression guard: staging-end complete_job MUST NOT spawn a
+    second orchestrator exec. The CE-0029 Item 2 pre-spawn is gone; the
+    same row simply transitions states. Any future re-introduction of a
+    spawn helper inside _handle_staging_end would break the
+    single-orchestrator-entity invariant.
     """
     project = await _seed_project(db_session, test_tenant_key, test_product.id, staging_status="staging")
     job, _ = await _seed_orchestrator_job(db_session, test_tenant_key, project.id, project_phase="staging")
 
-    # First staging-end call — spawns the impl exec.
     await completion_service.complete_job(
         job_id=job.job_id,
-        result={"summary": "First staging-end"},
+        result={"summary": "Staging end — single-exec invariant"},
         tenant_key=test_tenant_key,
     )
 
-    impl_after_first = list(
+    orch_execs = list(
         (
             await db_session.execute(
                 select(AgentExecution).where(
                     AgentExecution.job_id == job.job_id,
                     AgentExecution.tenant_key == test_tenant_key,
-                    AgentExecution.project_phase == "implementation",
+                    AgentExecution.agent_display_name == "orchestrator",
                 )
             )
         )
         .scalars()
         .all()
     )
-    assert len(impl_after_first) == 1, f"After first staging-end, expected 1 impl exec, got {len(impl_after_first)}"
-
-    # Re-fire the helper directly (the second complete_job would 404 because
-    # the staging exec is now terminal). Call spawn directly to assert
-    # idempotency in the same way _handle_staging_end would call it.
-    second = await spawn_implementation_orchestrator(db_session, str(project.id), test_tenant_key)
-    await db_session.commit()
-
-    # Existing waiting impl exec returned, no second spawn.
-    assert second is not None
-    assert second.agent_id == impl_after_first[0].agent_id
-
-    impl_after_second = list(
-        (
-            await db_session.execute(
-                select(AgentExecution).where(
-                    AgentExecution.job_id == job.job_id,
-                    AgentExecution.tenant_key == test_tenant_key,
-                    AgentExecution.project_phase == "implementation",
-                )
-            )
-        )
-        .scalars()
-        .all()
+    assert len(orch_execs) == 1, (
+        f"CE-0032 single-exec invariant: staging-end MUST NOT spawn a second orch exec; got {len(orch_execs)}"
     )
-    assert len(impl_after_second) == 1, (
-        f"After idempotent re-spawn, expected still 1 impl exec, got {len(impl_after_second)}"
-    )
+
+
+# ============================================================================
+# CE-0032 — TODOs-bypass key edge cases (re-keyed onto project flags)
+# ============================================================================
 
 
 @pytest.mark.asyncio
-async def test_implementation_end_does_not_prespawn(
+async def test_todos_bypass_fires_for_staging_status_staged(
     db_session: AsyncSession,
     completion_service: JobCompletionService,
     test_tenant_key: str,
     test_product: Product,
 ):
-    """CE-0029 Item 2 negative case: an impl-phase orchestrator's complete_job
-    must NOT spawn another orchestrator execution. The pre-spawn fires only
-    at the staging-end branch.
-
-    Seeds two execs on the same job (matching the post-CE-0029-Item-2 state):
-    staging (complete) + implementation (working). Completing the impl exec
-    must leave the count at 2 — no third orch exec.
+    """CE-0032 bypass edge case: 'staged' status is included defensively in
+    the IN clause. An orch reaching complete_job from this state (pathological
+    but possible) gets the bypass — no TODOs to block on anyway.
     """
+    project = await _seed_project(db_session, test_tenant_key, test_product.id, staging_status="staged")
+    job, _ = await _seed_orchestrator_job(db_session, test_tenant_key, project.id, project_phase="staging")
+    await _seed_incomplete_todos(db_session, test_tenant_key, job.job_id, count=2)
+
+    result = await completion_service.complete_job(
+        job_id=job.job_id,
+        result={"summary": "Edge: staged status"},
+        tenant_key=test_tenant_key,
+    )
+    assert result.status == "success", "CE-0032: 'staged' staging_status must hit the bypass"
+
+
+@pytest.mark.asyncio
+async def test_todos_bypass_does_not_fire_when_impl_launched_at_set(
+    db_session: AsyncSession,
+    completion_service: JobCompletionService,
+    test_tenant_key: str,
+    test_product: Product,
+):
+    """CE-0032 bypass edge case: impl_launched_at non-null disqualifies the
+    bypass (real impl-end requires TODOs to be done).
+    """
+    from giljo_mcp.exceptions import ValidationError
+
     project = await _seed_project(db_session, test_tenant_key, test_product.id, staging_status="staging_complete")
-    # Mark the project as having launched implementation so the
-    # _is_staging_end_orchestrator_call safeguard treats the impl exec as
-    # impl-phase regardless of the project_phase column.
     project.implementation_launched_at = datetime.now(UTC)
     await db_session.commit()
     await db_session.refresh(project)
 
-    # Historical staging exec (complete) on the orchestrator job.
-    staging_job_id = str(uuid4())
-    staging_job = AgentJob(
-        job_id=staging_job_id,
-        tenant_key=test_tenant_key,
-        project_id=project.id,
-        job_type="orchestrator",
-        mission="CE-0029 staging history",
-        status="active",
-    )
-    db_session.add(staging_job)
-    staging_exec = AgentExecution(
-        job_id=staging_job_id,
-        tenant_key=test_tenant_key,
-        agent_display_name="orchestrator",
-        status="complete",
-        messages_sent_count=0,
-        messages_waiting_count=0,
-        messages_read_count=0,
-        started_at=datetime.now(UTC) - timedelta(minutes=10),
-        completed_at=datetime.now(UTC) - timedelta(minutes=5),
-        project_phase="staging",
-    )
-    db_session.add(staging_exec)
+    job, _ = await _seed_orchestrator_job(db_session, test_tenant_key, project.id, project_phase="staging")
+    await _seed_incomplete_todos(db_session, test_tenant_key, job.job_id, count=2)
 
-    # Active impl exec on the SAME job.
-    impl_exec = AgentExecution(
-        job_id=staging_job_id,
-        tenant_key=test_tenant_key,
-        agent_display_name="orchestrator",
-        status="working",
-        messages_sent_count=0,
-        messages_waiting_count=0,
-        messages_read_count=0,
-        started_at=datetime.now(UTC) - timedelta(minutes=2),
-        project_phase="implementation",
-    )
-    db_session.add(impl_exec)
-    await db_session.commit()
-
-    result = await completion_service.complete_job(
-        job_id=staging_job_id,
-        result={"summary": "Impl-phase close — must not spawn another orch"},
-        tenant_key=test_tenant_key,
-    )
-
-    assert result.status == "success"
-    assert result.staging_directive is None, "Impl-phase complete_job must NOT return a staging_directive"
-
-    # Still exactly 2 execs on the job: no extra spawn.
-    execs = list(
-        (
-            await db_session.execute(
-                select(AgentExecution).where(
-                    AgentExecution.job_id == staging_job_id,
-                    AgentExecution.tenant_key == test_tenant_key,
-                )
-            )
+    with pytest.raises(ValidationError) as exc_info:
+        await completion_service.complete_job(
+            job_id=job.job_id,
+            result={"summary": "Impl end with incomplete TODOs"},
+            tenant_key=test_tenant_key,
         )
-        .scalars()
-        .all()
-    )
-    assert len(execs) == 2, (
-        f"Impl-phase close must NOT create a new orch exec — expected 2, got {len(execs)} "
-        f"(statuses: {[e.status for e in execs]}, phases: {[e.project_phase for e in execs]})"
-    )
-
-
-@pytest.mark.asyncio
-async def test_implementation_orchestrator_complete_job_marks_job_completed(
-    db_session: AsyncSession,
-    completion_service: JobCompletionService,
-    test_tenant_key: str,
-    test_product: Product,
-):
-    """CE-0028 negative case: implementation-phase orchestrator completion
-    MUST still flip ``AgentJob.status='completed'``. The CE-0028 bypass is
-    scoped tightly to the staging→implementation transition; impl-phase
-    closeout is the real project-completion event.
-    """
-    project = await _seed_project(db_session, test_tenant_key, test_product.id, staging_status="staging_complete")
-    job, _ = await _seed_orchestrator_job(db_session, test_tenant_key, project.id, project_phase="implementation")
-
-    result = await completion_service.complete_job(
-        job_id=job.job_id,
-        result={"summary": "Impl close — should flip job.status='completed'"},
-        tenant_key=test_tenant_key,
-    )
-
-    assert result.status == "success"
-    assert result.staging_directive is None
-
-    refreshed_job = (await db_session.execute(select(AgentJob).where(AgentJob.job_id == job.job_id))).scalar_one()
-    assert refreshed_job.status == "completed", (
-        f"CE-0028 regression guard: impl-phase orch completion MUST flip job.status='completed', "
-        f"got {refreshed_job.status!r}"
-    )
-    assert refreshed_job.completed_at is not None, "Impl-phase completion must set job.completed_at"
+    assert "COMPLETION_BLOCKED" in str(exc_info.value)

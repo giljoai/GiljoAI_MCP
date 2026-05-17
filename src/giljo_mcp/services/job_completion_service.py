@@ -28,7 +28,7 @@ from giljo_mcp.models.tasks import MessageAcknowledgment
 from giljo_mcp.models.user_approval import UserApproval
 from giljo_mcp.repositories.agent_completion_repository import AgentCompletionRepository
 from giljo_mcp.schemas.service_responses import CompleteJobResult, StagingDirective
-from giljo_mcp.services.project_helpers import mark_staging_complete, spawn_implementation_orchestrator
+from giljo_mcp.services.project_helpers import mark_staging_complete
 from giljo_mcp.tenant import TenantManager
 
 
@@ -134,12 +134,21 @@ class JobCompletionService:
             duration_seconds = None
             warnings: list[str] = []
             staging_directive: StagingDirective | None = None
+            is_staging_end: bool = False
             repo = AgentCompletionRepository()
             async with self._get_session() as session:
                 execution = await repo.find_active_execution_for_completion(session, tenant_key, job_id)
 
                 if execution:
                     job = await self._fetch_job_for_completion(session, job_id, tenant_key)
+
+                    # CE-0032: detect staging-end BEFORE validation so the
+                    # TODOs-bypass key can read project flags. The detector
+                    # loads the project and returns it for downstream reuse,
+                    # avoiding a second query.
+                    is_staging_end, staging_end_project = await self._is_staging_end_orchestrator_call(
+                        session, job, execution, tenant_key
+                    )
 
                     await self._validate_completion_requirements(
                         session,
@@ -150,18 +159,12 @@ class JobCompletionService:
                         completion_attempt_time,
                         acknowledge_closeout_todo=acknowledge_closeout_todo,
                         acknowledge_messages_on_complete=acknowledge_messages_on_complete,
+                        project=staging_end_project,
                     )
 
-                    # CE-0028: detect the staging→implementation transition
-                    # once and reuse downstream. Single source of truth shared
-                    # by _finalize_job_if_last_execution (preserves
-                    # job.status='active' across the phase boundary) and
-                    # _handle_staging_end (emits the STOP directive).
-                    is_staging_end, staging_end_project = await self._is_staging_end_orchestrator_call(
-                        session, job, execution, tenant_key
+                    old_status, duration_seconds = self._apply_completion_status(
+                        execution, result, is_staging_end=is_staging_end
                     )
-
-                    old_status, duration_seconds = self._apply_completion_status(execution, result)
 
                     await self._finalize_job_if_last_execution(
                         session, job, execution, tenant_key, job_id, is_staging_end=is_staging_end
@@ -176,10 +179,12 @@ class JobCompletionService:
                         warnings=warnings,
                     )
 
-                    # CE-0026: state-machine branch for staging-phase
-                    # orchestrator. Flips project.staging_status (idempotent —
-                    # mission_service may already have flipped it) and
-                    # populates a STOP directive in the response.
+                    # CE-0026 / CE-0032: state-machine branch for staging-phase
+                    # orchestrator. Flips project.staging_status (idempotent)
+                    # and returns a STOP directive. CE-0032 removed the
+                    # CE-0029 Item 2 pre-spawn — the same orch exec stays
+                    # alive in status='waiting' until the user pastes the
+                    # impl prompt.
                     staging_directive = await self._handle_staging_end(
                         session,
                         job,
@@ -204,15 +209,14 @@ class JobCompletionService:
                 )
 
             closeout_checklist = None
-            # CE-0027: closeout_checklist content (request_approval, deferred
-            # findings) is implementation-phase closeout guidance. Skip it
-            # for staging-phase orchestrators — they get the staging_directive
-            # instead, which carries the correct end-of-staging semantics.
-            is_impl_phase_orch = (
-                job
-                and getattr(job, "job_type", "") == "orchestrator"
-                and (execution is None or getattr(execution, "project_phase", None) != "staging")
-            )
+            # CE-0027 / CE-0032: closeout_checklist (request_approval, deferred
+            # findings) is implementation-phase closeout guidance. Skip it for
+            # staging-end orchestrator calls — they get the staging_directive
+            # instead. Under CE-0032's single-exec model the prior key on
+            # execution.project_phase no longer disambiguates phases (every
+            # orch exec has project_phase='staging'); is_staging_end (derived
+            # from project flags) is the authoritative phase signal.
+            is_impl_phase_orch = job and getattr(job, "job_type", "") == "orchestrator" and not is_staging_end
             if is_impl_phase_orch:
                 # INF-5076: orchestrators are coordinators, not committers — commits
                 # flow through close_project_and_update_memory(git_commits=[...])
@@ -274,6 +278,7 @@ class JobCompletionService:
         completion_attempt_time: datetime,
         acknowledge_closeout_todo: bool = False,
         acknowledge_messages_on_complete: bool = False,
+        project: Project | None = None,
     ) -> None:
         """Check unread messages and incomplete TODOs; raise if completion is blocked.
 
@@ -359,18 +364,29 @@ class JobCompletionService:
 
         incomplete_todos = await repo.get_incomplete_todos(session, tenant_key, job_id)
 
-        # CE-0027: Staging-phase orchestrator TODOs ARE the deliverable plan
-        # for downstream implementer/tester agents. The orchestrator writes
-        # them during staging precisely BECAUSE they are not yet done; the
-        # plan is what survives into implementation. Blocking the
-        # staging-end complete_job on these would force the agent to lie
-        # about completion status to get past the gate (we saw this happen
-        # on the dogfood Paddle test). Skip the TODOs gate entirely for
-        # staging-phase orchestrators. The unread-messages gate still
-        # applies — orchestrators should not abandon their inbox at
-        # staging-end.
+        # CE-0027 / CE-0032: Staging-phase orchestrator TODOs ARE the
+        # deliverable plan for downstream implementer/tester agents. The
+        # orchestrator writes them during staging precisely BECAUSE they are
+        # not yet done; the plan is what survives into implementation.
+        # Blocking the staging-end complete_job on these would force the
+        # agent to lie about completion status to get past the gate (the
+        # dogfood Paddle test). Skip the TODOs gate entirely for staging-
+        # phase orchestrators. The unread-messages gate still applies —
+        # orchestrators should not abandon their inbox at staging-end.
+        #
+        # CE-0032 re-keyed the bypass off the vestigial execution.project_phase
+        # column onto project flags. Truth table (project|impl_launched_at):
+        #   ('staging'|None) → staging-end (fires; TODOs survive into impl)
+        #   ('staged'|None)  → defensive; pre-orch-start (fires; no TODOs anyway)
+        #   ('staging_complete'|None) → defensive re-call after auto-flip (fires)
+        #   ('staging_complete'|<ts>) → impl-end (does NOT fire; TODOs must be done)
+        # The restage path (project_staging_service) clears impl_launched_at
+        # so restage-after-completion lands back in the staging-end branch.
         is_staging_orchestrator = (
-            job.job_type == "orchestrator" and getattr(execution, "project_phase", None) == "staging"
+            job.job_type == "orchestrator"
+            and project is not None
+            and project.staging_status in ("staging", "staged", "staging_complete")
+            and project.implementation_launched_at is None
         )
         if is_staging_orchestrator and incomplete_todos:
             self._logger.info(
@@ -431,10 +447,31 @@ class JobCompletionService:
             )
 
     def _apply_completion_status(
-        self, execution: AgentExecution, result: dict[str, Any]
+        self,
+        execution: AgentExecution,
+        result: dict[str, Any],
+        *,
+        is_staging_end: bool = False,
     ) -> tuple[str | None, float | None]:
-        """Update execution fields for completion. Returns (old_status, duration_seconds)."""
+        """Update execution fields for completion. Returns (old_status, duration_seconds).
+
+        CE-0032: when ``is_staging_end`` is True, the orchestrator entity is
+        pausing between staging and implementation — not ending. Set
+        ``status='waiting'`` (NOT 'complete'), leave ``completed_at`` unset,
+        and preserve the prior ``progress`` so the dashboard doesn't lie about
+        a session-end. The same ``AgentExecution`` row will transition back to
+        'working' on the next ``get_agent_mission`` call when the user pastes
+        the implementation prompt (existing logic in mission_service.py:174).
+        ``result`` is still stored for audit trail.
+        """
         old_status = execution.status
+
+        if is_staging_end:
+            execution.status = "waiting"
+            execution.result = result
+            execution.completed_at = None
+            return old_status, None
+
         execution.status = "complete"
         execution.completed_at = datetime.now(UTC)
         execution.progress = 100
@@ -614,21 +651,13 @@ class JobCompletionService:
             websocket_manager=self._websocket_manager,
         )
 
-        # CE-0029 Item 2: pre-spawn the impl-phase orchestrator execution.
-        # The staging execution is now status='complete' (just flipped by
-        # _apply_completion_status); the helper sees that and creates a fresh
-        # status='waiting' impl-phase exec attached to the same AgentJob. The
-        # UI then renders the orchestrator as genuinely Waiting (no
-        # CE-0028b status relabel needed) and the subsequent Implement-click
-        # PATCH endpoint finds an existing non-terminal exec (idempotent
-        # no-op via the helper's Branch 1).
-        impl_exec = await spawn_implementation_orchestrator(session, str(project.id), tenant_key)
-        if impl_exec is None:
-            self._logger.warning(
-                "[STAGING_END] spawn_implementation_orchestrator returned None for project %s — "
-                "Implement-click will fall back to lazy spawn",
-                project.id,
-            )
+        # CE-0032: no pre-spawn. Under the single-orchestrator-entity model
+        # the same AgentExecution row carries the orchestrator across the
+        # staging→implementation boundary; _apply_completion_status (called
+        # earlier in this complete_job) left it at status='waiting'. The
+        # Implement-click endpoint sets project.implementation_launched_at and
+        # broadcasts; the user pastes the impl prompt; the orch's first
+        # get_agent_mission call flips this row's status back to 'working'.
         return StagingDirective()
 
     # _resolve_action_items removed in INF-5025b

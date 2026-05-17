@@ -1,19 +1,24 @@
 /**
- * CE-0029 Item 2 — staging→implementation handoff status display.
+ * CE-0028b / CE-0029 / CE-0032 — staging→implementation handoff status display.
  *
- * Pre-CE-0029, the orchestrator's staging execution was the only orch row
- * (status='complete') and `applyStagingHandoffStatusOverride` rewrote it to
- * 'waiting' in the displayed table. CE-0029 Item 2 makes the backend
- * pre-spawn an actual impl-phase orchestrator execution at staging-end with
- * status='waiting'. The UI now naturally displays "Waiting" because there
- * IS a waiting orch exec — no override function needed, no UI relabel.
+ * Historical evolution:
+ *   - Pre-CE-0029: only orch row was the staging exec (status='complete')
+ *     and applyStagingHandoffStatusOverride rewrote it to 'waiting' in the
+ *     UI. CE-0029 removed the override.
+ *   - CE-0029 Item 2: backend pre-spawned a SECOND orch exec ('waiting',
+ *     phase='implementation') at staging-end so the UI naturally showed a
+ *     waiting row.
+ *   - CE-0032: REVERTED CE-0029 Item 2. The orchestrator is a single entity
+ *     with one execution row whose status transitions across phases. At
+ *     staging-end the backend leaves that single row at status='waiting' —
+ *     the table shows ONE row, not two.
  *
- * These tests verify the post-CE-0029 reality:
- *   - With both execs present (complete staging + waiting impl), the table
- *     renders both rows; the impl row's status is genuinely 'waiting' WITHOUT
- *     any override.
- *   - The CE-0028b override function is gone (assertion checks the rendered
- *     status equals the raw store-fed status with no rewrite).
+ * These tests verify the post-CE-0032 reality:
+ *   - Single orch row in status='waiting' renders as "Waiting" with no
+ *     override function (the override is gone, store-fed status is rendered
+ *     verbatim).
+ *   - A working orch row renders as "Working", a complete orch (post-impl)
+ *     renders as "Complete", non-orch agents render their actual status.
  *
  * Per feedback_frontend_prop_vs_store_source_of_truth, store state changes
  * are fed through the agent store mutation path, not by injecting fields
@@ -87,7 +92,7 @@ async function mountWithJobs(project, jobs) {
   return wrapper
 }
 
-describe('JobsTab CE-0029 staging→implementation handoff (no-override)', () => {
+describe('JobsTab CE-0032 staging→implementation handoff (single-exec, no-override)', () => {
   beforeEach(() => {
     const pinia = createPinia()
     setActivePinia(pinia)
@@ -95,23 +100,16 @@ describe('JobsTab CE-0029 staging→implementation handoff (no-override)', () =>
     userStore.currentUser = { id: 'user-1', tenant_key: 'tenant-1' }
   })
 
-  it('renders a real waiting impl exec WITHOUT any status override', async () => {
-    // Post-CE-0029 reality: staging exec is complete (historical), impl exec
-    // is waiting (pre-spawned by _handle_staging_end). Both rows render with
-    // their actual statuses; the UI does not rewrite 'complete' to 'waiting'.
+  it('renders the single orch row in waiting status WITHOUT any override', async () => {
+    // Post-CE-0032 reality: single orchestrator entity. At staging-end the
+    // backend leaves the one orch exec row at status='waiting' (no second
+    // row spawned; the CE-0029 Item 2 pre-spawn was removed). The UI shows
+    // exactly one orch row, status 'Waiting', with no relabel.
     const project = makeProject()
     const wrapper = await mountWithJobs(project, [
       {
         job_id: 'j-orch',
-        agent_id: 'a-orch-staging',
-        agent_name: 'orchestrator',
-        agent_display_name: 'orchestrator',
-        status: 'complete',
-        phase: null,
-      },
-      {
-        job_id: 'j-orch',
-        agent_id: 'a-orch-impl',
+        agent_id: 'a-orch',
         agent_name: 'orchestrator',
         agent_display_name: 'orchestrator',
         status: 'waiting',
@@ -120,17 +118,9 @@ describe('JobsTab CE-0029 staging→implementation handoff (no-override)', () =>
     ])
 
     const rows = wrapper.findAll('[data-testid="agent-row"]')
-    expect(rows.length).toBe(2)
-
-    const orchStatuses = rows.map((r) => r.attributes('data-agent-status'))
-    expect(orchStatuses).toContain('complete')
-    expect(orchStatuses).toContain('waiting')
-
-    // No row has rewritten its status — the chip text matches the raw
-    // store-fed status for both rows.
-    const chips = rows.map((r) => r.find('[data-testid="status-chip"]').text())
-    expect(chips.some((t) => t.includes('Complete'))).toBe(true)
-    expect(chips.some((t) => t.includes('Waiting'))).toBe(true)
+    expect(rows.length).toBe(1)
+    expect(rows[0].attributes('data-agent-status')).toBe('waiting')
+    expect(rows[0].find('[data-testid="status-chip"]').text()).toContain('Waiting')
   })
 
   it('does not rewrite a working orchestrator', async () => {
