@@ -39,7 +39,7 @@ from giljo_mcp.models.projects import Project
 from giljo_mcp.repositories.project_lifecycle_repository import ProjectLifecycleRepository
 from giljo_mcp.repositories.project_repository import ProjectRepository
 from giljo_mcp.schemas.service_responses import ProjectLaunchResult
-from giljo_mcp.services.project_helpers import _build_ws_project_data
+from giljo_mcp.services.project_helpers import _build_ws_project_data, spawn_implementation_orchestrator
 from giljo_mcp.tenant import TenantManager
 
 
@@ -297,28 +297,32 @@ class ProjectLaunchService:
         with full context budget, reading its mission from the unchanged
         AgentJob row.
 
+        CE-0028c: delegates the spawn to the canonical helper in
+        ``project_helpers.spawn_implementation_orchestrator`` so this path
+        shares idempotency semantics with the
+        ``PATCH /launch-implementation`` endpoint. Both call sites get the
+        same find-or-create behavior.
+
         Args:
             session: Active database session.
             project: Project model instance.
             job_id: Existing orchestrator AgentJob.job_id (unchanged across
-                phases).
+                phases). Kept in the return value for caller convenience;
+                the helper itself rediscovers it from the staging exec.
             tenant_key: Tenant key for isolation.
 
         Returns:
             ProjectLaunchResult with the same job_id and a fresh launch prompt.
         """
-        impl_execution = AgentExecution(
-            agent_id=str(uuid4()),
-            job_id=job_id,
-            tenant_key=tenant_key,
-            agent_display_name="orchestrator",
-            agent_name="orchestrator",
-            status="waiting",
-            progress=0,
-            health_status="unknown",
-            project_phase="implementation",
-        )
-        await self._lifecycle_repo.add_entity(session, impl_execution)
+        impl_execution = await spawn_implementation_orchestrator(session, str(project.id), tenant_key)
+        if impl_execution is None:
+            # Defensive: the caller verified an existing orchestrator before
+            # invoking this method, so the helper should always find one.
+            # If we get here, the state is genuinely broken — surface clearly.
+            raise RuntimeError(
+                f"spawn_implementation_orchestrator returned None for project {project.id} "
+                "despite the caller's existence check. Data state is inconsistent."
+            )
         await self._lifecycle_repo.commit(session)
 
         self._logger.info(

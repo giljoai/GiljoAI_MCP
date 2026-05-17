@@ -14,6 +14,11 @@ imported ``_build_ws_project_data`` directly from project_service.
 import logging
 from datetime import UTC, datetime
 from typing import Any
+from uuid import uuid4
+
+from sqlalchemy import select
+
+from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 
 
 logger = logging.getLogger(__name__)
@@ -118,3 +123,130 @@ async def mark_staging_complete(
             )
 
     return True
+
+
+async def spawn_implementation_orchestrator(
+    session,
+    project_id: str,
+    tenant_key: str,
+) -> AgentExecution | None:
+    """Find-or-spawn an impl-phase orchestrator execution (CE-0028c).
+
+    Idempotent — safe to call multiple times. Three branches:
+
+    1. An impl-phase execution already exists with ``status`` in
+       ``('waiting', 'working')`` → return it. No write.
+    2. The staging-phase execution is ``status='complete'`` and no impl
+       execution exists yet → spawn a fresh ``project_phase='implementation'``,
+       ``status='waiting'`` execution attached to the same ``AgentJob``,
+       flush, return it.
+    3. No orchestrator job exists for this project → return ``None``.
+       Caller treats as a hard error (the project has no orchestrator).
+
+    Why this exists: the Implement-button UI flow calls
+    ``PATCH /api/agent-jobs/projects/{id}/launch-implementation`` (sets
+    ``project.implementation_launched_at``) and then
+    ``GET /api/v1/prompts/implementation/{id}`` (fetches the orch's launch
+    prompt). The prompt endpoint filters orchestrator executions by
+    ``status NOT IN ('complete', 'closed', 'decommissioned', 'failed')``.
+    Post-CE-0026 the staging execution is ``'complete'`` at that point —
+    if no impl execution exists, the prompt endpoint returns 404 and the
+    play button silently fails. The CE-0026 spawn was wired only to the
+    initial-launch endpoint (``POST /api/v1/projects/{id}/launch``), which
+    the play button doesn't call. CE-0028c wires the spawn to the actual
+    Implement-button path.
+
+    Future direction (queued for CE-0029): pre-spawn the impl execution at
+    staging-end inside ``_handle_staging_end`` instead of lazily here. The
+    helper stays useful for idempotency on the endpoint, but the lazy-spawn
+    branch becomes a fallback rather than the primary path.
+
+    Args:
+        session: Active SQLAlchemy AsyncSession. Caller commits; this helper
+            only flushes so it can be batched into the caller's transaction
+            (e.g., the endpoint commits timestamp + spawn together).
+        project_id: Project UUID (string).
+        tenant_key: Tenant key for isolation.
+
+    Returns:
+        The impl-phase ``AgentExecution`` (existing or newly created), or
+        ``None`` if the project has no orchestrator job at all.
+    """
+    stmt = (
+        select(AgentExecution)
+        .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+        .where(
+            AgentJob.project_id == project_id,
+            AgentExecution.tenant_key == tenant_key,
+            AgentExecution.agent_display_name == "orchestrator",
+            ~AgentExecution.status.in_(["decommissioned"]),
+        )
+    )
+    execs = list((await session.execute(stmt)).scalars().all())
+
+    if not execs:
+        logger.warning(
+            "[CE-0028c] spawn_implementation_orchestrator: no orchestrator job found for project %s",
+            project_id,
+        )
+        return None
+
+    # Branch 1: idempotent — any existing non-terminal orch exec is the
+    # "current" orchestrator and serves the prompt endpoint's needs.
+    # Includes both impl-phase (the canonical case) and staging-phase
+    # (the orch is still in-flight; Implement-button shouldn't have been
+    # clickable, but the helper stays safe to call).
+    active = next(
+        (e for e in execs if e.status in ("waiting", "working")),
+        None,
+    )
+    if active:
+        logger.debug(
+            "[CE-0028c] spawn_implementation_orchestrator: active orch exec %s (status=%s, phase=%s) "
+            "already exists for project %s",
+            active.agent_id,
+            active.status,
+            getattr(active, "project_phase", None),
+            project_id,
+        )
+        return active
+
+    # Branch 2: anchor spawn to ANY complete orch exec. CE-0027 explicitly
+    # tolerates a mislabeled project_phase column (legacy rows had the buggy
+    # default 'implementation' on what was really a staging session). The
+    # SPAWN trigger is status='complete', not phase='staging'. Matches the
+    # CE-0027 simplification in project_launch_service.launch_project.
+    complete_orch = next((e for e in execs if e.status == "complete"), None)
+    if complete_orch is None:
+        # No complete orch and no active orch — execs all in some odd state
+        # (e.g., 'failed', 'closed'). Return the most-recent for the caller
+        # to inspect; spawn would be invalid.
+        logger.info(
+            "[CE-0028c] spawn_implementation_orchestrator: no complete or active orch exec for project %s; "
+            "returning latest (%s, status=%s)",
+            project_id,
+            execs[0].agent_id,
+            execs[0].status,
+        )
+        return execs[0]
+
+    impl_exec = AgentExecution(
+        agent_id=str(uuid4()),
+        job_id=complete_orch.job_id,
+        tenant_key=tenant_key,
+        agent_display_name="orchestrator",
+        agent_name="orchestrator",
+        status="waiting",
+        progress=0,
+        health_status="unknown",
+        project_phase="implementation",
+    )
+    session.add(impl_exec)
+    await session.flush()
+    logger.info(
+        "[CE-0028c] spawned implementation orchestrator execution %s for project %s (job %s)",
+        impl_exec.agent_id,
+        project_id,
+        complete_orch.job_id,
+    )
+    return impl_exec

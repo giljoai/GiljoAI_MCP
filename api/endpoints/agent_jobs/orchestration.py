@@ -317,17 +317,33 @@ async def launch_implementation(
     if not project:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
 
-    # Check if already launched (idempotent)
-    if project.implementation_launched_at is not None:
-        logger.info("Project %s already launched at %s", sanitize(project_id), project.implementation_launched_at)
+    already_launched = project.implementation_launched_at is not None
+
+    if not already_launched:
+        project.implementation_launched_at = datetime.now(UTC)
+
+    # CE-0028c: spawn the impl-phase orchestrator execution so the
+    # subsequent GET /api/v1/prompts/implementation/{id} can find a
+    # non-terminal orch. Without this the staging exec stays 'complete'
+    # (filtered out by the prompt endpoint) and the play button silently
+    # fails with a 404. The helper is idempotent — safe to call on the
+    # already-launched path too, which closes the race where a prior call
+    # set the timestamp but the spawn didn't land.
+    from giljo_mcp.services.project_helpers import spawn_implementation_orchestrator
+
+    await spawn_implementation_orchestrator(db, project_id, current_user.tenant_key)
+    await db.commit()
+    await db.refresh(project)
+
+    if already_launched:
+        logger.info(
+            "Project %s already launched at %s (impl-exec spawn re-asserted)",
+            sanitize(project_id),
+            project.implementation_launched_at,
+        )
         return LaunchImplementationResponse(
             already_launched=True, launched_at=project.implementation_launched_at.isoformat()
         )
-
-    # Set timestamp
-    project.implementation_launched_at = datetime.now(UTC)
-    await db.commit()
-    await db.refresh(project)
 
     logger.info(
         "Implementation launched for project %s at %s", sanitize(project_id), project.implementation_launched_at
