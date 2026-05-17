@@ -30,6 +30,7 @@ from giljo_mcp.models.agent_identity import AgentExecution, AgentJob, AgentTodoI
 from giljo_mcp.models.products import Product
 from giljo_mcp.models.projects import Project
 from giljo_mcp.services.job_completion_service import JobCompletionService
+from giljo_mcp.services.project_helpers import spawn_implementation_orchestrator
 
 
 # ============================================================================
@@ -567,11 +568,241 @@ async def test_staging_orchestrator_complete_job_leaves_job_status_active(
         f"CE-0028: staging-end must leave job.completed_at unset, got {refreshed_job.completed_at!r}"
     )
 
-    refreshed_exec = (
-        await db_session.execute(select(AgentExecution).where(AgentExecution.job_id == job.job_id))
-    ).scalar_one()
-    assert refreshed_exec.status == "complete", (
+    # CE-0029 Item 2: there are now TWO execs on this job — the historical
+    # staging exec (complete) and the newly pre-spawned impl exec (waiting).
+    # Filter by phase to assert each independently.
+    refreshed_execs = list(
+        (await db_session.execute(select(AgentExecution).where(AgentExecution.job_id == job.job_id))).scalars().all()
+    )
+    by_phase = {e.project_phase: e for e in refreshed_execs}
+    assert by_phase["staging"].status == "complete", (
         "Staging execution must still mark itself complete — only the parent job is preserved"
+    )
+    assert by_phase["implementation"].status == "waiting", (
+        "CE-0029 Item 2: pre-spawned impl exec must be 'waiting' immediately at staging-end"
+    )
+
+
+# ============================================================================
+# CE-0029 Item 2 regression tests — pre-spawn impl exec at staging-end
+# ============================================================================
+
+
+@pytest.mark.asyncio
+async def test_staging_end_prespawns_impl_exec(
+    db_session: AsyncSession,
+    completion_service: JobCompletionService,
+    test_tenant_key: str,
+    test_product: Product,
+):
+    """CE-0029 Item 2: after a successful staging-end complete_job, exactly
+    one waiting impl-phase orchestrator execution exists alongside the
+    now-complete staging execution.
+
+    Both execs attach to the same AgentJob (orchestrator job survives the
+    phase boundary, per CE-0028 ``job.status='active'`` preservation).
+    """
+    project = await _seed_project(db_session, test_tenant_key, test_product.id, staging_status="staging")
+    job, _ = await _seed_orchestrator_job(db_session, test_tenant_key, project.id, project_phase="staging")
+
+    result = await completion_service.complete_job(
+        job_id=job.job_id,
+        result={"summary": "Staging end — pre-spawn impl exec"},
+        tenant_key=test_tenant_key,
+    )
+
+    assert result.status == "success"
+    assert result.staging_directive is not None
+    assert result.staging_directive.action == "STOP"
+
+    # Two executions on the same job: the historical staging exec (complete)
+    # and the freshly-spawned impl exec (waiting).
+    execs = list(
+        (
+            await db_session.execute(
+                select(AgentExecution).where(
+                    AgentExecution.job_id == job.job_id,
+                    AgentExecution.tenant_key == test_tenant_key,
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert len(execs) == 2, f"Expected 2 execs on job {job.job_id}, got {len(execs)}: {[e.status for e in execs]}"
+
+    by_phase = {e.project_phase: e for e in execs}
+    assert "staging" in by_phase and "implementation" in by_phase, (
+        f"Expected one staging + one implementation exec, got phases: {[e.project_phase for e in execs]}"
+    )
+    assert by_phase["staging"].status == "complete", (
+        f"Staging exec must be 'complete', got {by_phase['staging'].status!r}"
+    )
+    assert by_phase["implementation"].status == "waiting", (
+        f"Impl exec must be 'waiting', got {by_phase['implementation'].status!r}"
+    )
+    # Both share the AgentJob.
+    assert by_phase["implementation"].job_id == job.job_id
+    assert by_phase["staging"].job_id == job.job_id
+
+
+@pytest.mark.asyncio
+async def test_staging_end_prespawn_is_idempotent(
+    db_session: AsyncSession,
+    completion_service: JobCompletionService,
+    test_tenant_key: str,
+    test_product: Product,
+):
+    """CE-0029 Item 2: a second staging-end complete_job (defensive — should
+    not happen in practice) does NOT create a second impl exec. The helper's
+    Branch 1 detects the existing waiting impl exec and returns it.
+
+    The second call also exits the staging-end branch via the
+    ``project.implementation_launched_at`` safeguard if the test set it; we
+    don't set that here — the second call lands in _handle_staging_end again
+    and the helper's idempotency carries the test.
+    """
+    project = await _seed_project(db_session, test_tenant_key, test_product.id, staging_status="staging")
+    job, _ = await _seed_orchestrator_job(db_session, test_tenant_key, project.id, project_phase="staging")
+
+    # First staging-end call — spawns the impl exec.
+    await completion_service.complete_job(
+        job_id=job.job_id,
+        result={"summary": "First staging-end"},
+        tenant_key=test_tenant_key,
+    )
+
+    impl_after_first = list(
+        (
+            await db_session.execute(
+                select(AgentExecution).where(
+                    AgentExecution.job_id == job.job_id,
+                    AgentExecution.tenant_key == test_tenant_key,
+                    AgentExecution.project_phase == "implementation",
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert len(impl_after_first) == 1, f"After first staging-end, expected 1 impl exec, got {len(impl_after_first)}"
+
+    # Re-fire the helper directly (the second complete_job would 404 because
+    # the staging exec is now terminal). Call spawn directly to assert
+    # idempotency in the same way _handle_staging_end would call it.
+    second = await spawn_implementation_orchestrator(db_session, str(project.id), test_tenant_key)
+    await db_session.commit()
+
+    # Existing waiting impl exec returned, no second spawn.
+    assert second is not None
+    assert second.agent_id == impl_after_first[0].agent_id
+
+    impl_after_second = list(
+        (
+            await db_session.execute(
+                select(AgentExecution).where(
+                    AgentExecution.job_id == job.job_id,
+                    AgentExecution.tenant_key == test_tenant_key,
+                    AgentExecution.project_phase == "implementation",
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert len(impl_after_second) == 1, (
+        f"After idempotent re-spawn, expected still 1 impl exec, got {len(impl_after_second)}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_implementation_end_does_not_prespawn(
+    db_session: AsyncSession,
+    completion_service: JobCompletionService,
+    test_tenant_key: str,
+    test_product: Product,
+):
+    """CE-0029 Item 2 negative case: an impl-phase orchestrator's complete_job
+    must NOT spawn another orchestrator execution. The pre-spawn fires only
+    at the staging-end branch.
+
+    Seeds two execs on the same job (matching the post-CE-0029-Item-2 state):
+    staging (complete) + implementation (working). Completing the impl exec
+    must leave the count at 2 — no third orch exec.
+    """
+    project = await _seed_project(db_session, test_tenant_key, test_product.id, staging_status="staging_complete")
+    # Mark the project as having launched implementation so the
+    # _is_staging_end_orchestrator_call safeguard treats the impl exec as
+    # impl-phase regardless of the project_phase column.
+    project.implementation_launched_at = datetime.now(UTC)
+    await db_session.commit()
+    await db_session.refresh(project)
+
+    # Historical staging exec (complete) on the orchestrator job.
+    staging_job_id = str(uuid4())
+    staging_job = AgentJob(
+        job_id=staging_job_id,
+        tenant_key=test_tenant_key,
+        project_id=project.id,
+        job_type="orchestrator",
+        mission="CE-0029 staging history",
+        status="active",
+    )
+    db_session.add(staging_job)
+    staging_exec = AgentExecution(
+        job_id=staging_job_id,
+        tenant_key=test_tenant_key,
+        agent_display_name="orchestrator",
+        status="complete",
+        messages_sent_count=0,
+        messages_waiting_count=0,
+        messages_read_count=0,
+        started_at=datetime.now(UTC) - timedelta(minutes=10),
+        completed_at=datetime.now(UTC) - timedelta(minutes=5),
+        project_phase="staging",
+    )
+    db_session.add(staging_exec)
+
+    # Active impl exec on the SAME job.
+    impl_exec = AgentExecution(
+        job_id=staging_job_id,
+        tenant_key=test_tenant_key,
+        agent_display_name="orchestrator",
+        status="working",
+        messages_sent_count=0,
+        messages_waiting_count=0,
+        messages_read_count=0,
+        started_at=datetime.now(UTC) - timedelta(minutes=2),
+        project_phase="implementation",
+    )
+    db_session.add(impl_exec)
+    await db_session.commit()
+
+    result = await completion_service.complete_job(
+        job_id=staging_job_id,
+        result={"summary": "Impl-phase close — must not spawn another orch"},
+        tenant_key=test_tenant_key,
+    )
+
+    assert result.status == "success"
+    assert result.staging_directive is None, "Impl-phase complete_job must NOT return a staging_directive"
+
+    # Still exactly 2 execs on the job: no extra spawn.
+    execs = list(
+        (
+            await db_session.execute(
+                select(AgentExecution).where(
+                    AgentExecution.job_id == staging_job_id,
+                    AgentExecution.tenant_key == test_tenant_key,
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert len(execs) == 2, (
+        f"Impl-phase close must NOT create a new orch exec — expected 2, got {len(execs)} "
+        f"(statuses: {[e.status for e in execs]}, phases: {[e.project_phase for e in execs]})"
     )
 
 

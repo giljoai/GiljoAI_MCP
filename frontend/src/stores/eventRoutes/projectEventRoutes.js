@@ -12,6 +12,8 @@ export const PROJECT_EVENT_ROUTES = {
   'project:mission_updated': { store: 'projectState', action: 'handleMissionUpdated' },
   // Handover 0826: Server-side staging completion signal
   'project:staging_complete': { store: 'projectState', action: 'handleStagingComplete' },
+  // CE-0029 Item 3: symmetric signal emitted by the launch_implementation endpoint
+  'project:implementation_launched': { store: 'projectState', action: 'handleImplementationLaunched' },
 
   // Entity updates (legacy multiplexed)
   entity_update: {

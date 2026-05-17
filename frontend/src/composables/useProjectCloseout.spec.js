@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { ref, computed, nextTick } from 'vue'
 import { setActivePinia, createPinia } from 'pinia'
 import { useProjectCloseout } from './useProjectCloseout'
-import { useProjectStateStore } from '@/stores/projectStateStore'
 
 vi.mock('@/services/api', () => {
   const apiObj = {
@@ -231,44 +230,21 @@ describe('useProjectCloseout', () => {
     })
   })
 
-  // CE-0028b regression: in production the parent's props.project is an API
-  // snapshot that does NOT refresh when the WebSocket fires
-  // project:staging_complete — only the reactive projectStateStore.stagingComplete
-  // flag updates. The CE-0028 first attempt read from props.project.staging_status
-  // and so the override never fired in real life. These tests pin the
-  // store-as-source-of-truth contract.
-  describe('CE-0028b staging-complete read from projectStateStore (regression)', () => {
-    it('suppresses closeout when ONLY the store flag is set (WS event arrived, prop still stale)', () => {
+  // CE-0029 Item 1 regression: after the parent (ProjectTabs.vue) was
+  // refactored to maintain a reactive project ref that refetches on
+  // project:staging_complete + project:implementation_launched WS events,
+  // the composable reads staging_status and implementation_launched_at
+  // directly from the ref. No dual-source store-OR-prop fallback exists.
+  // These tests mutate the project ref directly (the same observable change
+  // a parent's refetch would produce) instead of injecting through a now-removed
+  // store path.
+  describe('CE-0029 Item 1 reactive-project regression', () => {
+    it('updates allJobsTerminal when the project ref mutates from staging to staging_complete', async () => {
       const project = makeProject({
         product_id: 'prod-1',
-        // Prop is STILL 'staging' — this is the production reality after a
-        // WS event arrives but before the parent has refetched.
         staging_status: 'staging',
         implementation_launched_at: null,
       })
-      const store = useProjectStateStore()
-      store.setStagingComplete('proj-1', true)
-
-      const jobs = [{ agent_display_name: 'orchestrator', status: 'complete' }]
-      const { allJobsTerminal, showCloseoutButton } = useProjectCloseout({
-        project,
-        projectId: computed(() => 'proj-1'),
-        sortedJobs: makeJobs(jobs),
-      })
-
-      expect(allJobsTerminal.value).toBe(false)
-      expect(showCloseoutButton.value).toBe(false)
-    })
-
-    it('resumes closeout when implementation_launched_at is set on the prop (even if store says staging)', () => {
-      const project = makeProject({
-        product_id: 'prod-1',
-        staging_status: 'staging_complete',
-        implementation_launched_at: '2026-05-17T10:00:00Z',
-      })
-      const store = useProjectStateStore()
-      store.setStagingComplete('proj-1', true)
-
       const jobs = [{ agent_display_name: 'orchestrator', status: 'complete' }]
       const { allJobsTerminal } = useProjectCloseout({
         project,
@@ -276,7 +252,39 @@ describe('useProjectCloseout', () => {
         sortedJobs: makeJobs(jobs),
       })
 
-      // implementation_launched_at present -> impl-phase, real closeout flow runs
+      // Initial: not staging_complete, single orch is 'complete' — composable
+      // sees it as full closeout-eligible (no staging suppression).
+      expect(allJobsTerminal.value).toBe(true)
+
+      // Parent refetches and the ref reflects staging_complete (impl not yet
+      // launched). Closeout must be suppressed.
+      project.value = { ...project.value, staging_status: 'staging_complete' }
+      await nextTick()
+      expect(allJobsTerminal.value).toBe(false)
+    })
+
+    it('resumes closeout when implementation_launched_at appears on the reactive ref', async () => {
+      const project = makeProject({
+        product_id: 'prod-1',
+        staging_status: 'staging_complete',
+        implementation_launched_at: null,
+      })
+      const jobs = [{ agent_display_name: 'orchestrator', status: 'complete' }]
+      const { allJobsTerminal } = useProjectCloseout({
+        project,
+        projectId: computed(() => 'proj-1'),
+        sortedJobs: makeJobs(jobs),
+      })
+
+      expect(allJobsTerminal.value).toBe(false)
+
+      // Implement-click landed; the parent's WS-driven refetch populates the
+      // timestamp on the reactive ref. Composable lets the closeout flow run.
+      project.value = {
+        ...project.value,
+        implementation_launched_at: '2026-05-17T10:00:00Z',
+      }
+      await nextTick()
       expect(allJobsTerminal.value).toBe(true)
     })
   })

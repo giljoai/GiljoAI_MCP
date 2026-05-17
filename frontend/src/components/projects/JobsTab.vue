@@ -494,48 +494,15 @@ const executionOrderPhases = computed(() => {
 })
 
 /**
- * CE-0028 / CE-0028b: at the staging→implementation handoff, the orchestrator's
- * staging execution is technically `status='complete'` (the session IS
- * over) but the project is NOT done — the user still needs to click
- * Implement. The DB stays truthful; this helper rewrites the displayed
- * status to `'waiting'` so the UI doesn't show "Complete" before the
- * project actually finishes.
- *
- * Source-of-truth notes (CE-0028b fix):
- *   - `stagingComplete` must be read from `projectStateStore`, which is
- *     updated reactively by the `project:staging_complete` WebSocket event.
- *     `props.project.staging_status` is the API snapshot from page load and
- *     does NOT refresh on WS events — using it caused the override to never
- *     fire in production (CE-0028 first try, reported by Patrik 2026-05-17).
- *   - `implementation_launched_at` is read from the prop, populated by the
- *     API response (added to ProjectResponse/ProjectListItem schemas in
- *     CE-0028b). Once the user clicks Implement and the next fetch lands,
- *     the override naturally clears.
+ * CE-0029: phase sort only. The CE-0028b applyStagingHandoffStatusOverride
+ * relabel is gone — CE-0029 Item 2 makes the backend pre-spawn an impl-phase
+ * orchestrator execution at staging-end, so the latest orch exec is
+ * genuinely `status='waiting'` immediately, with no UI fiction. The DB and
+ * the displayed status now agree.
  */
-function applyStagingHandoffStatusOverride(agent, projectProp, stagingComplete) {
-  if (!agent || agent.status !== 'complete') return agent
-  if (!isOrchestrator(agent)) return agent
-  if (!stagingComplete) return agent
-  if (projectProp?.implementation_launched_at) return agent
-  return { ...agent, status: 'waiting' }
-}
-
-/** Handover 0829: Sort table rows by phase order. */
 const phaseSortedAgents = computed(() => {
-  const pid = props.project?.project_id || props.project?.id
-  // CE-0028b: stagingComplete comes from the WS-reactive store, NOT the prop.
-  // Fall back to the prop's staging_status for the page-load case where the
-  // store hasn't been hydrated yet (e.g., user opens the project page after
-  // staging already finished).
-  const storeState = projectStateStore.getProjectState(pid)
-  const stagingComplete =
-    storeState?.stagingComplete === true ||
-    props.project?.staging_status === 'staging_complete'
-
-  const overridden = sortedAgents.value.map((agent) =>
-    applyStagingHandoffStatusOverride(agent, props.project, stagingComplete)
-  )
-  return overridden.sort((a, b) => {
+  const ordered = [...sortedAgents.value]
+  return ordered.sort((a, b) => {
     const phaseA = isOrchestrator(a) ? -1 : (a.phase ?? 999)
     const phaseB = isOrchestrator(b) ? -1 : (b.phase ?? 999)
     if (phaseA !== phaseB) return phaseA - phaseB

@@ -15,6 +15,12 @@ function normalizeProjectState(project) {
   if (!projectId) return null
 
   const ss = project?.staging_status
+  // CE-0029 Item 3: implementation_launched derives from the API field
+  // implementation_launched_at, which CE-0028b added to ProjectResponse /
+  // ProjectListItem. After Implement-click the launch_implementation
+  // endpoint also fires project:implementation_launched, which patches the
+  // boolean+timestamp directly via setImplementationLaunched().
+  const implLaunchedAt = project?.implementationLaunchedAt || project?.implementation_launched_at || null
   return {
     project_id: projectId,
     mission: project?.mission || '',
@@ -24,6 +30,8 @@ function normalizeProjectState(project) {
     isStaged: Boolean(project?.isStaged) || ss === 'staged' || false,
     isStaging: Boolean(project?.isStaging) || ss === 'staging' || false,
     isLaunched: Boolean(project?.isLaunched) || false,
+    implementationLaunched: Boolean(project?.implementationLaunched) || Boolean(implLaunchedAt) || false,
+    implementationLaunchedAt: implLaunchedAt,
   }
 }
 
@@ -57,6 +65,8 @@ export const useProjectStateStore = defineStore('projectStateDomain', () => {
         isStaged: false,
         isStaging: false,
         isLaunched: false,
+        implementationLaunched: false,
+        implementationLaunchedAt: null,
       }
 
     const next = immutableObjectPatch(base, patch)
@@ -98,6 +108,18 @@ export const useProjectStateStore = defineStore('projectStateDomain', () => {
 
   function setLaunched(projectId, isLaunched) {
     upsertProjectState(projectId, { isLaunched: Boolean(isLaunched) })
+  }
+
+  // CE-0029 Item 3: WS-driven mirror of mark_staging_complete's
+  // setStagingComplete. The launch_implementation endpoint emits
+  // project:implementation_launched with the timestamp; this action and the
+  // handler below patch the store so children reading the reactive state
+  // see the transition without waiting on the next API fetch.
+  function setImplementationLaunched(projectId, timestamp) {
+    upsertProjectState(projectId, {
+      implementationLaunched: Boolean(timestamp),
+      implementationLaunchedAt: timestamp || null,
+    })
   }
 
   async function restageProject(projectId) {
@@ -156,6 +178,13 @@ export const useProjectStateStore = defineStore('projectStateDomain', () => {
     setStagingComplete(projectId, true)
   }
 
+  // CE-0029 Item 3: Symmetric handler for the launch_implementation WS event.
+  function handleImplementationLaunched(payload) {
+    const projectId = payload?.project_id
+    if (!projectId) return
+    setImplementationLaunched(projectId, payload?.implementation_launched_at || null)
+  }
+
   function handleMessageReceived(payload) {
     const projectId = payload?.project_id
     if (!projectId) return
@@ -185,12 +214,14 @@ export const useProjectStateStore = defineStore('projectStateDomain', () => {
     setIsStaged,
     setIsStaging,
     setLaunched,
+    setImplementationLaunched,
     restageProject,
     unstageProject,
 
     // ws handlers
     handleMissionUpdated,
     handleStagingComplete,
+    handleImplementationLaunched,
     handleMessageSent,
     handleMessageReceived,
 

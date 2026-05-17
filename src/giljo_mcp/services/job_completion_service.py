@@ -28,7 +28,7 @@ from giljo_mcp.models.tasks import MessageAcknowledgment
 from giljo_mcp.models.user_approval import UserApproval
 from giljo_mcp.repositories.agent_completion_repository import AgentCompletionRepository
 from giljo_mcp.schemas.service_responses import CompleteJobResult, StagingDirective
-from giljo_mcp.services.project_helpers import mark_staging_complete
+from giljo_mcp.services.project_helpers import mark_staging_complete, spawn_implementation_orchestrator
 from giljo_mcp.tenant import TenantManager
 
 
@@ -613,6 +613,22 @@ class JobCompletionService:
             source="complete_job:staging_end",
             websocket_manager=self._websocket_manager,
         )
+
+        # CE-0029 Item 2: pre-spawn the impl-phase orchestrator execution.
+        # The staging execution is now status='complete' (just flipped by
+        # _apply_completion_status); the helper sees that and creates a fresh
+        # status='waiting' impl-phase exec attached to the same AgentJob. The
+        # UI then renders the orchestrator as genuinely Waiting (no
+        # CE-0028b status relabel needed) and the subsequent Implement-click
+        # PATCH endpoint finds an existing non-terminal exec (idempotent
+        # no-op via the helper's Branch 1).
+        impl_exec = await spawn_implementation_orchestrator(session, str(project.id), tenant_key)
+        if impl_exec is None:
+            self._logger.warning(
+                "[STAGING_END] spawn_implementation_orchestrator returned None for project %s — "
+                "Implement-click will fall back to lazy spawn",
+                project.id,
+            )
         return StagingDirective()
 
     # _resolve_action_items removed in INF-5025b

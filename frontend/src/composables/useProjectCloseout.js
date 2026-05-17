@@ -2,7 +2,6 @@ import { ref, computed, watch } from 'vue'
 import api from '@/services/api'
 import { useNotificationStore } from '@/stores/notifications'
 import { useToast } from '@/composables/useToast'
-import { useProjectStateStore } from '@/stores/projectStateStore'
 
 /**
  * Manages the project closeout gate: detects when all agent jobs reach terminal
@@ -18,7 +17,6 @@ import { useProjectStateStore } from '@/stores/projectStateStore'
 export function useProjectCloseout({ project, projectId, sortedJobs, onComplete }) {
   const notificationStore = useNotificationStore()
   const { showToast } = useToast()
-  const projectStateStore = useProjectStateStore()
 
   const showCloseoutModal = ref(false)
   const memoryWritten = ref(false)
@@ -38,24 +36,15 @@ export function useProjectCloseout({ project, projectId, sortedJobs, onComplete 
 
   const allJobsTerminal = computed(() => {
     if (['completed', 'terminated', 'cancelled'].includes(project.value?.status)) return false
-    // CE-0028 / CE-0028b: at the staging→implementation handoff the
-    // orchestrator's staging execution reports status='complete' (it IS
-    // finished as a session) but the project is NOT done — the user still
-    // needs to click Implement. Suppress the project-level closeout flow
-    // until the implementation phase has actually launched.
-    //
-    // Sources (CE-0028b fix):
-    //   - stagingComplete from projectStateStore (reactive, updated by the
-    //     project:staging_complete WS event). props.project.staging_status
-    //     is the page-load snapshot and does NOT refresh on WS events; using
-    //     it caused the suppression to never fire in production.
-    //   - implementation_launched_at from the prop, now exposed by the
-    //     ProjectResponse/ProjectListItem schemas (CE-0028b).
-    const storeState = projectStateStore.getProjectState(projectId.value)
-    const stagingComplete =
-      storeState?.stagingComplete === true ||
+    // CE-0029 Item 1: project is now a reactive parent-owned ref that
+    // refetches on project:staging_complete + project:implementation_launched
+    // WS events. Both staging_status and implementation_launched_at update
+    // in place — no dual-source store-OR-prop fallback needed (the CE-0028b
+    // band-aid that this refactor retires).
+    if (
       project.value?.staging_status === 'staging_complete'
-    if (stagingComplete && !project.value?.implementation_launched_at) {
+      && !project.value?.implementation_launched_at
+    ) {
       return false
     }
     const jobs = sortedJobs.value || []

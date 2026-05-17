@@ -6,27 +6,27 @@
         Project:
         <!-- Series Chip (Handover 0440c) -->
         <v-chip
-          v-if="project?.project_type_id || project?.series_number"
-          :color="project?.project_type?.color || DEFAULT_PROJECT_TYPE_COLOR"
+          v-if="localProject?.project_type_id || localProject?.series_number"
+          :color="localProject?.project_type?.color || DEFAULT_PROJECT_TYPE_COLOR"
           size="small"
           variant="flat"
           class="project-badge mx-2"
-          :title="project?.project_type?.label || 'Untyped'"
+          :title="localProject?.project_type?.label || 'Untyped'"
         >
-          {{ project.taxonomy_alias }}
+          {{ localProject.taxonomy_alias }}
         </v-chip>
-        <v-tooltip v-if="project?.name && project.name.length > 40" location="bottom">
+        <v-tooltip v-if="localProject?.name && localProject.name.length > 40" location="bottom">
           <template #activator="{ props: tooltipProps }">
             <span v-bind="tooltipProps" class="project-name-text project-name-text--truncated" tabindex="0">
-              {{ project.name.slice(0, 40) + '...' }}
+              {{ localProject.name.slice(0, 40) + '...' }}
             </span>
           </template>
-          <span>{{ project.name }}</span>
+          <span>{{ localProject.name }}</span>
         </v-tooltip>
-        <span v-else class="project-name-text">{{ project?.name || 'Loading...' }}</span>
+        <span v-else class="project-name-text">{{ localProject?.name || 'Loading...' }}</span>
       </h1>
       <p class="text-body-2 project-id mb-0">
-        Project ID: {{ project?.project_id || project?.id || 'N/A' }}
+        Project ID: {{ localProject?.project_id || localProject?.id || 'N/A' }}
       </p>
     </div>
 
@@ -358,10 +358,10 @@
          the separate DecisionModal below. -->
     <CloseoutModal
       :show="showCloseoutModal"
-      :project-id="project.project_id || project.id"
-      :project-name="project.name"
-      :product-id="project.product_id"
-      :project-status="project.status"
+      :project-id="localProject.project_id || localProject.id"
+      :project-name="localProject.name"
+      :product-id="localProject.product_id"
+      :project-status="localProject.status"
       :orchestrator-closeout-blocked="orchestratorCloseoutBlocked"
       :orchestrator-job-id="orchestratorJobId"
       @close="showCloseoutModal = false"
@@ -441,7 +441,23 @@ const { gitEnabled, serenaEnabled } = useIntegrationStatus()
 // Toast notifications (Handover 0428)
 const { showToast } = useToast()
 
-const projectId = computed(() => props.project?.project_id || props.project?.id || null)
+/**
+ * CE-0029 Item 1: localProject is the reactive parent-owned snapshot.
+ * Initialized from props.project on mount + on prop change, and refetched
+ * via api.projects.get() whenever a project:* WS event arrives for the
+ * current project (staging_complete, implementation_launched). Children
+ * read from this ref instead of the static prop, so WS-driven state
+ * transitions propagate without a dual-source store-OR-prop fallback in
+ * each consumer (the CE-0028b band-aid that this refactor retires).
+ *
+ * Approach: A (refetch on event), per the CE-0029 handover. A single
+ * `GET /api/projects/{id}` is acceptable for these low-frequency events
+ * and keeps the patch logic out of the frontend (the API response is the
+ * authoritative shape).
+ */
+const localProject = ref({ ...(props.project || {}) })
+
+const projectId = computed(() => localProject.value?.project_id || localProject.value?.id || null)
 
 /**
  * Active agentic tool badge based on execution mode (moved from LaunchTab, Handover 0875)
@@ -550,7 +566,7 @@ const isGeminiMode = computed(() => executionMode.value === 'gemini_cli')
  * JobsTab reads execution_mode from project prop, so we need to merge the updated value
  */
 const projectWithUpdatedMode = computed(() => ({
-  ...props.project,
+  ...localProject.value,
   execution_mode: executionMode.value,
 }))
 
@@ -572,7 +588,7 @@ const {
   reset: resetCloseout,
   cleanup: cleanupCloseout,
 } = useProjectCloseout({
-  project: computed(() => props.project),
+  project: localProject,
   projectId,
   sortedJobs,
   onComplete: () => emit('project-updated'),
@@ -711,6 +727,11 @@ async function loadProjectData(pid, { fetchProject = false } = {}) {
     try {
       const response = await api.projects.get(pid)
       projectStateStore.setProject(response?.data)
+      // CE-0029 Item 1: keep localProject in sync with the freshly-fetched API
+      // response so the reactive snapshot reflects the latest server state.
+      if (response?.data) {
+        localProject.value = { ...response.data }
+      }
     } catch (error) {
       console.warn('[ProjectTabs] Failed to refresh project state:', error)
     }
@@ -724,6 +745,26 @@ async function loadProjectData(pid, { fetchProject = false } = {}) {
     }
   } catch (error) {
     console.warn('[ProjectTabs] Failed to load project data:', error)
+  }
+}
+
+/**
+ * CE-0029 Item 1: refetch the project from the API and replace localProject.
+ * Called from the WS event subscriptions below — those events (staging_complete,
+ * implementation_launched) are the ones that mutate project columns the UI
+ * cares about (staging_status, implementation_launched_at) but that the
+ * parent's static prop snapshot would otherwise miss until the next page load.
+ */
+async function refetchLocalProject(pid) {
+  if (!pid) return
+  try {
+    const response = await api.projects.get(pid)
+    if (response?.data) {
+      localProject.value = { ...response.data }
+      projectStateStore.setProject(response.data)
+    }
+  } catch (error) {
+    console.warn('[ProjectTabs] Failed to refetch project on WS event:', error)
   }
 }
 
@@ -777,6 +818,8 @@ watch(
 
 let unsubscribeConnectionListener = null
 let unsubscribeMemory = null
+let unsubscribeStagingComplete = null
+let unsubscribeImplLaunched = null
 onMounted(() => {
   unsubscribeConnectionListener = wsStore.onConnectionChange((connectionEvent) => {
     if (connectionEvent?.state === 'connected' && connectionEvent?.isReconnect) {
@@ -794,6 +837,32 @@ onMounted(() => {
   } catch {
     console.warn('[ProjectTabs] Failed to subscribe to memory events')
   }
+
+  // CE-0029 Item 1: subscribe to the two project transitions that mutate
+  // server-side fields the UI consumes (staging_status, implementation_launched_at).
+  // The store handler still patches its own flags; this subscription is
+  // independent and refetches the full project row so localProject reflects
+  // the canonical server state without the dual-source store-OR-prop fallback
+  // pattern that CE-0028b used.
+  try {
+    unsubscribeStagingComplete = wsStore.on('project:staging_complete', (payload) => {
+      if (payload?.project_id && payload.project_id === projectId.value) {
+        refetchLocalProject(projectId.value)
+      }
+    })
+  } catch {
+    console.warn('[ProjectTabs] Failed to subscribe to project:staging_complete')
+  }
+
+  try {
+    unsubscribeImplLaunched = wsStore.on('project:implementation_launched', (payload) => {
+      if (payload?.project_id && payload.project_id === projectId.value) {
+        refetchLocalProject(projectId.value)
+      }
+    })
+  } catch {
+    console.warn('[ProjectTabs] Failed to subscribe to project:implementation_launched')
+  }
 })
 
 // Handover 0440c: Update browser tab title when project loads
@@ -808,12 +877,29 @@ watch(
   { immediate: true },
 )
 
+// CE-0029 Item 1: hydrate localProject whenever the parent passes a new
+// project snapshot (e.g., route navigation to a different project, or the
+// parent's own refetch). Subsequent WS-driven mutations update localProject
+// directly via refetchLocalProject() — this watcher only handles the
+// parent->child handoff direction.
+watch(
+  () => props.project,
+  (project) => {
+    if (project) {
+      localProject.value = { ...project }
+    }
+  },
+  { immediate: true },
+)
+
 onBeforeUnmount(() => {
   if (projectId.value) {
     wsStore.unsubscribe('project', projectId.value)
   }
   unsubscribeConnectionListener?.()
   unsubscribeMemory?.()
+  unsubscribeStagingComplete?.()
+  unsubscribeImplLaunched?.()
   cleanupCloseout()
   document.title = 'GiljoAI MCP'
 })

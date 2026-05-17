@@ -281,6 +281,7 @@ async def launch_implementation(
     project_id: str,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db_session),
+    ws_dep: WebSocketDependency = Depends(get_websocket_dependency),
 ) -> LaunchImplementationResponse:
     """
     Set implementation_launched_at timestamp (phase gate release).
@@ -334,6 +335,25 @@ async def launch_implementation(
     await spawn_implementation_orchestrator(db, project_id, current_user.tenant_key)
     await db.commit()
     await db.refresh(project)
+
+    # CE-0029 Item 3: symmetric WS event for the staging→implementation
+    # transition. ``project:staging_complete`` already fires at staging-end
+    # (via mark_staging_complete); this event closes the symmetry so the
+    # frontend learns about the Implement-click without an API refetch.
+    # Fires on both first-launch and already-launched paths so newly-connected
+    # clients can hydrate. Broadcast failure must not fail the endpoint
+    # (same resilience pattern as mark_staging_complete).
+    try:
+        await ws_dep.broadcast_to_tenant(
+            tenant_key=current_user.tenant_key,
+            event_type="project:implementation_launched",
+            data={
+                "project_id": project_id,
+                "implementation_launched_at": project.implementation_launched_at.isoformat(),
+            },
+        )
+    except Exception as ws_error:  # noqa: BLE001 — WS resilience
+        logger.warning("[implementation_launched] WS broadcast failed: %s", ws_error)
 
     if already_launched:
         logger.info(
