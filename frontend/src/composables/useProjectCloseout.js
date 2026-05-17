@@ -2,6 +2,7 @@ import { ref, computed, watch } from 'vue'
 import api from '@/services/api'
 import { useNotificationStore } from '@/stores/notifications'
 import { useToast } from '@/composables/useToast'
+import { useProjectStateStore } from '@/stores/projectStateStore'
 
 /**
  * Manages the project closeout gate: detects when all agent jobs reach terminal
@@ -17,6 +18,7 @@ import { useToast } from '@/composables/useToast'
 export function useProjectCloseout({ project, projectId, sortedJobs, onComplete }) {
   const notificationStore = useNotificationStore()
   const { showToast } = useToast()
+  const projectStateStore = useProjectStateStore()
 
   const showCloseoutModal = ref(false)
   const memoryWritten = ref(false)
@@ -36,17 +38,24 @@ export function useProjectCloseout({ project, projectId, sortedJobs, onComplete 
 
   const allJobsTerminal = computed(() => {
     if (['completed', 'terminated', 'cancelled'].includes(project.value?.status)) return false
-    // CE-0028: at the staging→implementation handoff the orchestrator's
-    // staging execution reports status='complete' (it IS finished as a
-    // session) but the project is NOT done — the user still needs to click
-    // Implement. Suppress the project-level closeout flow until the
-    // implementation phase has actually launched. Once
-    // implementation_launched_at is set, normal closeout logic resumes for
-    // the impl-phase completion that ends the project.
-    if (
-      project.value?.staging_status === 'staging_complete' &&
-      !project.value?.implementation_launched_at
-    ) {
+    // CE-0028 / CE-0028b: at the staging→implementation handoff the
+    // orchestrator's staging execution reports status='complete' (it IS
+    // finished as a session) but the project is NOT done — the user still
+    // needs to click Implement. Suppress the project-level closeout flow
+    // until the implementation phase has actually launched.
+    //
+    // Sources (CE-0028b fix):
+    //   - stagingComplete from projectStateStore (reactive, updated by the
+    //     project:staging_complete WS event). props.project.staging_status
+    //     is the page-load snapshot and does NOT refresh on WS events; using
+    //     it caused the suppression to never fire in production.
+    //   - implementation_launched_at from the prop, now exposed by the
+    //     ProjectResponse/ProjectListItem schemas (CE-0028b).
+    const storeState = projectStateStore.getProjectState(projectId.value)
+    const stagingComplete =
+      storeState?.stagingComplete === true ||
+      project.value?.staging_status === 'staging_complete'
+    if (stagingComplete && !project.value?.implementation_launched_at) {
       return false
     }
     const jobs = sortedJobs.value || []

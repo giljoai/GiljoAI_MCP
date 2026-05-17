@@ -401,6 +401,11 @@ class ProjectService:
                     description=project.description,
                     status=project.status,
                     staging_status=project.staging_status,
+                    # CE-0028b: frontend uses this to distinguish staging→impl
+                    # handoff window from project-complete.
+                    implementation_launched_at=(
+                        project.implementation_launched_at.isoformat() if project.implementation_launched_at else None
+                    ),
                     product_id=project.product_id,
                     tenant_key=project.tenant_key,
                     execution_mode=project.execution_mode,
@@ -475,6 +480,11 @@ class ProjectService:
                         description=project.description,
                         status=project.status,
                         staging_status=project.staging_status,
+                        implementation_launched_at=(
+                            project.implementation_launched_at.isoformat()
+                            if project.implementation_launched_at
+                            else None
+                        ),
                         tenant_key=project.tenant_key,
                         product_id=project.product_id,
                         created_at=project.created_at.isoformat(),

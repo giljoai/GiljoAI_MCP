@@ -19,6 +19,7 @@ import { createVuetify } from 'vuetify'
 import JobsTab from '@/components/projects/JobsTab.vue'
 import { useAgentJobsStore } from '@/stores/agentJobsStore'
 import { useUserStore } from '@/stores/user'
+import { useProjectStateStore } from '@/stores/projectStateStore'
 
 const vuetify = createVuetify()
 
@@ -69,7 +70,7 @@ function makeProject(overrides = {}) {
   }
 }
 
-async function mountWithJobs(project, jobs) {
+async function mountWithJobs(project, jobs, { stagingCompleteInStore = false } = {}) {
   const wrapper = mount(JobsTab, {
     props: { project },
     global: { plugins: [createPinia(), vuetify], stubs },
@@ -77,6 +78,11 @@ async function mountWithJobs(project, jobs) {
   await wrapper.vm.$nextTick()
   const store = useAgentJobsStore()
   store.setJobs(jobs)
+  if (stagingCompleteInStore) {
+    const projectStateStore = useProjectStateStore()
+    const pid = project.project_id || project.id
+    projectStateStore.setStagingComplete(pid, true)
+  }
   await wrapper.vm.$nextTick()
   return wrapper
 }
@@ -177,7 +183,7 @@ describe('JobsTab CE-0028 staging→implementation handoff status', () => {
     expect(row.find('[data-testid="status-chip"]').text()).toContain('Complete')
   })
 
-  it('does not override when project staging_status is not staging_complete', async () => {
+  it('does not override when project staging_status is not staging_complete AND store has no stagingComplete', async () => {
     // E.g., closed-out project whose orchestrator is complete — that IS the real
     // project-complete state. Override must not fire.
     const project = makeProject({
@@ -198,5 +204,35 @@ describe('JobsTab CE-0028 staging→implementation handoff status', () => {
     const row = wrapper.find('[data-testid="agent-row"]')
     expect(row.attributes('data-agent-status')).toBe('complete')
     expect(row.find('[data-testid="status-chip"]').text()).toContain('Complete')
+  })
+
+  // CE-0028b regression: this is the case that was broken in production.
+  // The WebSocket fires project:staging_complete and updates the reactive
+  // store, but props.project.staging_status is the page-load API snapshot
+  // and does NOT refresh. The override MUST still fire from the store flag.
+  it('overrides to Waiting when ONLY the store says stagingComplete (CE-0028b regression)', async () => {
+    const project = makeProject({
+      // Prop is still 'staging' — production reality before parent refetches.
+      staging_status: 'staging',
+      implementation_launched_at: null,
+    })
+    const wrapper = await mountWithJobs(
+      project,
+      [
+        {
+          job_id: 'j-orch',
+          agent_id: 'a-orch',
+          agent_name: 'orchestrator',
+          agent_display_name: 'orchestrator',
+          status: 'complete',
+          phase: null,
+        },
+      ],
+      { stagingCompleteInStore: true },
+    )
+
+    const row = wrapper.find('[data-testid="agent-row"]')
+    expect(row.attributes('data-agent-status')).toBe('waiting')
+    expect(row.find('[data-testid="status-chip"]').text()).toContain('Waiting')
   })
 })

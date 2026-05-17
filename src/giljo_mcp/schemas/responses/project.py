@@ -32,6 +32,11 @@ class ProjectDetail(BaseModel):
     description: str | None = None
     status: str
     staging_status: str | None = None
+    # CE-0028b: exposed so the frontend can distinguish the staging→implementation
+    # handoff window (staging_status='staging_complete' AND no impl timestamp)
+    # from the actual project-complete state. Without this the closeout flow
+    # fires at staging-end and the Implement button is hidden.
+    implementation_launched_at: str | None = None
     product_id: str | None = None
     tenant_key: str
     execution_mode: str | None = None
@@ -68,6 +73,7 @@ class ProjectListItem(BaseModel):
     description: str | None = None
     status: str
     staging_status: str | None = None
+    implementation_launched_at: str | None = None
     tenant_key: str
     product_id: str | None = None
     created_at: str
