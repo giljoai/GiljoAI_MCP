@@ -493,9 +493,35 @@ const executionOrderPhases = computed(() => {
   return phases
 })
 
+/**
+ * CE-0028: at the staging→implementation handoff, the orchestrator's
+ * staging execution is technically `status='complete'` (the session IS
+ * over) but the project is NOT done — the user still needs to click
+ * Implement. The DB stays truthful; this helper rewrites the displayed
+ * status to `'waiting'` so the UI doesn't show "Complete" before the
+ * project actually finishes.
+ *
+ * Bounded precisely by project flags so it only kicks in during the
+ * handoff window:
+ *   project.staging_status === 'staging_complete'
+ *   AND project.implementation_launched_at is null
+ * Once the user clicks Implement and the timestamp lands, the historical
+ * staging exec goes back to displaying its real `'complete'` status.
+ */
+function applyStagingHandoffStatusOverride(agent, project) {
+  if (!agent || agent.status !== 'complete') return agent
+  if (!isOrchestrator(agent)) return agent
+  if (project?.staging_status !== 'staging_complete') return agent
+  if (project?.implementation_launched_at) return agent
+  return { ...agent, status: 'waiting' }
+}
+
 /** Handover 0829: Sort table rows by phase order. */
 const phaseSortedAgents = computed(() => {
-  return [...sortedAgents.value].sort((a, b) => {
+  const overridden = sortedAgents.value.map((agent) =>
+    applyStagingHandoffStatusOverride(agent, props.project)
+  )
+  return overridden.sort((a, b) => {
     const phaseA = isOrchestrator(a) ? -1 : (a.phase ?? 999)
     const phaseB = isOrchestrator(b) ? -1 : (b.phase ?? 999)
     if (phaseA !== phaseB) return phaseA - phaseB
