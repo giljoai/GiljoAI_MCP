@@ -73,6 +73,7 @@ class TestProtocolCh6Integration:
         assert "AUTO CHECK-IN" in protocol["ch6_auto_checkin"]
 
     def test_protocol_excludes_ch6_when_disabled(self):
+        # CE-0033 Task 7: empty chapters are omitted (not emitted as "").
         protocol = _build_orchestrator_protocol(
             cli_mode=False,
             project_id="test-proj",
@@ -81,9 +82,10 @@ class TestProtocolCh6Integration:
             auto_checkin_enabled=False,
             auto_checkin_interval=10,
         )
-        assert protocol["ch6_auto_checkin"] == ""
+        assert "ch6_auto_checkin" not in protocol
 
     def test_protocol_excludes_ch6_in_cli_mode_even_when_enabled(self):
+        # CE-0033 Task 7: empty chapters are omitted (not emitted as "").
         protocol = _build_orchestrator_protocol(
             cli_mode=True,
             project_id="test-proj",
@@ -92,7 +94,7 @@ class TestProtocolCh6Integration:
             auto_checkin_enabled=True,
             auto_checkin_interval=10,
         )
-        assert protocol["ch6_auto_checkin"] == ""
+        assert "ch6_auto_checkin" not in protocol
 
     def test_protocol_ch6_has_correct_interval(self):
         protocol = _build_orchestrator_protocol(
@@ -106,17 +108,21 @@ class TestProtocolCh6Integration:
         assert "sleeping for 30 minutes" in protocol["ch6_auto_checkin"]
 
     def test_protocol_defaults_ch6_disabled(self):
-        """When auto_checkin params omitted, CH6 is empty (defaults to disabled)."""
+        """When auto_checkin params omitted, CH6 is omitted (CE-0033 Task 7)."""
         protocol = _build_orchestrator_protocol(
             cli_mode=False,
             project_id="test-proj",
             orchestrator_id="test-orch",
             tenant_key="test-tenant",
         )
-        assert protocol["ch6_auto_checkin"] == ""
+        assert "ch6_auto_checkin" not in protocol
 
-    def test_protocol_always_has_ch6_key(self):
-        """CH6 key always exists in protocol dict, even when empty."""
+    def test_protocol_omits_ch6_key_when_disabled(self):
+        """CE-0033 Task 7: CH6 key is OMITTED (not empty-string) when disabled.
+
+        Empty-string keys read as "WIP / forgotten" to the orchestrator; CE-0033
+        switched the contract to omit the key when not applicable.
+        """
         protocol = _build_orchestrator_protocol(
             cli_mode=False,
             project_id="test-proj",
@@ -124,4 +130,4 @@ class TestProtocolCh6Integration:
             tenant_key="test-tenant",
             auto_checkin_enabled=False,
         )
-        assert "ch6_auto_checkin" in protocol
+        assert "ch6_auto_checkin" not in protocol

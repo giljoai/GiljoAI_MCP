@@ -336,8 +336,16 @@ Call: complete_job(
           result={{
               'summary': 'Mission persisted, N sub-agents spawned',
               'decisions_made': [...],  # any staging-time decisions
-          }}
+          }},
+          acknowledge_closeout_todo=True,
       )
+
+⚠ acknowledge_closeout_todo=True is REQUIRED at the staging finale. Your
+"call complete_job to end staging" TODO is the very call you are making
+right now — without the flag, the TODO-not-complete gate blocks you with a
+chicken-and-egg failure. The bypass is intentional and is the canonical
+end-of-staging shape (deliverable TODOs survive into implementation; only
+the closeout TODO itself is auto-completed).
 
 This is the canonical end-of-staging signal (CE-0026). The server flips
 project.staging_status to 'staging_complete', marks your execution complete,

@@ -9,6 +9,7 @@ Extracted from ThinClientPromptGenerator (Handover 0950g).
 Refactored to inherit from ExecutionPromptBuilderBase (quality-sprint-002e).
 """
 
+from giljo_mcp.prompts._canonical_tool_list import render_toolsearch_call_one_line
 from giljo_mcp.prompts.execution_prompt_base import ExecutionPromptBuilderBase
 
 
@@ -18,6 +19,45 @@ class ClaudePromptBuilder(ExecutionPromptBuilderBase):
     @property
     def platform_name(self) -> str:
         return "Claude Code CLI Mode"
+
+    def _build_context_recap(self, orchestrator_id: str, project, agent_jobs: list) -> list[str]:
+        """Claude Code variant prepends a ToolSearch bootstrap step.
+
+        CE-0033 Task 5: Claude Code defers MCP tool schemas behind ToolSearch.
+        Without this step, the orchestrator pays multi-round-trip bootstrap
+        cost loading each tool schema piecemeal mid-protocol. One ToolSearch
+        call with the canonical orchestrator tool list collapses that to a
+        single round-trip — and it has to fire BEFORE health_check, so the
+        hint must live in the spawn prompt, not in get_orchestrator_instructions
+        (which is unreachable until ToolSearch loads its schema).
+        """
+        base = super()._build_context_recap(orchestrator_id, project, agent_jobs)
+        bootstrap = [
+            "## STEP 0: TOOLSEARCH BOOTSTRAP (Claude Code only — first action)",
+            "",
+            "Claude Code defers MCP tool schemas behind `ToolSearch`. You CANNOT call",
+            "any `mcp__giljo_mcp__*` tool until its schema is loaded. Before health_check,",
+            "before anything else, fire this single call:",
+            "",
+            "```",
+            render_toolsearch_call_one_line(),
+            "```",
+            "",
+            "After that single call, every tool in the canonical orchestrator set is",
+            "callable. Skip this and you'll spend extra round-trips loading schemas",
+            "piecemeal mid-protocol.",
+            "",
+            "---",
+            "",
+        ]
+        # Insert bootstrap immediately after the header (first 3 lines: title, blank, "## Who You Are" etc.)
+        # The header is line 0; we splice bootstrap between header and "## Who You Are" so it reads as Step 0.
+        header_end = 0
+        for idx, line in enumerate(base):
+            if line.startswith("## Who You Are"):
+                header_end = idx
+                break
+        return base[:header_end] + bootstrap + base[header_end:]
 
     def _build_execution_plan_details(self) -> list[str]:
         """Claude includes extra detail about what the plan contains."""

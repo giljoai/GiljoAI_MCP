@@ -170,6 +170,18 @@ phases. Pair with predecessor_job_id when a successor needs prior output
 (server renders the preamble in multi_terminal mode; subagent modes splice
 inline).
 
+⚠ SUBAGENT-MODE NOTE: In Claude Code / Codex / Gemini subagent execution
+modes the server does NOT block higher-phase jobs from starting before
+lower-phase jobs finish. The `phase` value is informational ordering
+metadata — the orchestrator is responsible for spawning agents in phase
+order and waiting on each phase before invoking the next (via Task() /
+spawn_agent() / @-syntax invocation order). Multi-terminal mode gates on
+phase via the dashboard Play buttons; subagent modes do not.
+
+⚠ predecessor_job_id is REQUIRED for phase > 1 when the successor consumes
+a prior agent's output. Empty string is rejected (ValidationError). Pass
+the predecessor's job_id, not its agent_id.
+
 {platform_note}
 
 VERIFICATION AGENT DEFERRAL: tester/reviewer are NOT spawned in staging. In implementation,

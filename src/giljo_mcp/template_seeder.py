@@ -33,6 +33,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.models import AgentTemplate
+from giljo_mcp.prompts._canonical_tool_list import render_toolsearch_call_one_line
 from giljo_mcp.system_roles import SYSTEM_MANAGED_ROLES
 from giljo_mcp.template_manager import UnifiedTemplateManager
 
@@ -332,6 +333,43 @@ duplicates burn signal.
 projects (`list_projects(mode="planning")`) for forward-looking scaffolding.
 A column with no current caller may be seed for a planned project, not dead code.
 
+**Continuation-check (Step 1c-ish) — `list_projects` must be filtered:** when
+you scan for a project to continue or a duplicate to merge into, call
+`list_projects` with `taxonomy_alias_prefix="<this project's prefix>"` AND a
+date window (`completed_after=<~30 days ago ISO>`, plus `include_completed=true`
+if you need closed projects). Calling `list_projects(mode="planning")` bare
+returns every planning-stage project in the product and will spill to a file —
+do not do this.
+
+## Non-obvious Tool Parameters
+
+One line per tool. The full docstrings are the source of truth; this is a
+discoverability index for parameters orchestrators systematically miss. If
+something here looks wrong, the docstring wins.
+
+- `list_projects`: `taxonomy_alias_prefix`, `created_after` / `completed_after`,
+  `include_completed`, `memory_limit`, `mode` (`"triage"` / `"planning"` /
+  `"audit"` / `"forensic"`), `summary_only` (default true).
+- `fetch_context`: `depth_config` is a per-category dict — e.g.
+  `{"memory_360": 5, "git_history": "summary"}` controls window/shape per
+  category at call time. `categories` is required (pass a list, even of one).
+- `spawn_job`: `phase` (informational ordering tag; subagent mode does NOT
+  enforce — see CH3), `predecessor_job_id` is REQUIRED when `phase > 1` and
+  the successor consumes a predecessor's output.
+- `report_progress`: `todo_items` REPLACES the list each call; use
+  `todo_append` to add without overwriting.
+- `get_workflow_status`: `exclude_job_id` skips your own row when you're
+  polling for peers (avoids self-reporting in the loop).
+- `complete_job`: `acknowledge_closeout_todo=true` is REQUIRED at the staging
+  finale — your "call complete_job" TODO is the call itself; the bypass is
+  intentional. `acknowledge_messages_on_complete=true` is the mirror escape
+  hatch for the unread-messages gate.
+- `send_message`: `priority` field (`"normal"` / `"urgent"`), `message_type`
+  for routing semantics; use `to_agents=["all"]` only for true broadcasts.
+- `close_project_and_update_memory`: `tags` are validated against a fixed
+  16-tag vocabulary (1-3 change-type + 1-3 domain); junk tags are rejected
+  with `invalid_tag` + `allowed` enum in the error.
+
 ## Before Closeout
 
 Default: close autonomously. The user expects projects to finish. Asking
@@ -405,12 +443,14 @@ Success criteria:
             "user_instructions": """You are part of a GiljoAI MCP orchestration system. MCP tools are available as
 native tool calls prefixed `mcp__giljo_mcp__*` in your tool list.
 
-Your job credentials (`job_id`, `tenant_key`) are provided in your spawn prompt —
-either pasted by the user or injected by the orchestrator. Use them exactly as given.
+Your `job_id` is provided in your spawn prompt — either pasted by the user or
+injected by the orchestrator. Use it exactly as given. `tenant_key` is
+auto-injected by the server from your API key session; do NOT pass it as a
+parameter.
 
 ### STARTUP (MANDATORY)
 1. Call `mcp__giljo_mcp__health_check()` to verify MCP connectivity.
-2. Call `mcp__giljo_mcp__get_agent_mission(job_id="<your_job_id>", tenant_key="<your_tenant_key>")` to receive:
+2. Call `mcp__giljo_mcp__get_agent_mission(job_id="<your_job_id>")` to receive:
    - Your full operating protocols (`full_protocol`)
    - Your work order and team context (`mission`)
 3. Follow `full_protocol` for all lifecycle behavior.
@@ -721,12 +761,14 @@ def _get_mcp_bootstrap_section() -> str:
 You are part of a GiljoAI MCP orchestration system. MCP tools are available as native
 tool calls prefixed `mcp__giljo_mcp__*` in your tool list.
 
-Your job credentials (`job_id`, `tenant_key`) are provided in your spawn prompt —
-either pasted by the user or injected by the orchestrator. Use them exactly as given.
+Your `job_id` is provided in your spawn prompt — either pasted by the user or
+injected by the orchestrator. Use it exactly as given. `tenant_key` is
+auto-injected by the server from your API key session; do NOT pass it as a
+parameter.
 
 ### STARTUP (MANDATORY)
 1. Call `mcp__giljo_mcp__health_check()` to verify MCP connectivity
-2. Call `mcp__giljo_mcp__get_agent_mission(job_id="<your_job_id>", tenant_key="<your_tenant_key>")` to receive:
+2. Call `mcp__giljo_mcp__get_agent_mission(job_id="<your_job_id>")` to receive:
    - Your full operating protocols (`full_protocol`)
    - Your work order and team context (`mission`)
 3. Follow `full_protocol` for all lifecycle behavior
@@ -784,27 +826,17 @@ visible to the user when `report_progress` persists them server-side.
 Code sessions, MCP tool schemas are deferred behind `ToolSearch`. You CANNOT
 call any `mcp__giljo_mcp__*` tool until its schema is loaded. As your first
 action — before health_check, before anything — call ToolSearch once with the
-full orchestrator tool list to collapse the bootstrap into a single round-trip:
+full orchestrator tool list to collapse the bootstrap into a single round-trip.
+The spawn prompt for this terminal already showed you this call; if you skipped
+it, run it now:
 
 ```
-ToolSearch(query="select:mcp__giljo_mcp__health_check,\
-mcp__giljo_mcp__fetch_context,mcp__giljo_mcp__spawn_job,\
-mcp__giljo_mcp__get_agent_mission,mcp__giljo_mcp__send_message,\
-mcp__giljo_mcp__receive_messages,mcp__giljo_mcp__inspect_messages,\
-mcp__giljo_mcp__report_progress,mcp__giljo_mcp__set_agent_status,\
-mcp__giljo_mcp__get_workflow_status,mcp__giljo_mcp__update_project_mission,\
-mcp__giljo_mcp__update_agent_mission,mcp__giljo_mcp__complete_job,\
-mcp__giljo_mcp__close_job,mcp__giljo_mcp__reactivate_job,\
-mcp__giljo_mcp__dismiss_reactivation,mcp__giljo_mcp__write_360_memory,\
-mcp__giljo_mcp__close_project_and_update_memory,\
-mcp__giljo_mcp__get_agent_result,mcp__giljo_mcp__create_task,\
-mcp__giljo_mcp__create_project,mcp__giljo_mcp__list_projects,\
-mcp__giljo_mcp__request_approval", max_results=25)
+__TOOLSEARCH_CALL__
 ```
 
 After that single call, every tool above is callable. Skip this bootstrap and
 you'll spend extra round-trips pulling schemas piecemeal mid-protocol.
-"""
+""".replace("__TOOLSEARCH_CALL__", render_toolsearch_call_one_line())
     return base
 
 

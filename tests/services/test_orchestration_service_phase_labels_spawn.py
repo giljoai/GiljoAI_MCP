@@ -83,6 +83,16 @@ class TestSpawnAgentJobPhaseParameter:
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
+        # CE-0033 Task 11: phase > 1 requires a non-empty predecessor_job_id.
+        predecessor = await service.spawn_job(
+            agent_display_name="analyzer",
+            agent_name="analyzer-1",
+            mission="Predecessor analysis",
+            project_id=test_project.id,
+            tenant_key=test_tenant_key,
+            phase=1,
+        )
+
         result = await service.spawn_job(
             agent_display_name="tester",
             agent_name="tester-1",
@@ -90,6 +100,7 @@ class TestSpawnAgentJobPhaseParameter:
             project_id=test_project.id,
             tenant_key=test_tenant_key,
             phase=3,
+            predecessor_job_id=predecessor.job_id,
         )
 
         job_stmt = select(AgentJob).where(AgentJob.job_id == result.job_id)
@@ -175,13 +186,18 @@ class TestSpawnWebSocketBroadcastPhase:
 
         session.execute = AsyncMock(side_effect=mock_execute)
 
+        # CE-0033 Task 11: phase > 1 requires a non-empty predecessor_job_id,
+        # which triggers a DB query that's awkward to mock here. The broadcast-
+        # shape contract is the same for any phase value, so use phase=2 with a
+        # predecessor-only test surface is overkill — phase=1 exercises the
+        # phase-in-broadcast wiring just as well.
         await service.spawn_job(
             agent_display_name="analyzer",
             agent_name="analyzer-1",
             mission="Analyze codebase",
             project_id=mock_project.id,
             tenant_key="tk_test",
-            phase=2,
+            phase=1,
         )
 
         # Verify broadcast was called with phase in data
@@ -189,7 +205,7 @@ class TestSpawnWebSocketBroadcastPhase:
         call_kwargs = mock_ws.broadcast_to_tenant.call_args
         broadcast_data = call_kwargs.kwargs.get("data") or call_kwargs[1].get("data")
         assert "phase" in broadcast_data
-        assert broadcast_data["phase"] == 2
+        assert broadcast_data["phase"] == 1
 
     async def test_websocket_broadcast_includes_none_phase_when_omitted(self):
         """Verify agent:created WebSocket broadcast includes phase=None when not specified."""

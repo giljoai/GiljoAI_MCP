@@ -91,6 +91,17 @@ class TestSpawnAgentJobPhase:
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
+        # CE-0033 Task 11: phase > 1 requires a non-empty predecessor_job_id.
+        # Spawn a phase-1 predecessor first, then a phase-2 successor chained to it.
+        predecessor = await service.spawn_job(
+            agent_display_name="analyzer",
+            agent_name="analyzer",
+            mission="Analyze first",
+            project_id=test_project.id,
+            tenant_key=test_tenant_key,
+            phase=1,
+        )
+
         result = await service.spawn_job(
             agent_display_name="implementer",
             agent_name="implementer",
@@ -98,6 +109,7 @@ class TestSpawnAgentJobPhase:
             project_id=test_project.id,
             tenant_key=test_tenant_key,
             phase=2,
+            predecessor_job_id=predecessor.job_id,
         )
 
         # Verify AgentJob has phase=2
@@ -136,6 +148,16 @@ class TestSpawnAgentJobPhase:
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
+        # CE-0033 Task 11: phase > 1 requires a non-empty predecessor_job_id.
+        predecessor = await service.spawn_job(
+            agent_display_name="implementer",
+            agent_name="implementer",
+            mission="Implement before tests",
+            project_id=test_project.id,
+            tenant_key=test_tenant_key,
+            phase=1,
+        )
+
         result = await service.spawn_job(
             agent_display_name="tester",
             agent_name="tester",
@@ -143,6 +165,7 @@ class TestSpawnAgentJobPhase:
             project_id=test_project.id,
             tenant_key=test_tenant_key,
             phase=3,
+            predecessor_job_id=predecessor.job_id,
         )
 
         # Verify AgentJob.template_id is set

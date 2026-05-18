@@ -296,13 +296,13 @@ class TestTask3HarnessReminderOverride:
 class TestTask5PayloadSize:
     """Catch future bloat. CE-0031 trimmed ~12KB; budget allows some headroom."""
 
-    # 35KB ceiling: ~14% headroom above current trimmed Claude Code payload
-    # (~29KB). The 25KB hard target from the handover is the long-term goal;
-    # achieving it would require Option A (split into sub-resources) which
-    # CE-0031 deferred. Keep this number tight enough to catch bloat
-    # regressions without forcing a structural redesign every time a chapter
-    # gets a line added.
-    PAYLOAD_BUDGET_BYTES = 35_000
+    # 40KB ceiling: CE-0031 set the budget at 35KB. CE-0033 added the
+    # discoverability cheat-sheet, continuation-check guidance, product_id
+    # glossary entry, Step 7 acknowledge_closeout_todo callout, and CH3
+    # subagent phase-ordering note — total ~4KB. Ceiling raised once,
+    # deliberately. Tight enough to catch bloat regressions; long-term goal
+    # remains the 25KB target via Option A (sub-resource tools split).
+    PAYLOAD_BUDGET_BYTES = 40_000
 
     @pytest.mark.asyncio
     async def test_get_orchestrator_instructions_under_budget(

@@ -114,20 +114,26 @@ def _build_orchestrator_protocol(
     )
     ch3 = _build_ch3_spawning_rules(effective_tool)
     ch4 = _build_ch4_error_handling()
+    # CE-0033 Task 7: omit ch5/ch6 entirely when not applicable instead of
+    # emitting empty strings. Empty string keys read as "WIP / forgotten" to
+    # the orchestrator; omitting them makes the response shape match the
+    # active flow.
     ch5 = (
         _build_ch5_reference(project_id, orchestrator_id, effective_tool, git_integration_enabled)
         if include_implementation_reference
-        else ""
+        else None
     )
+    ch6 = _build_ch6_auto_checkin(auto_checkin_interval) if (auto_checkin_enabled and not cli_mode) else None
 
-    ch6 = _build_ch6_auto_checkin(auto_checkin_interval) if (auto_checkin_enabled and not cli_mode) else ""
-
-    return {
+    chapters: dict[str, Any] = {
         "ch1_your_mission": ch1,
         "ch2_startup_sequence": ch2,
         "ch3_agent_spawning_rules": ch3,
         "ch4_error_handling": ch4,
-        "ch5_reference": ch5,
-        "ch6_auto_checkin": ch6,
-        "navigation_hint": "Reference chapters by name (e.g., 'see CH4 for error handling')",
     }
+    if ch5:
+        chapters["ch5_reference"] = ch5
+    if ch6:
+        chapters["ch6_auto_checkin"] = ch6
+    chapters["navigation_hint"] = "Reference chapters by name (e.g., 'see CH4 for error handling')"
+    return chapters

@@ -1024,7 +1024,14 @@ async def report_progress(
         kwargs["todo_items"] = todo_items
     if todo_append is not None:
         kwargs["todo_append"] = todo_append
-    return await _call_tool(ctx, "report_progress", kwargs)
+    result = await _call_tool(ctx, "report_progress", kwargs)
+    # CE-0033 Task 10: drop `warnings` when empty so the field shape signals
+    # presence-means-something. The field IS sometimes populated (e.g.,
+    # missing-todo_items reactive warning, throttled to once per 5 min per
+    # job) — we keep emitting it when non-empty.
+    if isinstance(result, dict) and not result.get("warnings"):
+        result.pop("warnings", None)
+    return result
 
 
 @mcp.tool(
@@ -1332,7 +1339,10 @@ async def get_workflow_status(
         "categories=['product_core', 'tech_stack', 'architecture']. "
         "Categories: product_core (~100 tokens), vision_documents (0-24K), "
         "tech_stack (200-400), architecture (300-1.5K), testing (0-400), memory_360 "
-        "(500-5K), git_history (500-5K), agent_templates (400-2.4K), project (~300), "
+        "(500-5K, returns the most recent N project closeouts by sequence DESC, "
+        "default N=3; tune via depth_config={'memory_360': <int>} or "
+        "depth_config={'memory_360': {'last_n_projects': N, 'shape': 'full'|'headlines'}}), "
+        "git_history (500-5K), agent_templates (400-2.4K), project (~300), "
         "self_identity (agent template content), tasks (open task list), "
         "todos (TODO content for a job — pass job_id, used for force-recovery)."
     ),

@@ -69,6 +69,16 @@ class SpawnResult(BaseModel):
     thin_client: bool = True
     thin_client_note: list[str] = Field(default_factory=list)
     predecessor_job_id: str | None = None
+    # CE-0033 Task 9: echo `phase` so orchestrators can verify ordering intent
+    # persisted without an extra get_workflow_status round-trip.
+    phase: int | None = Field(
+        default=None,
+        description=(
+            "Ordering metadata stored on the spawned execution. Echoes the "
+            "`phase` arg the orchestrator passed (or None if not provided). "
+            "Allows immediate verification that the server stored the value."
+        ),
+    )
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -440,11 +440,16 @@ class MissionOrchestrationService:
                 "agent_id": execution.agent_id,
                 "project_id": str(project.id),
                 "project_name": project.name,
+                # CE-0033 Task 2: hoist product_id so orchestrators don't
+                # have to mine it from a hardcoded protocol example. fetch_context
+                # requires it; surfacing it here makes the identity self-sufficient.
+                "product_id": str(product.id) if product is not None else None,
                 "tenant_key": tenant_key,
                 "id_glossary": {
                     "job_id": "Use for: report_progress, complete_job, set_agent_status",
                     "agent_id": "Use for: send_message(from_agent), receive_messages",
                     "project_id": "Use for: send_message(project_id), update_project_mission, spawn_job, get_workflow_status, close_project_and_update_memory",
+                    "product_id": "Use for: fetch_context (REQUIRED — product-scoped context)",
                 },
             },
             "project_description_inline": {

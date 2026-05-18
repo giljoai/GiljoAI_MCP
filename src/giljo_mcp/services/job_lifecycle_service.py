@@ -156,6 +156,25 @@ class JobLifecycleService:
             >>> result["job_id"]  # Work order UUID (persists)
             >>> result["agent_id"]  # Executor UUID (changes on succession)
         """
+        # CE-0033 Task 11: phase > 1 implies dependency on a prior-phase job.
+        # An empty predecessor_job_id silently strips the dependency context
+        # the successor needs (the orchestrator's intent was a successor; the
+        # server can't infer which). Refuse early with an explicit error.
+        if phase is not None and phase > 1 and (predecessor_job_id is None or not str(predecessor_job_id).strip()):
+            raise ValidationError(
+                message=(
+                    "phase > 1 jobs require a non-empty predecessor_job_id. "
+                    "Pass the job_id of the prior-phase agent whose output this "
+                    "job consumes."
+                ),
+                context={
+                    "phase": phase,
+                    "predecessor_job_id": predecessor_job_id,
+                    "project_id": project_id,
+                    "agent_display_name": agent_display_name,
+                },
+            )
+
         try:
             repo = AgentJobRepository(None)
             async with self._get_session() as session:
@@ -272,6 +291,7 @@ class JobLifecycleService:
                         "Enables: fresh sessions, postponed launches, orchestrator handover",
                     ],
                     predecessor_job_id=predecessor_job_id,  # Handover 0497e
+                    phase=phase,  # CE-0033 Task 9: echo ordering metadata
                 )
 
         except (ResourceNotFoundError, AlreadyExistsError, ValidationError, ProjectStateError):

@@ -161,8 +161,9 @@ class TestListJobsIncludesPhase:
         tenant_manager = TenantManager()
         service = OrchestrationService(db_manager=db_manager, tenant_manager=tenant_manager, test_session=db_session)
 
-        # Create jobs with different phases
-        await service.spawn_job(
+        # Create jobs with different phases. CE-0033 Task 11: phase > 1 requires
+        # a non-empty predecessor_job_id chained from the previous phase.
+        analyzer_result = await service.spawn_job(
             agent_display_name="analyzer",
             agent_name="analyzer-1",
             mission="Analyze first",
@@ -170,13 +171,14 @@ class TestListJobsIncludesPhase:
             tenant_key=test_tenant_key,
             phase=1,
         )
-        await service.spawn_job(
+        impl_result = await service.spawn_job(
             agent_display_name="implementer",
             agent_name="impl-1",
             mission="Implement second",
             project_id=test_project.id,
             tenant_key=test_tenant_key,
             phase=2,
+            predecessor_job_id=analyzer_result.job_id,
         )
         await service.spawn_job(
             agent_display_name="tester",
@@ -185,6 +187,7 @@ class TestListJobsIncludesPhase:
             project_id=test_project.id,
             tenant_key=test_tenant_key,
             phase=3,
+            predecessor_job_id=impl_result.job_id,
         )
 
         result = await service.list_jobs(
