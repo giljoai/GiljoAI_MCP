@@ -13,6 +13,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from giljo_mcp.schemas.responses.project import ProjectBase
+
 
 # ============================================================================
 # CRUD Models
@@ -90,43 +92,52 @@ class ProjectTypeInfo(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class ProjectResponse(BaseModel):
-    """Response model for project details."""
+class ProjectResponse(ProjectBase):
+    """Response model for project details (REST).
 
-    id: str
+    Inherits the universal field set from
+    ``giljo_mcp.schemas.responses.project.ProjectBase`` and adds the
+    presentation extras the REST consumer (frontend project page) depends
+    on: ``alias``, ``staging_status``, ``implementation_launched_at``, agent
+    counts + list, and the nested REST-local ``ProjectTypeInfo``.
+
+    Overrides inherited fields to preserve the REST wire contract:
+      * timestamps as ``datetime`` (Pydantic v2 normalizes to ``...Z`` ISO);
+      * ``mission`` as required ``str`` (REST never emits null mission);
+      * ``execution_mode`` defaults to ``"multi_terminal"`` (REST never null).
+    """
+
+    # REST-specific required identity
     alias: str
-    name: str
-    description: str | None = None
+
+    # Override base ``str | None`` defaults with REST-strict contract types
     mission: str
-    status: str
-    staging_status: str | None = None
-    product_id: str | None = None
+    execution_mode: str = "multi_terminal"
+
+    # Override base ``str | None`` timestamps with ``datetime`` for Z-normalized wire
     created_at: datetime
     updated_at: datetime
     completed_at: datetime | None = None
+
+    # Detail-only fields (not on MCP ProjectData)
+    staging_status: str | None = None
     # CE-0036: implementation_launched_at must flow through the REST API for
     # the frontend's useProjectCloseout guard (staging_status='staging_complete'
     # && !implementation_launched_at → button hidden). CE-0028b added this to
-    # the MCP-side response schema but missed the REST schema below — the one
-    # the project page actually consumes — so the Close Project button never
-    # appeared after impl-end.
+    # the MCP-side response schema but missed the REST schema — the one the
+    # project page actually consumes — so the Close Project button never
+    # appeared after impl-end. CE-0038 keeps this on the REST subclass (not
+    # on ProjectBase) because the MCP ProjectData compact shape intentionally
+    # omits it.
     implementation_launched_at: datetime | None = None
+
+    # REST presentation extras
     agent_count: int
     message_count: int
-    agents: list[AgentSimple] = []
-    # Handover 0260: Execution mode for Claude Code CLI toggle
-    execution_mode: str = "multi_terminal"
-    # Handover 0904/0960: Orchestrator auto check-in
-    auto_checkin_enabled: bool = False
-    auto_checkin_interval: int = 10
-    # Handover 0440a: Project taxonomy fields
-    project_type_id: str | None = None
+    agents: list[AgentSimple] = Field(default_factory=list)
+
+    # Nested taxonomy info (REST-local ProjectTypeInfo above; MCP has its own)
     project_type: ProjectTypeInfo | None = None  # Handover 0440c: Nested type with color
-    series_number: int | None = None
-    subseries: str | None = None
-    taxonomy_alias: str | None = None
-    # CE-OPT-4: UI visibility flag
-    hidden: bool = False
 
 
 class DeletedProjectResponse(BaseModel):

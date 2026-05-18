@@ -49,6 +49,8 @@ from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
 from giljo_mcp.models.products import Product
 from giljo_mcp.models.projects import Project
 from giljo_mcp.schemas.responses.project import (
+    ActiveProjectDetail,
+    ProjectBase,
     ProjectData,
     ProjectDetail,
 )
@@ -347,4 +349,87 @@ def test_allowlist_entries_reference_real_columns(
         f"Either the column was renamed/dropped (update the allowlist) or the\n"
         f"entry was added by mistake. Stale allowlist entries can mask real gaps,\n"
         f"so they must be kept in sync with the model.\n"
+    )
+
+
+# ---------------------------------------------------------------------------
+# CE-0038 — Structural inheritance assertions
+#
+# The CE-0036 bug class (silent drift between REST + MCP Project response
+# schemas) is now structurally prevented for fields declared on ``ProjectBase``:
+# changes to the base ripple to every subclass. These tests enforce that
+# inheritance contract going forward, so the consolidation can't be quietly
+# undone by a future refactor that drops the base and re-introduces three
+# parallel field lists.
+# ---------------------------------------------------------------------------
+
+
+def test_project_response_inherits_project_base() -> None:
+    """REST ``ProjectResponse`` must derive from the shared ``ProjectBase``.
+
+    If a refactor breaks this inheritance, the CE-0036 bug class re-opens:
+    adding a Project column to MCP ``ProjectDetail`` would no longer
+    automatically surface on REST ``ProjectResponse``.
+    """
+    assert issubclass(ProjectResponse, ProjectBase), (
+        "REST ProjectResponse must inherit ProjectBase (CE-0038 consolidation). Check api/endpoints/projects/models.py."
+    )
+
+
+def test_project_detail_inherits_project_base() -> None:
+    """MCP ``ProjectDetail`` must derive from the shared ``ProjectBase``."""
+    assert issubclass(ProjectDetail, ProjectBase), (
+        "MCP ProjectDetail must inherit ProjectBase (CE-0038 consolidation). "
+        "Check src/giljo_mcp/schemas/responses/project.py."
+    )
+
+
+def test_project_data_inherits_project_base() -> None:
+    """MCP ``ProjectData`` must derive from the shared ``ProjectBase``."""
+    assert issubclass(ProjectData, ProjectBase), (
+        "MCP ProjectData must inherit ProjectBase (CE-0038 consolidation). "
+        "Check src/giljo_mcp/schemas/responses/project.py."
+    )
+
+
+def test_active_project_detail_inherits_project_base() -> None:
+    """``ActiveProjectDetail`` must derive from the shared ``ProjectBase``.
+
+    CE-0038 included this so the active-project shape can't silently drift
+    away from the rest of the Project response family.
+    """
+    assert issubclass(ActiveProjectDetail, ProjectBase), (
+        "ActiveProjectDetail must inherit ProjectBase (CE-0038 consolidation). "
+        "Check src/giljo_mcp/schemas/responses/project.py."
+    )
+
+
+def test_project_base_fields_are_intersection_of_subclasses() -> None:
+    """Every field on ``ProjectBase`` MUST appear (by name) on each of REST
+    ``ProjectResponse``, MCP ``ProjectDetail``, and MCP ``ProjectData``.
+
+    A field that's on the base but missing from a subclass would mean the
+    base is the wrong abstraction — the field shouldn't be universal.
+    Inheritance gives this property automatically, but the assertion
+    documents the invariant and catches accidental field removal from a
+    subclass that intentionally shadowed the base (e.g. dropped an
+    inherited annotation by overriding without re-declaring).
+    """
+    base_fields = set(ProjectBase.model_fields.keys())
+    rest_fields = set(ProjectResponse.model_fields.keys())
+    detail_fields = set(ProjectDetail.model_fields.keys())
+    data_fields = set(ProjectData.model_fields.keys())
+
+    missing_in_rest = base_fields - rest_fields
+    missing_in_detail = base_fields - detail_fields
+    missing_in_data = base_fields - data_fields
+
+    assert not (missing_in_rest or missing_in_detail or missing_in_data), (
+        "ProjectBase fields must appear on every Project subclass.\n"
+        f"  Missing from REST ProjectResponse: {sorted(missing_in_rest)}\n"
+        f"  Missing from MCP ProjectDetail:    {sorted(missing_in_detail)}\n"
+        f"  Missing from MCP ProjectData:      {sorted(missing_in_data)}\n"
+        "\n"
+        "If a field doesn't belong on every shape, move it out of ProjectBase\n"
+        "and into the specific subclasses that need it."
     )

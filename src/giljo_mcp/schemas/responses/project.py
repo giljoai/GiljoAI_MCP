@@ -3,7 +3,25 @@
 # See LICENSE in the project root for terms.
 # [CE] Community Edition.
 
-"""Project service response models."""
+"""Project service response models.
+
+CE-0038 — schema consolidation: ``ProjectBase`` is the single source of truth
+for fields shared across every Project response shape. REST
+``ProjectResponse`` (api/endpoints/projects/models.py) and the MCP schemas
+``ProjectDetail`` / ``ProjectData`` below all inherit from it.
+
+Subclasses MAY override the type of an inherited field where the wire format
+requires it — for example, REST normalizes timestamps via ``datetime`` to
+produce Z-suffixed ISO output, while MCP keeps pre-formatted ``str`` to match
+the existing tool wire shape. Adding a new ``Project`` model column that
+should be exposed in every response shape goes in ``ProjectBase``; columns
+that belong only on a specific shape live on the subclass. Parity tests in
+``tests/schemas/test_response_parity_all_models.py`` catch silent drops.
+
+The CE-0036 bug class (silent drift between REST and MCP schemas that
+represent the same DB entity) is structurally prevented for fields declared
+in ``ProjectBase``: a single change ripples to every consumer.
+"""
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -19,52 +37,99 @@ class ProjectTypeInfo(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class ProjectDetail(BaseModel):
-    """Full project detail with agent information.
+class ProjectBase(BaseModel):
+    """Shared base for Project response schemas (REST + MCP).
 
-    Fields match ProjectService.get_project() output.
+    Declares the fields universal to REST ``ProjectResponse``, MCP
+    ``ProjectDetail``, and MCP ``ProjectData``. New ``Project`` model
+    columns that should appear in every response shape go here; columns
+    specific to one shape stay on the subclass.
+
+    Field-type override is allowed in subclasses (Pydantic v2 supports it)
+    and is the mechanism REST uses to keep ``datetime``-normalized
+    timestamps while MCP keeps pre-formatted ISO strings.
     """
 
+    # Identity
     id: str
-    alias: str | None = None
     name: str
-    mission: str | None = None
-    description: str | None = None
     status: str
+
+    # Core content
+    description: str | None = None
+    mission: str | None = None
+
+    # Product association
+    product_id: str | None = None
+
+    # Execution config
+    execution_mode: str | None = None
+    auto_checkin_enabled: bool = False
+    auto_checkin_interval: int = 10
+
+    # Timestamps — declared as pre-formatted ISO strings (MCP wire). REST
+    # subclass overrides each to ``datetime | None`` for Z-normalized output.
+    created_at: str | None = None
+    updated_at: str | None = None
+    completed_at: str | None = None
+
+    # Taxonomy (Handover 0440a/0440c)
+    project_type_id: str | None = None
+    series_number: int | None = None
+    subseries: str | None = None
+    taxonomy_alias: str | None = None
+
+    # UI visibility flag (CE-OPT-4)
+    hidden: bool = False
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProjectDetail(ProjectBase):
+    """Full project detail with agent information.
+
+    Fields match ProjectService.get_project() output. Inherits the universal
+    field set from ``ProjectBase``; adds MCP-detail-specific bookkeeping
+    (tenant_key, agents, agent_count, message_count) and the staging-handoff
+    fields the closeout UI depends on.
+    """
+
+    alias: str | None = None
+    tenant_key: str
+
+    # Staging / lifecycle (not on compact ProjectData)
     staging_status: str | None = None
     # CE-0028b: exposed so the frontend can distinguish the staging→implementation
     # handoff window (staging_status='staging_complete' AND no impl timestamp)
     # from the actual project-complete state. Without this the closeout flow
     # fires at staging-end and the Implement button is hidden.
     implementation_launched_at: str | None = None
-    product_id: str | None = None
-    tenant_key: str
-    execution_mode: str | None = None
-    auto_checkin_enabled: bool = False
-    auto_checkin_interval: int = 10
-    created_at: str | None = None
-    updated_at: str | None = None
-    completed_at: str | None = None
+
+    # Lifecycle reasons (also on ProjectData; not currently in REST ProjectResponse —
+    # CE-0037 audit flagged for CE-0038 review; kept off REST to preserve the
+    # wire-format invariant, allowlisted in tests/schemas/test_response_parity_all_models.py)
     cancellation_reason: str | None = None
     deactivation_reason: str | None = None
     early_termination: bool = False
+
+    # Counts + agents
     agents: list[dict] = Field(default_factory=list)
     agent_count: int = 0
     message_count: int = 0
-    project_type_id: str | None = None
-    project_type: ProjectTypeInfo | None = None
-    series_number: int | None = None
-    subseries: str | None = None
-    taxonomy_alias: str | None = None
-    hidden: bool = False
 
-    model_config = ConfigDict(from_attributes=True)
+    # Nested taxonomy info
+    project_type: ProjectTypeInfo | None = None
 
 
 class ProjectListItem(BaseModel):
     """Project item for list operations.
 
     Fields match ProjectService.list_projects() output per item.
+
+    Intentionally NOT inheriting ``ProjectBase`` — this is a thin list
+    projection with required (not Optional) timestamps and no
+    ``execution_mode``/``auto_checkin_*`` fields. CE-0038 reviewed and
+    kept this standalone to match the existing list wire shape exactly.
     """
 
     id: str
@@ -89,33 +154,22 @@ class ProjectListItem(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class ActiveProjectDetail(BaseModel):
+class ActiveProjectDetail(ProjectBase):
     """Active project detail.
 
-    Fields match ProjectService.get_active_project() output.
+    Fields match ProjectService.get_active_project() output. Inherits
+    ``ProjectBase`` and adds the active-project bookkeeping (deleted_at,
+    counts, nested type info). Overrides ``alias``/``mission`` defaults
+    to empty-string to match the existing wire shape.
     """
 
-    id: str
     alias: str = ""
-    name: str
     mission: str = ""
-    description: str | None = None
-    status: str
-    product_id: str | None = None
-    created_at: str | None = None
-    updated_at: str | None = None
-    completed_at: str | None = None
+
     deleted_at: str | None = None
     agent_count: int = 0
     message_count: int = 0
-    project_type_id: str | None = None
     project_type: ProjectTypeInfo | None = None
-    series_number: int | None = None
-    subseries: str | None = None
-    taxonomy_alias: str | None = None
-    hidden: bool = False
-
-    model_config = ConfigDict(from_attributes=True)
 
 
 class ProjectMissionUpdateResult(BaseModel):
@@ -160,33 +214,19 @@ class ProjectResumeResult(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class ProjectData(BaseModel):
-    """Generic project data for cancel_staging and update_project responses."""
+class ProjectData(ProjectBase):
+    """Generic project data for cancel_staging and update_project responses.
 
-    id: str
-    name: str
-    status: str
-    mission: str | None = None
-    description: str | None = None
-    execution_mode: str | None = None
-    auto_checkin_enabled: bool = False
-    auto_checkin_interval: int = 10
+    Compact shape — intentionally excludes ``alias``, ``staging_status``,
+    ``implementation_launched_at``, agents, and counts. Callers read the
+    full detail via ``ProjectDetail`` when they need those fields.
+    """
+
     cancellation_reason: str | None = None
     deactivation_reason: str | None = None
     early_termination: bool = False
-    created_at: str | None = None
-    updated_at: str | None = None
     activated_at: str | None = None
-    completed_at: str | None = None
-    product_id: str | None = None
-    project_type_id: str | None = None
     project_type: ProjectTypeInfo | None = None
-    series_number: int | None = None
-    subseries: str | None = None
-    taxonomy_alias: str | None = None
-    hidden: bool = False
-
-    model_config = ConfigDict(from_attributes=True)
 
 
 class ProjectSummaryResult(BaseModel):
