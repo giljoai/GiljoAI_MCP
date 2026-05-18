@@ -126,11 +126,17 @@ class TestCH2InlineFetchCalls:
         assert "fetch all" not in ch2.lower()
         assert "essential context" not in ch2
 
-    def test_ch2_includes_product_id_and_tenant_key(self):
-        """Each fetch call must include product_id and tenant_key."""
+    def test_ch2_includes_product_id_and_omits_tenant_key(self):
+        """Each fetch call must include product_id. CE-0034 Task 3: tenant_key
+        is auto-injected server-side; agent-visible protocol examples must
+        NOT show explicit tenant_key="..." (mirrors the orchestrator identity
+        claim that tenant_key never appears in agent prose)."""
         ch2 = self._build_ch2(product_id="prod-abc", tenant_key="tk_xyz")
         assert "prod-abc" in ch2
-        assert "tk_xyz" in ch2
+        assert "tk_xyz" not in ch2, "CE-0034 Task 3: tenant_key value must not appear in rendered CH2 examples"
+        assert 'tenant_key="' not in ch2, (
+            "CE-0034 Task 3: tenant_key arg must not appear in rendered CH2 fetch_context examples"
+        )
 
     def test_ch2_enabled_categories_appear(self):
         """All enabled categories should have fetch calls in CH2."""

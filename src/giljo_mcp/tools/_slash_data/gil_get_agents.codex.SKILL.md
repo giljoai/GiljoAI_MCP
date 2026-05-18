@@ -209,6 +209,6 @@ Spawn a gil-documenter subagent. Before doing any work, tell me the two mandator
 
 Expected answer (proves custom template is loaded):
 1. mcp__giljo_mcp__health_check()
-2. mcp__giljo_mcp__get_agent_mission(job_id="...", tenant_key="...")
+2. mcp__giljo_mcp__get_agent_mission(job_id="...")
 
 If the agent does NOT mention these GiljoAI MCP calls, the custom template is not being loaded -- troubleshoot the config_file path and agent name.

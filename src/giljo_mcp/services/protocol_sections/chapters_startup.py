@@ -194,7 +194,8 @@ def _build_ch2_fetch_calls(
 
         call_num += 1
         cats_str = ", ".join(f'"{c}"' for c in enabled_cats)
-        call_str = f'fetch_context(categories=[{cats_str}], product_id="{product_id}", tenant_key="{tenant_key}")'
+        # CE-0034 Task 3: tenant_key is auto-injected server-side; never render it in protocol examples.
+        call_str = f'fetch_context(categories=[{cats_str}], product_id="{product_id}")'
 
         lines.append(f"{call_num}. {call_str}")
         lines.append(f"   -- {group['label']}")

@@ -15,6 +15,7 @@ from typing import Any
 
 from giljo_mcp.config_manager import get_config
 from giljo_mcp.models import Product, Project
+from giljo_mcp.prompts._canonical_tool_list import render_toolsearch_call_one_line
 
 
 logger = logging.getLogger(__name__)
@@ -70,6 +71,24 @@ class StagingPromptBuilder:
         api_key_configured = bool(config.server.api_key)
         auth_note = "(authenticated)" if api_key_configured else "(check config.yaml for API key)"
 
+        # CE-0034 Task 2: Claude Code defers MCP tool schemas behind ToolSearch.
+        # Without this single up-front call, health_check() and every other
+        # mcp__giljo_mcp__* call below raises InputValidationError. The hint
+        # must live in THIS spawn prompt (not get_orchestrator_instructions —
+        # that's unreachable until ToolSearch loads its schema).
+        # Mirrors ClaudePromptBuilder._build_context_recap (CE-0033 Task 5).
+        toolsearch_bootstrap = ""
+        if tool == "claude-code":
+            toolsearch_bootstrap = (
+                "STEP 0 — TOOLSEARCH BOOTSTRAP (Claude Code only — do this FIRST):\n"
+                "Claude Code defers MCP tool schemas. You CANNOT call any\n"
+                "mcp__giljo_mcp__* tool (including health_check) until its schema\n"
+                "is loaded. Fire this single call before the WORKFLOW below:\n"
+                f"  {render_toolsearch_call_one_line()}\n"
+                "After that, every tool in the canonical orchestrator set is callable.\n"
+                "\n"
+            )
+
         return f"""I am Orchestrator for GiljoAI Project "{_project_title(project)}".
 
 IDENTITY:
@@ -91,7 +110,7 @@ PROJECT CONTEXT (Inline - ~200 tokens):
 - Description: {project.description or "(No description provided)"}
 - Mission: {project.mission or "(Mission will be created by you)"}
 
-WORKFLOW:
+{toolsearch_bootstrap}WORKFLOW:
 1. Verify MCP connection: mcp__giljo_mcp__health_check()
    → Expected: {{"status": "healthy", "database": "connected"}}
    → If failed: STOP and report error - do NOT proceed

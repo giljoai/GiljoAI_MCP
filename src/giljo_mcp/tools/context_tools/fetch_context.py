@@ -339,16 +339,14 @@ async def fetch_context(
         - self_identity: ~1-3K tokens (Handover 0430)
 
     Example:
-        # Fetch all context with defaults
+        # Fetch all context with defaults (tenant_key auto-injected server-side)
         result = await fetch_context(
             product_id="uuid-123",
-            tenant_key="tk_abc"
         )
 
         # Fetch specific categories with depth override
         result = await fetch_context(
             product_id="uuid-123",
-            tenant_key="tk_abc",
             categories=["vision_documents", "agent_templates"],
             depth_config={"vision_documents": "light"}
         )

@@ -78,7 +78,7 @@
         <!-- Fresh key generated (full key available) -->
         <div v-else-if="generatedKey" class="api-key-status api-key-status--centered">
           <v-icon size="16" :color="COLOR_SUCCESS">mdi-check-circle</v-icon>
-          <span class="status-text">Key generated — copy the config below</span>
+          <span class="status-text">Key generated — copy the config the below command in your terminal</span>
         </div>
 
         <!-- Existing key found (prefix only, no plaintext) -->

@@ -16,6 +16,7 @@ Handover: 0846a (transport replacement), 0846b (security integration)
 import inspect
 import json
 import logging
+from datetime import UTC, datetime
 from typing import Annotated, Any, Literal
 
 from fastapi import HTTPException
@@ -27,7 +28,27 @@ from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from giljo_mcp.auth.jwt_manager import JWTAudienceMismatchError, JWTManager
+from giljo_mcp.exceptions import ValidationError
 from giljo_mcp.http.url_resolver import get_canonical_mcp_resource_uri_from_scope
+
+
+def _parse_iso_datetime_param(s: str) -> datetime | None:
+    """Parse an ISO-8601 string from an MCP boundary param into a tz-aware datetime.
+
+    CE-0034: date-only ISO strings (e.g. "2026-04-17") parse as naive datetimes.
+    Coerce to UTC-aware so downstream comparisons against Postgres TIMESTAMPTZ
+    don't raise ``TypeError: can't compare offset-naive and offset-aware datetimes``.
+    Mirrors ``ProjectService._parse_iso_datetime``.
+
+    Returns None for empty / falsy input. Raises ValidationError on unparseable input.
+    """
+    if not s:
+        return None
+    try:
+        parsed = datetime.fromisoformat(s.replace("Z", "+00:00"))
+    except (ValueError, TypeError) as exc:
+        raise ValidationError(f"Invalid ISO-8601 datetime '{s}'. Expected e.g. '2026-01-01T00:00:00Z'.") from exc
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
 
 
 logger = logging.getLogger(__name__)
@@ -398,19 +419,6 @@ async def list_projects(
     else:
         hidden_arg = None
 
-    # Parse ISO datetimes
-    from datetime import datetime as _dt
-
-    from giljo_mcp.exceptions import ValidationError as _ValidationError
-
-    def _maybe(s: str):
-        if not s:
-            return None
-        try:
-            return _dt.fromisoformat(s.replace("Z", "+00:00"))
-        except (ValueError, TypeError) as exc:
-            raise _ValidationError(f"Invalid ISO-8601 datetime '{s}'. Expected e.g. '2026-01-01T00:00:00Z'.") from exc
-
     return await _call_tool(
         ctx,
         "list_projects",
@@ -421,10 +429,10 @@ async def list_projects(
             "status": status_arg,
             "project_type": pt_arg,
             "taxonomy_alias_prefix": taxonomy_alias_prefix or None,
-            "created_after": _maybe(created_after),
-            "created_before": _maybe(created_before),
-            "completed_after": _maybe(completed_after),
-            "completed_before": _maybe(completed_before),
+            "created_after": _parse_iso_datetime_param(created_after),
+            "created_before": _parse_iso_datetime_param(created_before),
+            "completed_after": _parse_iso_datetime_param(completed_after),
+            "completed_before": _parse_iso_datetime_param(completed_before),
             "include_completed": include_completed,
             "hidden": hidden_arg,
             "mode": mode or None,
