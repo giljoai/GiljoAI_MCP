@@ -78,6 +78,12 @@ class SetupService {
           // main.js reads these to gate the Sentry init call.
           sentryDsn: data.sentryDsn ?? null,
           environment: data.environment,
+          // API-0016: Paddle.js client config. Backend returns
+          // paddle_client_token = null in CE/demo, populated only in
+          // SaaS with Paddle configured. usePaddleCheckout reads these
+          // from setupService per ADR-002 (never configService).
+          paddleClientToken: data.paddle_client_token ?? null,
+          paddleEnvironment: data.paddle_environment ?? null,
         }
         this._statusCache = result
         this._statusCacheTime = Date.now()

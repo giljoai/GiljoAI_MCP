@@ -76,6 +76,7 @@ def _build_project_response(proj, agents=None) -> ProjectResponse:
         created_at=proj.created_at,
         updated_at=proj.updated_at,
         completed_at=proj.completed_at,
+        implementation_launched_at=getattr(proj, "implementation_launched_at", None),
         agent_count=proj.agent_count,
         message_count=proj.message_count,
         agents=agents,

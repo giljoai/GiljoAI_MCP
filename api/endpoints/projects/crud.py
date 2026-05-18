@@ -97,6 +97,7 @@ async def create_project(
         created_at=created_project.created_at.isoformat() if created_project.created_at else None,
         updated_at=created_project.updated_at.isoformat() if created_project.updated_at else None,
         completed_at=created_project.completed_at.isoformat() if created_project.completed_at else None,
+        implementation_launched_at=created_project.implementation_launched_at,
         agent_count=0,
         message_count=0,
         agents=[],
@@ -160,6 +161,7 @@ async def list_projects(
             created_at=proj.created_at,
             updated_at=proj.updated_at,
             completed_at=None,
+            implementation_launched_at=None,
             agent_count=0,
             message_count=0,
             agents=[],
@@ -223,6 +225,7 @@ async def get_deleted_projects(
             created_at=proj.created_at,
             updated_at=proj.updated_at,
             completed_at=None,
+            implementation_launched_at=None,
             deleted_at=None,
             agent_count=0,
             message_count=0,
@@ -284,6 +287,7 @@ async def get_active_project(
         created_at=proj.created_at,
         updated_at=proj.updated_at,
         completed_at=proj.completed_at,
+        implementation_launched_at=proj.implementation_launched_at,
         deleted_at=proj.deleted_at,
         agent_count=proj.agent_count,
         message_count=proj.message_count,
@@ -447,6 +451,7 @@ async def get_project(
         created_at=proj.created_at,
         updated_at=proj.updated_at,
         completed_at=proj.completed_at,
+        implementation_launched_at=proj.implementation_launched_at,
         agent_count=proj.agent_count or len(agents_from_service),
         message_count=proj.message_count,
         execution_mode=proj.execution_mode or "multi_terminal",  # Handover 0260
@@ -501,6 +506,7 @@ async def get_project_review(
         created_at=proj.created_at,
         updated_at=proj.updated_at,
         completed_at=proj.completed_at,
+        implementation_launched_at=proj.implementation_launched_at,
         agent_count=proj.agent_count or len(agents_from_service),
         message_count=proj.message_count,
         execution_mode=proj.execution_mode or "multi_terminal",
@@ -575,6 +581,7 @@ async def update_project(
         proj_created = detail.created_at
         proj_updated = detail.updated_at
         proj_completed = detail.completed_at
+        proj_impl_launched = getattr(detail, "implementation_launched_at", None)
         proj_agents = detail.agent_count
         proj_messages = detail.message_count
         proj_mode = detail.execution_mode or "multi_terminal"
@@ -601,6 +608,7 @@ async def update_project(
         proj_created = proj.created_at
         proj_updated = proj.updated_at
         proj_completed = proj.completed_at
+        proj_impl_launched = getattr(proj, "implementation_launched_at", None)
         proj_agents = 0
         proj_messages = 0
         proj_mode = proj.execution_mode or "multi_terminal"
@@ -628,6 +636,7 @@ async def update_project(
         created_at=proj_created,
         updated_at=proj_updated,
         completed_at=proj_completed,
+        implementation_launched_at=proj_impl_launched,
         agent_count=proj_agents,
         message_count=proj_messages,
         execution_mode=proj_mode,

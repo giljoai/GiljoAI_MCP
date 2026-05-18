@@ -104,6 +104,13 @@ class ProjectResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     completed_at: datetime | None = None
+    # CE-0036: implementation_launched_at must flow through the REST API for
+    # the frontend's useProjectCloseout guard (staging_status='staging_complete'
+    # && !implementation_launched_at → button hidden). CE-0028b added this to
+    # the MCP-side response schema but missed the REST schema below — the one
+    # the project page actually consumes — so the Close Project button never
+    # appeared after impl-end.
+    implementation_launched_at: datetime | None = None
     agent_count: int
     message_count: int
     agents: list[AgentSimple] = []

@@ -143,6 +143,8 @@ async def get_setup_security_status(db: AsyncSession = Depends(get_db_session)):
                 signal["route_signal"],
             )
 
+        paddle_client_token, paddle_environment = _resolve_paddle_fields(GILJO_MODE)
+
         return {
             "setup_complete": not signal["is_fresh_install"],
             "is_fresh_install": signal["is_fresh_install"],
@@ -153,6 +155,8 @@ async def get_setup_security_status(db: AsyncSession = Depends(get_db_session)):
             "mode": GILJO_MODE,
             "sentryDsn": _resolve_sentry_dsn(GILJO_MODE),
             "environment": _resolve_environment(GILJO_MODE),
+            "paddle_client_token": paddle_client_token,
+            "paddle_environment": paddle_environment,
         }
 
     except (ValueError, KeyError):
@@ -169,6 +173,8 @@ async def get_setup_security_status(db: AsyncSession = Depends(get_db_session)):
             "mode": GILJO_MODE,
             "sentryDsn": _resolve_sentry_dsn(GILJO_MODE),
             "environment": _resolve_environment(GILJO_MODE),
+            "paddle_client_token": None,
+            "paddle_environment": None,
         }
 
 
@@ -182,3 +188,43 @@ def _resolve_sentry_dsn(mode: str) -> str | None:
 def _resolve_environment(mode: str) -> str:
     """Echo GILJO_MODE for the frontend Sentry init, defaulting to 'ce'."""
     return (mode or "").strip().lower() or "ce"
+
+
+def _resolve_paddle_fields(mode: str) -> tuple[str | None, str | None]:
+    """Return ``(paddle_client_token, paddle_environment)`` for the SaaS frontend.
+
+    Returns ``(None, None)`` in any non-SaaS mode — CE and demo never expose
+    the Paddle client token. Uses ``importlib.import_module`` so the CE/SaaS
+    static boundary check (``scripts/check_saas_import_boundary.py``) cannot
+    flag this CE file. Mirrors the pattern in ``api/app.py:278``.
+    """
+    if (mode or "").strip().lower() != "saas":
+        return None, None
+
+    try:
+        import importlib
+
+        _paddle_mod = importlib.import_module("giljo_mcp.saas.billing.paddle_service")
+    except ImportError:
+        # SaaS package not present in this build — treat as not configured.
+        return None, None
+
+    # PaddleConfigError lives in the lazy module; resolve it dynamically so
+    # this CE file never holds a reference to a SaaS-defined class at load time.
+    paddle_config_error = getattr(_paddle_mod, "PaddleConfigError", Exception)
+    try:
+        service = _paddle_mod.PaddleService()
+        return service.get_client_token(), service.environment
+    except paddle_config_error as exc:
+        logger.warning("paddle_setup_status_unconfigured: %s", exc)
+        return None, _safe_env_only_paddle_environment()
+
+
+def _safe_env_only_paddle_environment() -> str | None:
+    raw = os.environ.get("PADDLE_ENVIRONMENT")
+    if not raw:
+        return None
+    normalised = raw.strip().lower()
+    if normalised in ("sandbox", "production"):
+        return normalised
+    return None
