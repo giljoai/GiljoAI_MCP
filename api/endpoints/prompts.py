@@ -401,10 +401,15 @@ async def generate_staging_prompt(
 
         # Use generate_staging_prompt for mode-specific content
         # Handover 0388: Pass agent_id for correct MCP tool call in prompt
+        # CE-0035: pass tool so Claude Code orch spawn prompt includes the
+        # ToolSearch bootstrap (build_staging_prompt is the production path;
+        # CE-0034 patched build_thin_prompt by mistake — sibling method on a
+        # separate flow that does not render the user-facing prompt).
         staging_prompt = await generator.generate_staging_prompt(
             orchestrator_id=result["orchestrator_id"],
             project_id=project_id,
             agent_id=result.get("agent_id"),  # WHO - executor ID for MCP tool calls
+            tool=tool,
         )
 
         # Calculate token estimate for staging prompt (1 token ≈ 4 chars)

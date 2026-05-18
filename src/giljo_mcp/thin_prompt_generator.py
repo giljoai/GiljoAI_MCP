@@ -623,13 +623,23 @@ class ThinClientPromptGenerator:
         """
         return os.environ.get("GILJO_PUBLIC_URL", "http://localhost:7272").rstrip("/")
 
-    async def generate_staging_prompt(self, orchestrator_id: str, project_id: str, agent_id: str = None) -> str:
+    async def generate_staging_prompt(
+        self,
+        orchestrator_id: str,
+        project_id: str,
+        agent_id: str = None,
+        tool: str = "universal",
+    ) -> str:
         """Generate thin-client orchestrator staging prompt (Handover 0415).
 
         Args:
             orchestrator_id: Job ID (WHAT - work order UUID)
             project_id: Project UUID
             agent_id: Agent execution ID (WHO - executor UUID for MCP tool calls)
+            tool: AI coding agent harness (claude-code, codex, gemini, universal).
+                CE-0035: plumbed through so Claude Code orchestrator spawn prompts
+                receive the ToolSearch bootstrap that lets the first MCP call
+                succeed without an InputValidationError round-trip.
 
         Returns:
             Thin staging prompt (~113 tokens) OR continuation prompt for successors
@@ -675,6 +685,7 @@ class ThinClientPromptGenerator:
             project_id=project_id,
             agent_id=agent_id,
             mcp_url=mcp_url,
+            tool=tool,
         )
 
     def generate_implementation_prompt(self, prompt_type: str, **kwargs) -> str:

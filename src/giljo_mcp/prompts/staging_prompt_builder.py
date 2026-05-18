@@ -160,6 +160,7 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
         project_id: str,
         agent_id: str,
         mcp_url: str,
+        tool: str = "universal",
     ) -> str:
         """Build the thin-client staging prompt text (Handover 0415).
 
@@ -170,10 +171,34 @@ Begin by verifying MCP connection, then fetch complete context, and CREATE the m
             project_id: Project UUID
             agent_id: Agent execution ID (WHO)
             mcp_url: Full MCP server URL
+            tool: AI coding agent (claude-code, codex, gemini, universal).
+                Claude Code defers MCP tool schemas behind ToolSearch and
+                must bootstrap them before any other MCP call. CE-0035.
 
         Returns:
-            Thin staging prompt (~113 tokens)
+            Thin staging prompt (~113 tokens; ~+8 lines for claude-code).
         """
+        # CE-0035: Claude Code defers MCP tool schemas — without a ToolSearch
+        # bootstrap, the very first health_check() call raises
+        # InputValidationError. Mirrors the block in build_thin_prompt
+        # (CE-0034 Task 2) and ClaudePromptBuilder._build_context_recap
+        # (CE-0033 Task 5). The hint MUST live in this spawn prompt because
+        # get_orchestrator_instructions is unreachable until ToolSearch loads
+        # its schema. build_thin_prompt is a sibling method on a separate
+        # call path; CE-0034 patched it but it does NOT render the
+        # user-facing spawn prompt — this method does.
+        toolsearch_bootstrap = ""
+        if tool == "claude-code":
+            toolsearch_bootstrap = (
+                "STEP 0 — TOOLSEARCH BOOTSTRAP (Claude Code only — do this FIRST):\n"
+                "Claude Code defers MCP tool schemas. You CANNOT call any\n"
+                "mcp__giljo_mcp__* tool (including health_check) until its schema\n"
+                "is loaded. Fire this single call before the START NOW workflow below:\n"
+                f"  {render_toolsearch_call_one_line()}\n"
+                "After that, every tool in the canonical orchestrator set is callable.\n"
+                "\n"
+            )
+
         return f"""You are the ORCHESTRATOR for project "{_project_title(project)}"
 
 YOUR IDENTITY (use these in all MCP calls):
@@ -183,7 +208,7 @@ YOUR IDENTITY (use these in all MCP calls):
 
 MCP Server: {mcp_url}
 
-START NOW:
+{toolsearch_bootstrap}START NOW:
 1. Verify MCP: mcp__giljo_mcp__health_check()
    → Expected: {{"status": "healthy"}} - If failed, STOP and report error
 2. Fetch instructions: mcp__giljo_mcp__get_orchestrator_instructions(job_id='{orchestrator_id}')
