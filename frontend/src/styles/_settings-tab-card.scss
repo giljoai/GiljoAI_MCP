@@ -1,0 +1,15 @@
+/**
+ * _settings-tab-card.scss — shared card surface for the account-settings
+ * tabs (dup-17: IdentityTab, NetworkSettingsTab, SystemPromptTab each
+ * declared an identical 2-property card rule under their own class name).
+ *
+ * Usage (scoped style block):
+ *   @use '@/styles/settings-tab-card' as settingsCard;
+ *   .my-card { @include settingsCard.settings-tab-card-surface; }
+ */
+@use 'design-tokens' as *;
+
+@mixin settings-tab-card-surface {
+  background: $elevation-raised;
+  border-radius: $border-radius-rounded;
+}

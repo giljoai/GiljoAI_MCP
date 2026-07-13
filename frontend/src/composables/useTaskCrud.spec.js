@@ -1,0 +1,124 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { useTaskCrud } from './useTaskCrud'
+
+const mockUpdateTask = vi.fn(() => Promise.resolve({ id: 1 }))
+const mockCreateTask = vi.fn(() => Promise.resolve())
+const mockFetchTasks = vi.fn(() => Promise.resolve())
+
+vi.mock('@/stores/tasks', () => ({
+  useTaskStore: () => ({
+    updateTask: mockUpdateTask,
+    createTask: mockCreateTask,
+    fetchTasks: mockFetchTasks,
+    tasks: [],
+    loading: false,
+  }),
+}))
+
+vi.mock('@/stores/products', () => ({
+  useProductStore: () => ({
+    effectiveProductId: 'product-1',
+    currentProductId: 'product-1',
+  }),
+}))
+
+describe('useTaskCrud', () => {
+  let crud
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    crud = useTaskCrud()
+  })
+
+  it('initializes with dialog closed and no editing task', () => {
+    expect(crud.showTaskDialog.value).toBe(false)
+    expect(crud.editingTask.value).toBeNull()
+    expect(crud.saving.value).toBe(false)
+  })
+
+  it('initializes currentTask with default values (task_type null per Phase B)', () => {
+    expect(crud.currentTask.value.title).toBe('')
+    expect(crud.currentTask.value.status).toBe('pending')
+    expect(crud.currentTask.value.priority).toBe('medium')
+    expect(crud.currentTask.value.task_type).toBeNull()
+    expect(crud.currentTask.value.due_date).toBeNull()
+  })
+
+  it('editTask sets editingTask and opens dialog', () => {
+    const task = {
+      id: 1,
+      title: 'Test',
+      status: 'pending',
+      priority: 'high',
+      task_type: 'BE',
+      due_date: null,
+    }
+    crud.editTask(task)
+    expect(crud.editingTask.value).toEqual(task)
+    expect(crud.currentTask.value.title).toBe('Test')
+    expect(crud.showTaskDialog.value).toBe(true)
+  })
+
+  it('cancelTask resets state and closes dialog', () => {
+    crud.editTask({ id: 1, title: 'Test', status: 'pending', priority: 'high', task_type: 'BE' })
+    crud.cancelTask()
+
+    expect(crud.showTaskDialog.value).toBe(false)
+    expect(crud.showCreateDialog.value).toBe(false)
+    expect(crud.editingTask.value).toBeNull()
+    expect(crud.currentTask.value.title).toBe('')
+    expect(crud.currentTask.value.status).toBe('pending')
+  })
+
+  it('handleNewTask opens dialog when product is active', () => {
+    crud.handleNewTask()
+    expect(crud.showTaskDialog.value).toBe(true)
+  })
+
+  it('updateTask delegates to taskStore.updateTask with the given fields', async () => {
+    await crud.updateTask(99, { status: 'in_progress' })
+    expect(mockUpdateTask).toHaveBeenCalledWith(99, { status: 'in_progress' })
+  })
+
+  it('updateTask supports task_type rebind (re-tagging post-migration NULL)', async () => {
+    await crud.updateTask(99, { task_type: 'BE' })
+    expect(mockUpdateTask).toHaveBeenCalledWith(99, { task_type: 'BE' })
+  })
+
+  it('completeTask calls updateTask with completed status', async () => {
+    await crud.completeTask(42)
+    expect(mockUpdateTask).toHaveBeenCalledWith(42, { status: 'completed' })
+  })
+
+  it('completeTask forwards optional completion notes', async () => {
+    await crud.completeTask(42, 'shipped to dogfood')
+    expect(mockUpdateTask).toHaveBeenCalledWith(42, {
+      status: 'completed',
+      completion_notes: 'shipped to dogfood',
+    })
+  })
+
+  it('completeTask omits completion_notes when notes are blank', async () => {
+    await crud.completeTask(42, '')
+    expect(mockUpdateTask).toHaveBeenCalledWith(42, { status: 'completed' })
+  })
+
+  it('updateTaskField routes a single field through updateTask (single write path)', async () => {
+    const task = { id: 5, title: 'task', status: 'pending' }
+    await crud.updateTaskField(task, 'status', 'in_progress')
+    expect(mockUpdateTask).toHaveBeenCalledWith(5, { status: 'in_progress' })
+  })
+
+  it('updateTaskDueDate formats and routes through updateTask', async () => {
+    const task = { id: 7, title: 'task' }
+    const localDate = new Date(2025, 5, 15) // June (months are 0-indexed)
+    await crud.updateTaskDueDate(task, localDate)
+    expect(mockUpdateTask).toHaveBeenCalledWith(7, { due_date: '2025-06-15' })
+  })
+
+  it('updateTaskDueDate passes null when no date provided', async () => {
+    const task = { id: 8, title: 'task' }
+    await crud.updateTaskDueDate(task, null)
+    expect(mockUpdateTask).toHaveBeenCalledWith(8, { due_date: null })
+  })
+})

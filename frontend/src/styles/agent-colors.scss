@@ -1,0 +1,123 @@
+/**
+ * Agent Color Variables (SCSS)
+ *
+ * CSS variables for agent branding across the application.
+ * The agent color block below is generated from agentColors.js via `npm run codegen:colors`.
+ *
+ * @see handovers/0077_launch_jobs_dual_tab_interface.md
+ */
+
+:root {
+  // giljo:agent-colors:generated:begin -- do not hand-edit; run `npm run codegen:colors`
+  /* Orchestrator - Tan/Beige — Luminous Pastels */
+  --agent-orchestrator-primary: #d4b08a;
+  --agent-orchestrator-dark: #b89670;
+  --agent-orchestrator-light: #e5cdb0;
+  --agent-orchestrator-tinted: rgba(212, 176, 138, 0.15);
+
+  /* Analyzer - Coral — Luminous Pastels */
+  --agent-analyzer-primary: #e07872;
+  --agent-analyzer-dark: #c45e58;
+  --agent-analyzer-light: #eca09b;
+  --agent-analyzer-tinted: rgba(224, 120, 114, 0.15);
+
+  /* Implementer/Implementor - Sky Blue — Luminous Pastels */
+  --agent-implementor-primary: #6db3e4;
+  --agent-implementor-dark: #4f99cc;
+  --agent-implementor-light: #9dcbee;
+  --agent-implementor-tinted: rgba(109, 179, 228, 0.15);
+  /* Alias variables for canonical naming */
+  --agent-implementer-primary: var(--agent-implementor-primary);
+  --agent-implementer-dark: var(--agent-implementor-dark);
+  --agent-implementer-light: var(--agent-implementor-light);
+  --agent-implementer-tinted: var(--agent-implementor-tinted);
+
+  /* Documenter/Researcher - Mint Green — Luminous Pastels */
+  --agent-researcher-primary: #5ec48e;
+  --agent-researcher-dark: #45a876;
+  --agent-researcher-light: #8dd8b0;
+  --agent-researcher-tinted: rgba(94, 196, 142, 0.15);
+  /* Alias variables for canonical naming */
+  --agent-documenter-primary: var(--agent-researcher-primary);
+  --agent-documenter-dark: var(--agent-researcher-dark);
+  --agent-documenter-light: var(--agent-researcher-light);
+  --agent-documenter-tinted: var(--agent-researcher-tinted);
+
+  /* Reviewer - Lavender — Luminous Pastels */
+  --agent-reviewer-primary: #ac80cc;
+  --agent-reviewer-dark: #9266b2;
+  --agent-reviewer-light: #c8a8dd;
+  --agent-reviewer-tinted: rgba(172, 128, 204, 0.15);
+
+  /* Tester - Warm Yellow — Luminous Pastels */
+  --agent-tester-primary: #edba4a;
+  --agent-tester-dark: #d4a330;
+  --agent-tester-light: #f3cf78;
+  --agent-tester-tinted: rgba(237, 186, 74, 0.15);
+  // giljo:agent-colors:generated:end
+
+  /* Agent Card Base Colors */
+  --agent-card-bg: #2c5f77;
+  --agent-card-border: rgba(255, 255, 255, 0.1);
+  --agent-card-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+
+  /* Status Badge Colors — matches statusConfig.js */
+  --status-waiting: #ffd700;
+  --status-working: #ffffff;
+  --status-complete: #67bd6d;
+  --status-failure: #c6298c;
+  --status-blocked: #ff9800;
+
+  /* Launch Prompt Tool Colors */
+  --tool-claude-code: #e67e22;
+  --tool-codex: #9b59b6;
+  --tool-gemini: #3498db;
+}
+
+/* Agent Card Styling Mixins */
+@mixin agent-card-header($color) {
+  background: $color;
+  /* Using filter instead of darken() for CSS variable compatibility */
+  background: linear-gradient(135deg, $color 0%, $color 100%);
+  filter: brightness(0.95);
+  color: white;
+  padding: 12px 16px;
+  border-radius: 8px 8px 0 0;
+  font-weight: 600;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+@mixin agent-card-body {
+  background: var(--agent-card-bg);
+  padding: 16px;
+  border-radius: 0 0 8px 8px;
+  min-height: 200px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+/* Launch Prompt Icon Styling */
+@mixin launch-prompt-icon($color) {
+  background-color: $color;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    filter: brightness(0.9);
+    transform: scale(1.05);
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+}

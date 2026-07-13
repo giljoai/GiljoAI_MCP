@@ -1,0 +1,101 @@
+/**
+ * _banner-unified.scss — FE-6012
+ *
+ * Single source of truth for the shared top-banner chrome:
+ * translucent --banner-bg tint (special warnings & advisories) background,
+ * --color-accent-primary (yellow) icon and CTA button,
+ * --badge-text (dark) text on the CTA button.
+ *
+ * Background uses --banner-bg = rgba(var(--v-theme-error), 0.08) — the same faint
+ * tint as the avatar-menu account-status notice (.account-status-section--danger).
+ * Because the tint is translucent over the dark app surface, light body text and
+ * the yellow icon effectively sit on the dark background → high contrast (this is
+ * what fixed the unreadable white-on-bright-solid problem). --banner-border
+ * (rgba(var(--v-theme-error), 0.22)) gives the full-width strip a faint edge.
+ * Yellow CTA keeps dark --badge-text (#0e1c2d on #ffc300 = 10.68:1 ✅).
+ *
+ * Consumers: SystemStatusBanner, LapsedStateBanner, TrialBanner, AccountDeletionBanner.
+ * Import via: @use '@/styles/banner-unified' as banner; then @include banner.unified-banner-chrome;
+ */
+
+@mixin unified-banner-chrome {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 16px;
+  margin: 0;
+  // Tint-over-surface fill (matches avatar-menu account-status notice exactly).
+  background: var(--banner-bg);
+  --smooth-border-color: var(--banner-border);
+  border-radius: 0;
+  font-size: 13px;
+  z-index: 100;
+  position: sticky;
+  top: 0;
+}
+
+@mixin unified-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+@mixin unified-banner-icon {
+  color: var(--color-accent-primary);
+  flex-shrink: 0;
+}
+
+@mixin unified-banner-message {
+  // Light text on the translucent tint over the dark app surface → high contrast.
+  color: var(--color-text-primary);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// ─── Shared button styles ─────────────────────────────────────────────────────
+// Use in component scoped styles via .unified-banner-btn class or copy the
+// --cta / --dismiss modifiers into your component's own button element.
+
+%unified-banner-btn-base {
+  border: none;
+  cursor: pointer;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  transition: opacity 0.15s ease;
+  line-height: 1;
+
+  &:hover {
+    opacity: 0.85;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-accent-primary);
+    outline-offset: 2px;
+  }
+}
+
+.unified-banner-btn {
+  @extend %unified-banner-btn-base;
+
+  &--cta {
+    background-color: var(--color-accent-primary);
+    // --badge-text: #0e1c2d — 10.68:1 on #ffc300 ✅
+    color: var(--badge-text);
+    padding: 5px 12px;
+  }
+
+  &--dismiss {
+    background: transparent;
+    color: rgba(255, 255, 255, 0.7);
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}

@@ -1,0 +1,819 @@
+@use "sass:color";
+@use "./variables.scss" as *;
+@use "./design-tokens.scss" as *;
+
+// CSS Variables for theme switching with smooth transitions
+:root {
+  // Dark theme (default)
+  --color-bg-primary: #0e1c2d;
+  --color-bg-secondary: #12202e;
+  --color-bg-elevated: #1e3147;
+  --color-border: #315074;
+  --color-text-primary: #e1e1e1;
+  --color-text-secondary: #a3aac4;
+  --text-muted: #8895a8;
+  --text-secondary: #a3aac4;
+  --border-subtle: rgba(255, 255, 255, 0.10);
+  --badge-text: #0e1c2d;
+
+  // Accent colors (same for both themes)
+  --color-accent-primary: #ffc300;
+  --color-accent-success: #67bd6d;
+  --color-accent-danger: #c6298c;
+  --color-accent-special: #8b5cf6;
+  // Banner background — EXACT same recipe as the avatar-menu account-status notice:
+  // the faint error tint composited over an OPAQUE surface base. The menu notice is
+  // rgba(var(--v-theme-error),0.08) over the v-list surface (#12202e); banners sit on
+  // the darker v-main background (#091520), so to look identical the surface base must
+  // be baked in here rather than relying on whatever is behind the strip. Result is a
+  // subtle dark-purple fill that reads the same as the menu and stays a touch lighter
+  // than the page (natural separation — no outline needed). Light text + yellow icon
+  // sit on this dark fill at high contrast.
+  // Do NOT use --banner-bg / --banner-border outside the banner components.
+  --banner-bg: linear-gradient(rgba(var(--v-theme-error), 0.08), rgba(var(--v-theme-error), 0.08)), rgb(var(--v-theme-surface));
+  --banner-border: transparent; // menu notice has no outline — match it
+
+  // Project status colors (BE-5039) — runtime-resolvable mirrors of the
+  // SCSS tokens in design-tokens.scss. The backend ProjectStatus enum
+  // emits `color_token` strings (e.g. 'color-status-complete') which the
+  // frontend resolves via `getComputedStyle(...).getPropertyValue('--' + token)`.
+  // Keep values in sync with design-tokens.scss; SCSS remains the single
+  // source of color truth for compile-time consumers.
+  --color-status-complete: #67bd6d;       // matches $color-status-complete
+  --color-status-blocked: #ff9800;        // matches $color-status-blocked
+  --color-text-muted: #9e9e9e;            // matches $color-text-muted
+  --color-agent-implementer: #6db3e4;     // matches $color-agent-implementor
+  --color-agent-analyzer: #e07872;        // matches $color-agent-analyzer
+  // FE-5041: additional agent-color mirrors used by TaskStatus metadata
+  // (completed -> researcher mint). Kept in lockstep with the SCSS tokens
+  // in design-tokens.scss.
+  --color-agent-researcher: #5ec48e;      // matches $color-agent-researcher
+  --color-agent-reviewer: #ac80cc;        // matches $color-agent-reviewer
+
+  // Brand gradients
+  --gradient-brand: linear-gradient(45deg, #ffd93d, #6bcf7f);
+  --gradient-orchestrator-card: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+  // Onboarding wizard "Gradient Rail" stepper node colors (FE-6259b) — mirrors
+  // $gradient-step-1..4 in design-tokens.scss. CSS custom properties so the
+  // Vue template can bind them per rail node via inline style (--nodecol).
+  --gradient-step-1: #ffd93d;
+  --gradient-step-2: #cdd553;
+  --gradient-step-3: #9cd269;
+  --gradient-step-4: #6bcf7f;
+
+  // Semantic surface / status tokens (FE-6006 unit-1)
+  --color-text-dark: #333333;           // Dark text on light Vuetify chips (active status badge)
+  --color-status-error-light: #ff8a80;  // Light red error text on dark card backgrounds (ApprovalCard)
+
+  // Permission-icon colors (API-0021c) — used by the OAuth consent screens to
+  // distinguish read-vs-write permission scopes. `--color-permission-write` is
+  // Material amber 300; intentionally NOT the brand yellow (`--color-accent-primary`)
+  // which is reserved for the read scope. Keeps a clear visual delta between the
+  // two icons on the consent dialog.
+  --color-permission-write: #ffb74d;
+}
+
+// Base styles
+html {
+  overflow-y: auto;
+}
+
+body {
+  font-family: "Roboto", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+// Custom scrollbar for dark theme
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: $almost-dark-blue;
+}
+
+::-webkit-scrollbar-thumb {
+  background: $med-blue;
+  border-radius: $border-radius-sharp;
+
+  &:hover {
+    background: $lightest-blue;
+  }
+}
+
+// Scrollbar variant: design-token overlay colors (rgba, 8px, Firefox-aware)
+.scrollbar-standard {
+  scrollbar-width: thin;
+  scrollbar-color: $color-scrollbar-thumb-background $color-scrollbar-track-background;
+
+  &::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: $color-scrollbar-track-background;
+    border-radius: $border-radius-sharp;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: $color-scrollbar-thumb-background;
+    border-radius: $border-radius-sharp;
+
+    &:hover {
+      background: $color-scrollbar-thumb-hover-background;
+    }
+  }
+}
+
+// Scrollbar variant: thin (6px), transparent track, Vuetify on-surface tinted thumb
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--v-theme-on-surface), 0.2) transparent;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: rgba(var(--v-theme-on-surface), 0.2);
+    border-radius: $border-radius-sharp;
+
+    &:hover {
+      background-color: rgba(var(--v-theme-on-surface), 0.3);
+    }
+  }
+}
+
+// Animation classes
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity $transition-base;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.slide-fade-enter-active {
+  transition: all $transition-base;
+}
+
+.slide-fade-leave-active {
+  transition: all $transition-fast;
+}
+
+.slide-fade-enter-from,
+.slide-fade-leave-to {
+  transform: translateX(20px);
+  opacity: 0;
+}
+
+// Utility classes
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.no-select {
+  user-select: none;
+}
+
+// Accessible muted text (WCAG AA 4.98:1 on #12202e)
+// Replaces per-component scoped *-text-muted classes.
+.text-muted-a11y {
+  color: var(--text-muted) !important;
+}
+
+// Accessible secondary text (WCAG AA 6.56:1 on #12202e)
+// Replaces inline style="color: #a3aac4" in templates.
+.text-secondary-a11y {
+  color: var(--text-secondary) !important;
+}
+
+// =========================================================================
+// Interactive Icon Utilities
+// =========================================================================
+// Standard hover pattern for clickable icons: muted default → yellow on hover.
+// Usage: <v-icon class="icon-interactive"> or <v-btn class="icon-interactive">
+.icon-interactive {
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border-radius: 6px;
+  padding: 4px;
+
+  &:hover {
+    color: #ffc300;
+    background: rgba(255, 195, 0, 0.08);
+  }
+}
+
+// Prominent play/start button variant — yellow with glow on hover.
+.icon-interactive-play {
+  color: #ffc300;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: 50%;
+  background: rgba(255, 195, 0, 0.1);
+
+  &:hover {
+    background: rgba(255, 195, 0, 0.25);
+    transform: scale(1.1);
+    box-shadow: 0 0 10px rgba(255, 195, 0, 0.2);
+  }
+}
+
+// =========================================================================
+// Smooth Border Utilities (box-shadow inset)
+// =========================================================================
+// Use these instead of CSS `border` on rounded elements. Box-shadow inset
+// renders anti-aliased curves on all zoom levels and display scaling,
+// avoiding the pixelated staircase effect of thin CSS borders on Windows.
+//
+// Usage:
+//   <v-card class="smooth-border">           — default theme border
+//   <v-chip class="smooth-border-accent">    — brand yellow border
+//   <div class="smooth-border" style="--smooth-border-color: #f00"> — custom
+//
+// All classes set `border: none` to prevent double borders when applied
+// to Vuetify components that have their own borders.
+// =========================================================================
+.smooth-border {
+  border: none !important;
+  box-shadow: inset 0 0 0 1px var(--smooth-border-color, rgba(255, 255, 255, 0.10));
+}
+
+.smooth-border-2 {
+  border: none !important;
+  box-shadow: inset 0 0 0 2px var(--smooth-border-color, rgba(255, 255, 255, 0.10));
+}
+
+.smooth-border-accent {
+  border: none !important;
+  box-shadow: inset 0 0 0 2px var(--smooth-border-color, $yellow);
+}
+
+// Table header utility class — apply to non-Vuetify th elements directly.
+// For Vuetify tables use @include table-header-label inside :deep().
+.table-header-label {
+  @include table-header-label;
+}
+
+// Table row separator utility class — apply to td/tr for subtle row dividers.
+// For Vuetify tables use @include table-row-separator inside :deep().
+.table-row-separator {
+  @include table-row-separator;
+}
+
+// Whitespace utility classes
+.text-pre-wrap {
+  white-space: pre-wrap;
+}
+
+.text-pre-line {
+  white-space: pre-line;
+}
+
+// Typography utility classes
+.font-mono {
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+// Opacity utility classes
+.opacity-30 {
+  opacity: 0.3;
+}
+
+.opacity-80 {
+  opacity: 0.8;
+}
+
+// =========================================================================
+// Dialog / Modal Patterns (Harmonization Spec v2)
+// =========================================================================
+
+.dialog-body-scroll {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+// =========================================================================
+// Main Window Motion Utilities
+// =========================================================================
+
+@keyframes main-window-enter-down {
+  from {
+    opacity: 0;
+    transform: translateY(-14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes main-window-enter-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.main-window-reveal {
+  animation: main-window-enter-up 0.45s ease-out both;
+  animation-delay: var(--main-window-delay, 0s);
+}
+
+.main-window-reveal--hero {
+  animation-name: main-window-enter-down;
+  animation-duration: 0.55s;
+}
+
+.main-window-delay-1 { --main-window-delay: 0.04s; }
+.main-window-delay-2 { --main-window-delay: 0.12s; }
+.main-window-delay-3 { --main-window-delay: 0.2s; }
+.main-window-delay-4 { --main-window-delay: 0.27s; }
+.main-window-delay-5 { --main-window-delay: 0.34s; }
+.main-window-delay-6 { --main-window-delay: 0.42s; }
+.main-window-delay-7 { --main-window-delay: 0.5s; }
+.main-window-delay-8 { --main-window-delay: 0.58s; }
+.main-window-delay-9 { --main-window-delay: 0.65s; }
+
+.main-window-tabs {
+  :is(.v-window-item--active, .v-window-item--reverse.v-window-item--active) {
+    animation: main-window-enter-up 0.2s ease-out;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .main-window-reveal,
+  .main-window-reveal--hero,
+  .main-window-tabs :is(.v-window-item--active, .v-window-item--reverse.v-window-item--active) {
+    animation: none !important;
+  }
+}
+
+.dialog-card {
+  border: none !important;
+  border-radius: $border-radius-rounded !important;
+  box-shadow:
+    inset 0 0 0 1px var(--smooth-border-color, rgba(255, 255, 255, 0.10)),
+    0 16px 48px rgba(0, 0, 0, 0.5) !important;
+}
+
+// Global: only the top-level modal/dialog card gets dialog chrome.
+// Nested cards inside dialog content should keep their local component styling.
+.v-dialog > .v-overlay__content > .v-card,
+.v-dialog > .v-overlay__content > form > .v-card {
+  border: none !important;
+  border-radius: $border-radius-rounded !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.10),
+    0 16px 48px rgba(0, 0, 0, 0.5) !important;
+}
+
+// Global: warm glow + color shift on primary action button hover
+.v-btn.bg-primary:hover {
+  background-color: $color-brand-yellow-hover !important;
+  box-shadow: 0 0 16px rgba($color-brand-yellow, 0.25) !important;
+}
+
+// ── Dialog Header ──────────────────────────────────────────────────────
+// Standard header: icon + title + optional meta | close btn
+.dlg-header {
+  display: flex;
+  align-items: center;
+  padding: 14px 20px;
+  min-height: 56px;
+
+  .dlg-icon {
+    margin-right: 10px;
+    font-size: 22px;
+  }
+
+  .dlg-title {
+    flex: 1;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+
+  .dlg-close {
+    margin-left: 8px;
+  }
+
+  .dlg-meta {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    margin-left: 10px;
+  }
+}
+
+// Warning band — destructive confirmations
+.dlg-header--warning {
+  background: #fb8c00;
+  color: rgba(0, 0, 0, 0.87);
+
+  .dlg-close { color: rgba(0, 0, 0, 0.6); }
+}
+
+// Danger band
+.dlg-header--danger {
+  background: $pink-red;
+  color: #fff;
+
+  .dlg-close { color: rgba(255, 255, 255, 0.7); }
+}
+
+// Primary band — major workflow actions (closeout, handover)
+.dlg-header--primary {
+  background: $yellow;
+  color: $darkest-blue;
+
+  .dlg-close { color: rgba(0, 0, 0, 0.5); }
+}
+
+// Sticky variant for scrollable dialogs
+.dlg-header--sticky {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+// ── Dialog Footer ──────────────────────────────────────────────────────
+// Standard: <v-spacer> Cancel(text) | Action(flat)
+.dlg-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 20px;
+  min-height: 52px;
+}
+
+// ── Agent Badge (initials square) ──────────────────────────────────────
+// Used in agent-specific dialog headers (job, mission, details, audit)
+.agent-badge-sq {
+  width: 32px;
+  height: 32px;
+  border-radius: $border-radius-default;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  font-family: 'IBM Plex Mono', monospace;
+
+  &--sm {
+    width: 20px;
+    height: 20px;
+    font-size: 0.52rem;
+    border-radius: 5px;
+  }
+
+  &--lg {
+    width: 44px;
+    height: 44px;
+    font-size: 0.85rem;
+    border-radius: 10px;
+  }
+}
+
+// ── Agent Tinted Badge (pill with text label) ──────────────────────────
+// Used in tables and inline references: "implementer", "analyzer", etc.
+.agent-tinted-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border-radius: $border-radius-default;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+// ── Shared Component Patterns ──────────────────────────────────────────
+
+// Mission text (mono, pre-wrap)
+.mission-text {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+// Template content (mono, smaller — agent prompts)
+.template-content {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  padding: 16px;
+  margin: 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+// Step row (handover wizard steps)
+.step-row {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: $border-radius-default;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.step-label {
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.4;
+}
+
+// Pill button toggle (agent job tabs)
+.pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: $border-radius-pill;
+  padding: 8px 18px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text-muted);
+  border: none;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+  font-family: inherit;
+  transition: all $transition-fast ease;
+
+  &:hover {
+    color: var(--text-secondary);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+  }
+
+  &.active {
+    background: rgba(255, 195, 0, 0.12);
+    color: $yellow;
+    box-shadow: none;
+  }
+}
+
+// Message audit tabs
+.message-audit-tabs {
+  display: flex;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tab-button {
+  flex: 1 1 0;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-size: 0.875rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-family: inherit;
+  transition: all $transition-fast ease;
+
+  &.active {
+    border-bottom-color: $yellow;
+    font-weight: 600;
+    color: $yellow;
+  }
+}
+
+// Tip box (agent lab tips)
+.tip-box {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: $border-radius-sharp;
+  padding: 10px 12px;
+}
+
+.tip-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tip-code {
+  display: block;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+// Custom card styles
+.stats-card {
+  background: linear-gradient(135deg, $almost-dark-blue 0%, $lighter-dark-blue 100%);
+  border: 1px solid rgba($lightest-blue, 0.1);
+  transition:
+    transform $transition-fast,
+    box-shadow $transition-fast;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: $shadow-strong;
+  }
+}
+
+// Custom button styles
+.primary-action-btn {
+  background: linear-gradient(135deg, $yellow 0%, color.adjust($yellow, $lightness: -10%) 100%);
+  color: $darkest-blue;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba($yellow, 0.3);
+  }
+}
+
+// Status indicators
+.status-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+
+  &.online {
+    background-color: $green;
+    animation: pulse 2s infinite;
+  }
+
+  &.offline {
+    background-color: $pink-red;
+  }
+
+  &.pending {
+    background-color: $yellow;
+    animation: pulse 1.5s infinite;
+  }
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 currentColor;
+  }
+  70% {
+    box-shadow: 0 0 0 8px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+// =========================================================================
+// Standardized Switch Styling - Glow effect when ON
+// =========================================================================
+.v-switch {
+  // Default state (OFF) - subtle appearance
+  :deep(.v-switch__track) {
+    opacity: 0.4;
+  }
+
+  // Active state (ON) - glow effect
+  :deep(.v-selection-control--dirty) {
+    .v-switch__track {
+      opacity: 1;
+      box-shadow: 0 0 8px 2px rgba(var(--v-theme-primary), 0.5);
+    }
+  }
+}
+
+// Touch target minimum size for mobile
+.v-btn {
+  min-height: 44px !important;
+  min-width: 44px !important;
+  font-weight: 600 !important; // Bold text for all buttons
+
+  &.v-btn--size-small {
+    min-height: 36px !important;
+    min-width: 36px !important;
+  }
+
+  &.v-btn--icon {
+    width: 44px !important;
+    height: 44px !important;
+
+    &.v-btn--size-small {
+      width: 36px !important;
+      height: 36px !important;
+    }
+  }
+}
+
+// Ensure touch-friendly spacing on mobile
+@media (max-width: 600px) {
+  .v-btn {
+    margin: 4px;
+  }
+
+  .v-chip {
+    min-height: 32px;
+    padding: 0 12px;
+  }
+
+  .v-text-field {
+    .v-field__input {
+      min-height: 44px;
+    }
+  }
+
+  .v-select {
+    .v-field__input {
+      min-height: 44px;
+    }
+  }
+
+  // Make table rows touch-friendly
+  .v-data-table {
+    .v-data-table__tr {
+      min-height: 48px;
+    }
+  }
+}
+
+// Responsive utilities
+@media (max-width: 960px) {
+  .hide-md-and-down {
+    display: none !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .hide-sm-and-down {
+    display: none !important;
+  }
+
+  // Mobile-optimized tables
+  .v-data-table {
+    font-size: 0.875rem;
+
+    .v-data-table__td {
+      padding: 8px 12px;
+    }
+
+    // Make tables horizontally scrollable on mobile
+    overflow-x: auto;
+  }
+
+  // Stack form fields on mobile
+  .v-row {
+    .v-col-12.md-6,
+    .v-col-12.md-4,
+    .v-col-12.md-3,
+    .v-col-12.md-2 {
+      padding: 4px 12px;
+    }
+  }
+
+  // Mobile navigation drawer
+  .v-navigation-drawer {
+    width: 256px !important;
+  }
+
+  // Mobile cards
+  .v-card {
+    margin: 8px 0;
+  }
+
+  // Bigger tap targets for mobile
+  .v-list-item {
+    min-height: 48px;
+  }
+}
+
+// ── Data-table: sticky pagination footer ──
+// Tables expand to show all rows for the selected "items per page".
+// The pagination footer sticks to the viewport bottom so it is
+// always accessible without scrolling past the table.
+.v-data-table-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  background-color: rgb(var(--v-theme-surface));
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}

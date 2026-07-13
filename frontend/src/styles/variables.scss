@@ -1,0 +1,33 @@
+// Color Palette
+$darkest-blue: #0e1c2d;
+$almost-dark-blue: #12202e;
+$lighter-dark-blue: #1e3147;
+$med-blue: #315074;
+$lightest-blue: #8f97b7;
+$white-gray: #e1e1e1;
+$yellow: #ffc300;
+$green: #67bd6d;
+$pink-red: #c6298c;
+$dark-gray: #363636;
+$purple: #8b5cf6;
+
+// Spacing
+$spacing-xs: 4px;
+$spacing-sm: 8px;
+$spacing-md: 16px;
+$spacing-lg: 24px;
+$spacing-xl: 32px;
+$spacing-2xl: 48px;
+$spacing-3xl: 64px;
+
+// Transitions
+$transition-base: 250ms ease;
+
+// Z-index
+$z-index-dropdown: 1000;
+$z-index-sticky: 1020;
+$z-index-fixed: 1030;
+$z-index-modal-backdrop: 1040;
+$z-index-modal: 1050;
+$z-index-popover: 1060;
+$z-index-tooltip: 1070;

@@ -1,0 +1,105 @@
+/**
+ * _setup-wizard-shared.scss — shared chrome for the setup-wizard steps
+ * (dup-18: completes the SetupStep2Connect.scss extraction started for
+ * SetupStep2Connect; SetupStep3Commands, SetupStep4Complete, and
+ * SetupWizardOverlay duplicated pieces of it inline).
+ *
+ * Usage (scoped style block):
+ *   @use '@/styles/setup-wizard-shared' as wiz;
+ *   @include wiz.setup-step-heading;
+ */
+@use 'variables' as *;
+@use 'design-tokens' as *;
+
+/* Gradient step title ("Connect your tools", "Install skills & agents"). */
+@mixin setup-step-heading {
+  .step-heading-grad {
+    font-family: 'Outfit', $typography-font-primary;
+    font-weight: 600;
+    font-size: 1.2rem;
+    text-align: center;
+    margin: 0 0 4px;
+    letter-spacing: -0.01em;
+    background: var(--gradient-brand);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}
+
+/* Per-tool tab strip (Connect / Install steps). */
+@mixin setup-tool-tabs {
+  .tool-tabs {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 20px;
+  }
+
+  .tool-tab {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: $elevation-elevated;
+    border: none;
+    border-radius: $border-radius-default;
+    color: $lightest-blue;
+    cursor: pointer;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    transition: color 250ms ease-out, box-shadow 250ms ease-out;
+  }
+
+  .tool-tab--active {
+    color: $color-brand-yellow;
+    --smooth-border-color: #{$color-brand-yellow};
+  }
+
+  .tool-tab:hover:not(.tool-tab--active) {
+    color: $color-text-primary;
+  }
+
+  .tool-tab-logo {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+  }
+
+  .tab-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: $lightest-blue;
+    transition: background 250ms ease-out;
+  }
+
+  @media (max-width: 599px) {
+    .tool-tabs {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .tool-tab {
+      justify-content: center;
+    }
+  }
+}
+
+/* Panel-section vertical rhythm, shared by every wizard step's content blocks. */
+@mixin setup-panel-section {
+  .panel-section {
+    margin-bottom: 20px;
+  }
+}
+
+/* Vertically centers step content below a pinned title/subtitle/tabs header. */
+@mixin setup-wiz-center {
+  .wiz-center {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 0;
+  }
+}

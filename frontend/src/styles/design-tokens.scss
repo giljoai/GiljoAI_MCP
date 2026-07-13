@@ -1,0 +1,270 @@
+/**
+ * Design Tokens for GiljoAI MCP Dashboard
+ *
+ * Extracted from Nicepage design reference for consistent styling across UI components.
+ * Handover 0243a: Design Token Extraction & LaunchTab Container
+ *
+ * Naming Convention: $category-element-variant
+ * Organization: Colors, Spacing, Typography, Borders, Shadows
+ */
+
+// =========================================================================
+// 1. COLOR TOKENS - Background Colors
+// =========================================================================
+
+// Primary background colors
+$color-background-primary: #0e1c2d; // Dark navy - body background
+$color-background-secondary: rgba(14, 28, 45, 0.5); // Translucent navy - containers
+$color-background-tertiary: rgba(20, 35, 50, 0.8); // Panel content background
+
+// Container backgrounds (required for LaunchTab specifications)
+$color-container-background: rgba(14, 28, 45, 0.5); // Unified container background
+$color-container-border: rgba(255, 255, 255, 0.2); // Container border color
+$color-panel-background: rgba(20, 35, 50, 0.8); // Panel content background
+
+// =========================================================================
+// 2. COLOR TOKENS - Border Colors
+// =========================================================================
+
+$color-border-primary: $color-container-border; // Main container borders (20% opacity)
+$color-border-secondary: rgba(255, 255, 255, 0.1); // Table borders (10% opacity)
+$color-border-tertiary: rgba(255, 255, 255, 0.05); // Row separators (5% opacity)
+
+// =========================================================================
+// 3. COLOR TOKENS - Text Colors
+// =========================================================================
+
+$color-text-primary: #e1e1e1; // Main text
+$color-text-secondary: #999; // Labels, headers
+$color-text-tertiary: #ccc; // Subdued text
+$color-text-highlight: #ffd700; // Yellow - status, waiting
+
+// =========================================================================
+// 4. COLOR TOKENS - Agent Avatar Colors (generated from agentColors.js via `npm run codegen:colors`)
+// =========================================================================
+
+// giljo:agent-colors:generated:begin
+$color-agent-orchestrator: #d4b08a; // Tan/Beige — Luminous Pastels (WCAG 7.48:1)
+$color-agent-analyzer: #e07872; // Coral — Luminous Pastels (WCAG 5.11:1)
+$color-agent-implementor: #6db3e4; // Sky Blue — Luminous Pastels (WCAG 6.64:1)
+$color-agent-tester: #edba4a; // Warm Yellow — Luminous Pastels (WCAG 8.45:1)
+$color-agent-researcher: #5ec48e; // Mint Green — Luminous Pastels (WCAG 7.03:1)
+$color-agent-reviewer: #ac80cc; // Lavender — Luminous Pastels (WCAG 9.08:1)
+// giljo:agent-colors:generated:end
+
+// Avatar text color (light)
+$color-avatar-text-light: #000; // Text on light backgrounds (orchestrator)
+
+// =========================================================================
+// 5. COLOR TOKENS - Status Colors
+// =========================================================================
+
+$color-status-waiting: #ffd700; // Yellow - matches statusConfig.js
+$color-status-working: #ffffff; // White - matches statusConfig.js
+$color-status-complete: #67bd6d; // Green - matches statusConfig.js
+$color-status-review: #6db3e4; // Luminous-Pastel Sky Blue — review-needed status (WCAG 6.64:1)
+$color-status-failed: #c6298c; // Pink - matches statusConfig.js (failure)
+$color-status-blocked: #ff9800; // Orange - matches statusConfig.js
+
+// =========================================================================
+// 5b. COLOR TOKENS - Additional Status / Semantic Colors
+// =========================================================================
+
+$color-status-handed-over: #9e9e9e; // Grey for handed-over status
+$color-status-idle: #7a9bb5; // Muted blue-grey for idle/monitoring
+$color-status-sleeping: #9b89b3; // Soft indigo for sleeping
+$color-status-decommissioned: #757575; // Dark grey for decommissioned
+$color-status-staged: #ffc107; // Amber for staged project status
+$color-status-success: #4caf50; // Material green — generic success (not agent status)
+$color-status-error: #f44336; // Material red — generic error
+$color-status-warning: #ff9800; // Material orange — generic warning
+$color-status-info: #2196f3; // Material blue — generic info
+
+// =========================================================================
+// 5d. COLOR TOKENS - Brand Colors
+// =========================================================================
+
+$color-accent-success: #67bd6d; // Success green — matches --color-accent-success
+$color-accent-danger: #c6298c; // Danger magenta — matches --color-accent-danger
+$color-accent-special: #8b5cf6; // Purple special — matches --color-accent-special
+// Deep violet for the in-app guide SaaS callout (userGuideProse.scss uses this as a
+// border + rgba() tint). NOTE: the TOP BANNERS no longer use this solid value —
+// they use the translucent CSS var --banner-bg (rgba(var(--v-theme-error),0.08))
+// defined in main.scss, matching the avatar-menu account-status notice.
+$color-banner-bg: #440165;     // Guide SaaS-callout violet — DO NOT use for other elements
+$color-brand-yellow: #ffc300; // GiljoAI brand yellow
+$color-brand-yellow-hover: #ffed4e; // Lighter yellow for hover states
+$color-text-muted: #9e9e9e; // Muted / disabled text
+$color-text-dark: #333333; // Dark text on light backgrounds
+$color-text-on-dark-surface: #e6ecf7; // Near-white blue — monospace text/icons on dark elevation-flat cards
+$color-text-on-muted: #1a237e; // Dark indigo text on grey backgrounds
+$color-text-hover: #b0bec5; // Blue-grey hover text color
+$color-surface: #ffffff; // Light surface / white
+$color-border-subtle: rgba(0, 0, 0, 0.12); // Subtle dark border
+$color-border-light: rgba(255, 255, 255, 0.12); // Subtle light border
+$color-pill-border: #2a4a6b; // Muted blue border for pill toggles
+$color-indicator-disconnected: #e05252; // Red status dot for disconnected state
+$color-card-git: #90CAF9; // Light blue for Git integration card
+$color-card-serena: #CE93D8; // Light purple for Serena integration card
+$color-phase-amber: #FBC02D; // Amber text for phase display
+
+// =========================================================================
+// 5c. COLOR TOKENS - Brand Gradients
+// =========================================================================
+
+$gradient-brand-start: #ffd93d;
+$gradient-brand-end: #6bcf7f;
+$gradient-brand: linear-gradient(45deg, $gradient-brand-start, $gradient-brand-end);
+
+// Onboarding wizard "Gradient Rail" stepper (FE-6259b): 4 stops sampled along
+// the brand ramp, one per wizard step (Choose Tools/Connect/Install/Launch).
+// Step 1 and step 4 alias the existing brand start/end so there is exactly
+// one source of truth for those two colors.
+$gradient-step-1: $gradient-brand-start;
+$gradient-step-2: #cdd553;
+$gradient-step-3: #9cd269;
+$gradient-step-4: $gradient-brand-end;
+
+// Dark "ink" foregrounds for text/icons placed on bright brand surfaces
+// (the brand gradient, the filled green done-node, the solid-yellow tick).
+// Kept as tokens so no wizard component hardcodes an on-brand foreground hex.
+$color-on-brand-ink: #10240f;  // on brand-gradient / bright-green surfaces
+$color-on-yellow-ink: #241a00; // on solid brand-yellow (tool-card tick)
+
+$gradient-orchestrator-start: #667eea;
+$gradient-orchestrator-end: #764ba2;
+$gradient-orchestrator-card: linear-gradient(135deg, $gradient-orchestrator-start 0%, $gradient-orchestrator-end 100%);
+
+// =========================================================================
+// 6. SPACING & SIZING TOKENS
+// =========================================================================
+
+// Container spacing
+$spacing-container-padding: 30px; // Main container internal padding
+$spacing-container-border-radius: 16px; // Rounded corners
+
+// Panel spacing
+$spacing-panel-gap: 24px; // Gap between 3 panels
+$spacing-panel-border-radius: 10px; // Panel content rounded corners
+$spacing-panel-content-padding: 20px; // Panel internal padding
+$spacing-panel-min-height: 450px; // Minimum panel height
+
+// Button spacing
+$spacing-button-border-radius: 10px; // Standard button radius
+$spacing-button-border-radius-small: 6px; // Message composer button radius
+
+// Table spacing
+$spacing-table-cell-padding: 16px; // Cell padding
+$spacing-table-header-padding: 12px 16px; // Header cell padding
+
+// =========================================================================
+// 7. TYPOGRAPHY TOKENS
+// =========================================================================
+
+// Font family
+$typography-font-primary: "Roboto", sans-serif;
+
+// Font sizes
+$typography-font-size-header: 1.125rem; // 18px - Panel headers
+$typography-font-size-body: 0.875rem; // 14px - Body text
+$typography-font-size-small: 0.75rem; // 12px - Table headers
+$typography-font-size-tiny: 0.625rem; // 10px - Agent ID
+
+// Panel header typography
+$typography-panel-header-size: 1.125rem; // 18px
+$typography-panel-header-weight: 500; // Medium weight
+$typography-panel-header-color: $color-text-secondary; // #999
+
+// Panel content typography
+$typography-panel-content-size: 0.875rem; // 14px
+$typography-panel-content-weight: 400; // Normal weight
+$typography-panel-content-color: $color-text-primary; // #e1e1e1
+
+// Font weights
+$typography-font-weight-normal: 400;
+$typography-font-weight-medium: 500;
+$typography-font-weight-bold: 700;
+
+// =========================================================================
+// 8. BORDER TOKENS
+// =========================================================================
+
+// Border widths
+$border-width-thin: 1px; // Row separators
+$border-width-standard: 2px; // Container borders
+$border-width-thick: 3px; // Active tab borders
+
+// Border radius (canonical — DO NOT add duplicates to variables.scss)
+$border-radius-sharp: 4px; // Tight corners, scrollbars, inputs
+$border-radius-default: 8px; // Panels, buttons, standard elements
+$border-radius-md: 12px; // Medium — dialogs, cards, product tiles (10+ files)
+$border-radius-rounded: 16px; // Cards, containers
+$border-radius-pill: 9999px; // Pills, tags, chips
+
+// Container border (complete specification)
+$border-container: 2px solid rgba(255, 255, 255, 0.2);
+
+// =========================================================================
+// 9. UI COMPONENT COLORS (Orchestrator Card, Scrollbars, etc)
+// =========================================================================
+
+// Orchestrator card background
+$color-orchestrator-card-background: rgba(255, 255, 255, 0.05); // Light overlay background
+$color-orchestrator-card-border: rgba(255, 255, 255, 0.1); // Light border
+
+// Scrollbar colors (V1 palette — intentional hex, not faded rgba)
+$color-scrollbar-track-background: #12202e; // bg-raised
+$color-scrollbar-thumb-background: #315074; // matches border-subtle palette
+$color-scrollbar-thumb-hover-background: #8f97b7; // bright on hover
+
+// =========================================================================
+// 10. ELEVATION TOKENS (surface lightening, not shadows)
+// =========================================================================
+
+$elevation-flat: #0e1c2d; // Base surface
+$elevation-raised: #12202e; // Cards, panels (harmonized with Vuetify surface)
+$elevation-elevated: #1e3147; // Modals, dropdowns
+$elevation-overlay: #243b53; // Overlays, popovers
+
+// =========================================================================
+// 11. BOX SHADOW TOKENS (canonical — use alongside $elevation-* surface colors)
+// =========================================================================
+
+$shadow-subtle: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+$shadow-default: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+$shadow-strong: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+$shadow-dramatic: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+
+// =========================================================================
+// 12. MIXINS — shared patterns for component @include usage
+// =========================================================================
+
+// Table header label — compact uppercase label used in all data tables.
+// Applied via :deep() to Vuetify table headers or native thead th.
+@mixin table-header-label {
+  font-size: 0.6rem !important;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: $color-text-muted !important;
+  font-weight: 500 !important;
+}
+
+// Table row separator — subtle bottom border for data table rows.
+@mixin table-row-separator {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
+}
+
+// =========================================================================
+// 13. TRANSITION TOKENS
+// =========================================================================
+
+// Duration primitives
+$transition-fast:   0.15s;
+$transition-normal: 0.25s;
+$transition-slow:   0.4s;
+
+// Common transition shorthand tokens
+$transition-hover:     background $transition-fast, color $transition-fast;
+$transition-transform: transform $transition-normal ease;
+$transition-all-fast:  all $transition-fast ease;
+

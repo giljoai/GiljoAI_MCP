@@ -1,0 +1,102 @@
+# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
+# Licensed under the Elastic License 2.0.
+# See LICENSE in the project root for terms.
+# [CE] Community Edition.
+
+"""
+Dependency injection for agent_jobs endpoints.
+
+Provides FastAPI dependencies for service layer access.
+"""
+
+import logging
+
+from fastapi import Depends
+
+from giljo_mcp.auth.dependencies import get_current_active_user
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.models import User
+from giljo_mcp.services.job_query_service import JobQueryService
+from giljo_mcp.services.orchestration_service import OrchestrationService
+
+
+logger = logging.getLogger(__name__)
+
+
+async def get_db_manager() -> DatabaseManager:
+    """
+    Get DatabaseManager instance from app state.
+
+    Returns the database manager from the FastAPI application state.
+    """
+    # Get db_manager from application state (set during startup)
+    from api.app_state import state
+
+    return state.db_manager
+
+
+async def get_tenant_manager():
+    """
+    Get TenantManager instance from app state.
+
+    Returns the tenant manager from the FastAPI application state.
+    """
+    from api.app_state import state
+
+    return state.tenant_manager
+
+
+async def get_orchestration_service(
+    current_user: User = Depends(get_current_active_user),
+) -> OrchestrationService:
+    """
+    Get OrchestrationService instance for agent job operations.
+
+    Args:
+        current_user: Authenticated user (for tenant isolation)
+
+    Returns:
+        OrchestrationService instance
+
+    Note:
+        Service is request-scoped and uses global db_manager/tenant_manager from app state.
+        Service creates its own sessions via db_manager.get_session_async().
+    """
+    # Import state lazily to avoid circular import
+    from api.app_state import state
+
+    logger.debug(f"get_orchestration_service called for user {current_user.username}")
+    logger.debug(f"state.db_manager is None: {state.db_manager is None}")
+    logger.debug(f"state.tenant_manager is None: {state.tenant_manager is None}")
+
+    # OrchestrationService uses db_manager (not session) for its own session management
+    return OrchestrationService(
+        db_manager=state.db_manager,
+        tenant_manager=state.tenant_manager,
+        websocket_manager=state.websocket_manager,
+    )
+
+
+async def get_job_query_service() -> JobQueryService:
+    """Get JobQueryService instance for read-only job queries.
+
+    BE-5022a: Provides direct access to JobQueryService for endpoints
+    that only need read queries (e.g., message audit modal).
+    """
+    from api.app_state import state
+
+    return JobQueryService(
+        db_manager=state.db_manager,
+        tenant_manager=state.tenant_manager,
+    )
+
+
+async def get_workflow_status_service():
+    """Get WorkflowStatusService instance for workflow/roster queries (BE-6115b)."""
+    from api.app_state import state
+    from giljo_mcp.services.workflow_status_service import WorkflowStatusService
+
+    return WorkflowStatusService(
+        db_manager=state.db_manager,
+        tenant_manager=state.tenant_manager,
+    )

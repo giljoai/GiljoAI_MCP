@@ -1,0 +1,444 @@
+# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
+# Licensed under the Elastic License 2.0.
+# See LICENSE in the project root for terms.
+# [CE] Community Edition.
+
+"""
+Job Lifecycle & Orchestration Tools -- @mcp.tool wrappers (BE-6042d split of mcp_sdk_server.py).
+
+Mechanically extracted verbatim from the pre-split ``mcp_sdk_server.py``. Each
+wrapper registers against the shared ``mcp`` instance from ``_base`` as a decorator
+side effect at import time. Behavior, signatures, names, and descriptions unchanged.
+"""
+
+from datetime import UTC, datetime
+from typing import Annotated, Any, Literal
+
+from mcp.server.fastmcp import Context
+from pydantic import Field
+
+from api.endpoints.mcp_tools._base import (
+    _HARNESS_PARAM_DESCRIPTION,
+    MCP_HEAVY_TOOL_META,
+    MCP_ID_MAX,
+    MCP_MISSION_MAX,
+    MCP_NAME_MAX,
+    MCP_SHORT_TEXT_MAX,
+    _call_tool,
+    _detected_harness,
+    _resolve_preset_name,
+    mcp,
+)
+from api.endpoints.mcp_tools._tasks_prototype import maybe_attach_task_view
+from giljo_mcp.exceptions import ValidationError
+
+
+@mcp.tool(
+    description=(
+        "Fetch context for the orchestrator to CREATE a mission plan (near the start of staging, "
+        "or during implementation to refresh context). Returns project description (user "
+        "requirements), prioritized context fields, and agent_templates for discovering "
+        "specialists. Orchestrator-only; analyzes this INPUT, does NOT execute work."
+    ),
+    meta=MCP_HEAVY_TOOL_META,  # BE-9083c: raise Claude Code's inline-truncation ceiling
+)
+async def get_staging_instructions(
+    job_id: str,
+    harness: Annotated[str, Field(max_length=MCP_ID_MAX, description=_HARNESS_PARAM_DESCRIPTION)] = "",
+    ctx: Context = None,
+) -> dict[str, Any]:
+    preset_name = _resolve_preset_name(harness, ctx)
+    # BE-9035b: resolve the DETECTED harness from the session clientInfo and thread it
+    # alongside the preset. The orchestrator-protocol builder applies the
+    # DETECTED-beats-declared render precedence (effective_harness). "generic" (no
+    # clientInfo / no session) leaves the declared render key untouched → byte-identical.
+    detected_harness = _detected_harness(ctx)
+    return await _call_tool(
+        ctx,
+        "get_staging_instructions",
+        {"job_id": job_id, "preset_name": preset_name, "detected_harness": detected_harness},
+    )
+
+
+@mcp.tool(
+    description=(
+        "Persist an agent's mission/execution plan. Orchestrator-only, called during staging so a "
+        "fresh-session orchestrator can retrieve it later via get_job_mission() during implementation."
+    ),
+)
+async def update_job_mission(
+    job_id: Annotated[str, Field(max_length=MCP_ID_MAX)],
+    mission: Annotated[str, Field(max_length=MCP_MISSION_MAX)],
+    ctx: Context = None,
+) -> dict[str, Any]:
+    return await _call_tool(
+        ctx,
+        "update_job_mission",
+        {
+            "job_id": job_id,
+            "mission": mission,
+        },
+    )
+
+
+@mcp.tool(
+    description=(
+        "Report incremental progress with TODO items. Backend auto-calculates "
+        "percent and step counts. Also auto-wakes idle/sleeping/blocked agents "
+        "back to 'working' status."
+    ),
+)
+async def report_progress(
+    job_id: str,
+    todo_items: Annotated[
+        list[dict] | None,
+        Field(
+            description="FULL TODO list (replaces existing). Each item: {content: str, status: 'pending'|'in_progress'|'completed'}. Include ALL items — completed + in_progress + pending. Never a partial list."
+        ),
+    ] = None,
+    todo_append: Annotated[
+        list[dict] | None,
+        Field(
+            description="NEW items to append (does not replace). Same format as todo_items. Use this to add tasks discovered during work without overwriting existing list."
+        ),
+    ] = None,
+    replace: Annotated[
+        bool,
+        Field(
+            description="A todo_items list SHORTER than the stored one REQUIRES replace=True, or it is rejected (it would silently drop items). Use todo_append to add items without replacing. Default False."
+        ),
+    ] = False,
+    ctx: Context = None,
+) -> dict[str, Any]:
+    kwargs: dict[str, Any] = {"job_id": job_id, "replace": replace}
+    if todo_items is not None:
+        kwargs["todo_items"] = todo_items
+    if todo_append is not None:
+        kwargs["todo_append"] = todo_append
+    result = await _call_tool(ctx, "report_progress", kwargs)
+    # CE-0033 Task 10: drop `warnings` when empty so the field shape signals
+    # presence-means-something. The field IS sometimes populated (e.g.,
+    # missing-todo_items reactive warning, throttled to once per 5 min per
+    # job) — we keep emitting it when non-empty.
+    if isinstance(result, dict) and not result.get("warnings"):
+        result.pop("warnings", None)
+    return result
+
+
+@mcp.tool(
+    description=(
+        "Mark a job as completed with results. Any agent, when all assigned work is done. "
+        "REJECTED if genuine action-required messages remain or TODOs are incomplete -- drain "
+        "your coordination thread with get_thread_history() (unread_only=true, mark_read=true), "
+        "act on the posts, and finish your TODOs first; there is no bypass flag. Overloaded "
+        "three ways by hidden server-side phase (staging_end / closeout / deliverable) -- the "
+        "response's phase/message/next_action self-explain. See get_giljo_guide for the "
+        "three-phase detail."
+    ),
+)
+async def complete_job(
+    job_id: str,
+    result: Annotated[
+        dict,
+        Field(
+            description="Completion result dict (validator-canonical shape, AgentExecutionResult): 'summary' (str, what was accomplished); 'artifacts' (list[str], optional); 'commits' (list[str], optional). artifacts and commits MUST be LISTS. Extra keys are allowed (e.g. files_changed, decisions_made)."
+        ),
+    ],
+    acknowledge_closeout_todo: Annotated[
+        bool,
+        Field(
+            description="RETIRED (BE-9012b): accepted-and-ignored. The self-referential closeout TODO auto-completes structurally on your closeout call whether or not this is passed; non-closeout TODOs still block either way. Kept on the signature only so in-flight callers do not 422. Do not pass it. Default False."
+        ),
+    ] = False,
+    acknowledge_messages_on_complete: Annotated[
+        bool,
+        Field(
+            description="RETIRED (BE-9012b): accepted-and-ignored. The messages gate blocks only on genuine action-required posts; drain them with get_thread_history() (unread_only=true, mark_read=true), act, and retry — there is no drain-bypass. Kept on the signature only so in-flight callers do not 422. Do not pass it. Default False."
+        ),
+    ] = False,
+    ctx: Context = None,
+) -> dict[str, Any]:
+    return await _call_tool(
+        ctx,
+        "complete_job",
+        {
+            "job_id": job_id,
+            "result": result,
+            "acknowledge_closeout_todo": acknowledge_closeout_todo,
+            "acknowledge_messages_on_complete": acknowledge_messages_on_complete,
+        },
+    )
+
+
+@mcp.tool(
+    description=(
+        "Mark a completed agent job as closed (final acceptance). "
+        "Called by: ORCHESTRATOR ONLY after verifying deliverables. "
+        "Transition: complete → closed. Closed jobs will not be "
+        "auto-reactivated on new messages. Use 'decommissioned' only "
+        "for failed/replaced/abandoned agents."
+    ),
+)
+async def close_job(
+    job_id: str,
+    ctx: Context = None,
+) -> dict[str, Any]:
+    return await _call_tool(ctx, "close_job", {"job_id": job_id})
+
+
+@mcp.tool(
+    description=(
+        "Resolve a post-completion reactivation. A completed agent auto-blocks when a "
+        "directed, action-required message/post arrives for it. Pick ONE action: "
+        "'resume' picks the work back up (blocked -> working; then report_progress with "
+        "todo_append to add new steps, do NOT overwrite completed ones), or 'dismiss' "
+        "acknowledges the message without resuming (blocked -> complete) when it is "
+        "informational and no action is needed. Only works while status is 'blocked'."
+    ),
+)
+async def resolve_reactivation(
+    job_id: Annotated[str, Field(max_length=MCP_ID_MAX)],
+    action: Annotated[
+        Literal["resume", "dismiss"],
+        Field(description="'resume' to pick the work back up, or 'dismiss' to acknowledge without resuming."),
+    ],
+    reason: Annotated[str, Field(max_length=MCP_SHORT_TEXT_MAX)] = "",
+    ctx: Context = None,
+) -> dict[str, Any]:
+    # BE-9012b (BE-6225e): the two reactivation exits are merged into ONE tool surface.
+    # The two service methods (reactivate_job / dismiss_reactivation) are kept — the
+    # internal caller (project_helpers) still uses them — and are dispatched by action.
+    kwargs: dict[str, Any] = {"job_id": job_id}
+    if reason:
+        kwargs["reason"] = reason
+    target = "reactivate_job" if action == "resume" else "dismiss_reactivation"
+    return await _call_tool(ctx, target, kwargs)
+
+
+@mcp.tool(
+    description=(
+        "Set agent resting/blocked status: 'blocked' (needs human help), 'idle' (monitoring), or "
+        "'sleeping' (periodic check-in). All three auto-wake to 'working' on report_progress(). "
+        "Server-locked for the orchestrator during staging (403 STAGING_LOCK) -- use "
+        "report_progress instead. Spawned non-orchestrator agents bypass the lock."
+    ),
+)
+async def set_agent_status(
+    job_id: str,
+    status: Annotated[
+        Literal["blocked", "idle", "sleeping"],
+        Field(description="Target status: 'blocked', 'idle', or 'sleeping'. Other statuses are not valid here."),
+    ],
+    reason: Annotated[
+        str,
+        Field(
+            max_length=MCP_SHORT_TEXT_MAX,
+            description="Human-readable reason. REQUIRED for 'blocked' status. Displayed on dashboard.",
+        ),
+    ] = "",
+    wake_in_minutes: Annotated[
+        int | None,
+        Field(
+            description="Sleep interval hint for 'sleeping' status. Agent will auto-check-in after this many minutes."
+        ),
+    ] = None,
+    ctx: Context = None,
+) -> dict[str, Any]:
+    return await _call_tool(
+        ctx,
+        "set_agent_status",
+        {
+            "job_id": job_id,
+            "status": status,
+            "reason": reason,
+            "wake_in_minutes": wake_in_minutes,
+        },
+    )
+
+
+_PLACEHOLDER_JOB_IDS = {"unknown", "none", "null", "", "undefined", "placeholder"}
+
+
+@mcp.tool(
+    description=(
+        "Fetch agent-specific mission and context. Call immediately after receiving the thin "
+        "prompt from spawn_job -- your first action. Idempotent. Pass protocol_etag from a prior "
+        "fetch to skip the unchanged identity+protocol block (response sets protocol_unchanged=true). "
+        "Truncation recovery: pass section=<name from protocol_toc> to refetch ONE small section "
+        "of full_protocol."
+    ),
+    meta=MCP_HEAVY_TOOL_META,  # BE-9083c: raise Claude Code's inline-truncation ceiling
+)
+async def get_job_mission(
+    job_id: str,
+    protocol_etag: Annotated[
+        str | None,
+        Field(
+            max_length=128,
+            description=(
+                "Optional. The protocol_etag returned by a prior get_job_mission call. "
+                "When supplied and unchanged, the static identity+protocol block is omitted."
+            ),
+        ),
+    ] = None,
+    harness: Annotated[str, Field(max_length=MCP_ID_MAX, description=_HARNESS_PARAM_DESCRIPTION)] = "",
+    section: Annotated[
+        str,
+        Field(
+            max_length=128,
+            description=(
+                "Optional truncation recovery (BE-9083d). A section name from a prior response's "
+                "protocol_toc; the response then carries ONLY that slice of full_protocol "
+                "(byte-identical to the full render, small enough to survive any harness limit). "
+                "Default '' returns the full mission response."
+            ),
+        ),
+    ] = "",
+    ctx: Context = None,
+) -> dict[str, Any]:
+    if job_id.strip().lower() in _PLACEHOLDER_JOB_IDS:
+        raise ValidationError(
+            "This agent was launched without orchestration context. "
+            "To use GiljoAI orchestration, the orchestrator must call "
+            "spawn_job() first, then pass the returned thin prompt "
+            "(which contains the real job_id) to this agent. "
+            "Without a valid job_id, you can still operate using your "
+            "role instructions — just skip the GiljoAI protocol steps."
+        )
+    preset_name = _resolve_preset_name(harness, ctx)
+    # BE-9079: resolve the DETECTED harness from the session clientInfo and thread it
+    # alongside the preset (mirrors get_staging_instructions above). The worker/orchestrator
+    # protocol builder applies the DETECTED-beats-declared render precedence
+    # (effective_harness) so an orchestrator refetching its mission from a detected
+    # claude-code/codex session renders native spawn prose. "generic"/None → byte-identical.
+    # NOTE: get_agent_mission (the _call_tool dispatch target) MUST accept detected_harness
+    # or _call_tool's tool_func(**kwargs) spread raises TypeError — widened in mission_service.
+    detected_harness = _detected_harness(ctx)
+    return await _call_tool(
+        ctx,
+        "get_job_mission",
+        {
+            "job_id": job_id,
+            "protocol_etag": protocol_etag,
+            "preset_name": preset_name,
+            "detected_harness": detected_harness,
+            "section": section,
+        },
+    )
+
+
+@mcp.tool(
+    description=(
+        "Create specialist agent job for execution. Called by: ORCHESTRATOR ONLY during "
+        "staging to delegate work (Step 4 of workflow). Orchestrator breaks down mission "
+        "into agent-specific tasks and spawns agents who EXECUTE the work. Returns job_id "
+        "and thin prompt (~10 lines). Agent later calls get_job_mission() to fetch full "
+        "mission. Creates database record linking agent to project."
+    ),
+)
+async def spawn_job(
+    agent_display_name: Annotated[
+        str,
+        Field(
+            max_length=MCP_NAME_MAX,
+            description="Agent role label for UI display, e.g. 'implementer', 'tester', 'analyzer'.",
+        ),
+    ],
+    agent_name: Annotated[
+        str,
+        Field(
+            max_length=MCP_NAME_MAX,
+            description="Agent template name from agent_templates list, e.g. 'implementer-backend', 'code-reviewer'.",
+        ),
+    ],
+    project_id: Annotated[str, Field(max_length=MCP_ID_MAX)],
+    mission: Annotated[
+        str,
+        Field(
+            max_length=MCP_MISSION_MAX,
+            description=(
+                "The specific work assignment for this agent. Be detailed — this becomes the "
+                "agent's full mission. Optional: omit (or pass empty) for a two-phase spawn that "
+                "creates a 'staged', messageable agent now and writes the mission later via "
+                "update_job_mission (which transitions it from 'staged' to 'waiting')."
+            ),
+        ),
+    ] = "",
+    phase: Annotated[
+        int | None,
+        Field(
+            description=(
+                "Optional ordering metadata. Same phase = parallel siblings; "
+                "higher phase = depends on lower phases completing. "
+                "In multi_terminal execution mode the dashboard groups Play buttons by phase. "
+                "In subagent modes (Claude/Codex/Gemini CLI) the orchestrator manages ordering "
+                "via Task() / spawn_agent() / @-syntax invocation order; phase is informational. "
+                "Must be an integer."
+            )
+        ),
+    ] = None,
+    predecessor_job_id: Annotated[
+        str,
+        Field(
+            max_length=MCP_ID_MAX,
+            description=(
+                "Optional job_id of a previous agent whose output this successor needs. The server "
+                "reads the predecessor's completion record and renders an appropriate context "
+                "preamble into the successor's mission (chain vs replacement is auto-detected from "
+                "the predecessor's status). In subagent execution modes the server silently skips "
+                "the preamble because your CLI already returned the predecessor result inline."
+            ),
+        ),
+    ] = "",
+    ctx: Context = None,
+) -> dict[str, Any]:
+    kwargs: dict[str, Any] = {
+        "agent_display_name": agent_display_name,
+        "agent_name": agent_name,
+        "mission": mission,
+        "project_id": project_id,
+    }
+    if phase is not None:
+        kwargs["phase"] = phase
+    if predecessor_job_id:
+        kwargs["predecessor_job_id"] = predecessor_job_id
+    return await _call_tool(ctx, "spawn_job", kwargs)
+
+
+@mcp.tool(
+    description=(
+        "Fetch the completion result of a finished agent job. Returns the structured "
+        "result dict (summary, artifacts, commits) stored when the agent called "
+        "complete_job. Use this to read what a predecessor agent accomplished."
+    ),
+)
+async def get_agent_result(
+    job_id: str,
+    ctx: Context = None,
+) -> dict[str, Any]:
+    return await _call_tool(ctx, "get_agent_result", {"job_id": job_id})
+
+
+@mcp.tool(
+    description=(
+        "Monitor workflow progress across all project agents. Returns active/completed/"
+        "blocked/closed/silent/decommissioned/pending agent counts and progress_percent (0-100). "
+        "Note: progress_percent is an agent-count ratio (completed/total agents), NOT a "
+        "measure of work done. "
+        "Use exclude_job_id to omit the calling orchestrator's own job from counts."
+    ),
+)
+async def get_workflow_status(
+    project_id: str,
+    exclude_job_id: str = "",
+    ctx: Context = None,
+) -> dict[str, Any]:
+    kwargs: dict[str, Any] = {"project_id": project_id}
+    if exclude_job_id:
+        kwargs["exclude_job_id"] = exclude_job_id
+    result = await _call_tool(ctx, "get_workflow_status", kwargs)
+    # BE-6039 (NO-SHIP-UNTIL-GA): opt-in MCP Tasks-shape view. Dormant unless
+    # GILJO_TASKS_PROTOTYPE is set AND the client declares the tasks extension; otherwise
+    # returns ``result`` unchanged. Demonstrates the lifecycle -> MCP Tasks mapping.
+    now = datetime.now(UTC)
+    return maybe_attach_task_view(ctx, result, task_id=project_id, created_at=now, last_updated_at=now)

@@ -1,0 +1,57 @@
+/**
+ * _list-filter-bar.scss — shared toolbar chrome for list views (dup-12:
+ * ProjectsView, TasksView, ProductsView, RoadmapView all duplicated this
+ * help-icon + filter-bar + search/select field styling).
+ *
+ * Usage (scoped style block):
+ *   @use '@/styles/list-filter-bar' as filterBar;
+ *   @include filterBar.list-filter-bar;
+ *   @include filterBar.list-filter-bar-responsive; // optional, ≤960px wrap
+ */
+@use 'design-tokens' as *;
+
+@mixin list-filter-bar {
+  /* Help icon on subtitle (Handover 0875) */
+  .help-icon {
+    color: rgba(255, 255, 255, 0.5);
+    cursor: help;
+    vertical-align: middle;
+    margin-left: 4px;
+  }
+
+  .filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .filter-search {
+    flex: 1;
+  }
+
+  .filter-search :deep(.v-field) {
+    box-shadow: inset 0 0 0 1px var(--smooth-border-color, rgba(255, 255, 255, 0.10));
+    border-radius: $border-radius-default;
+  }
+
+  .filter-search :deep(.v-field:focus-within) {
+    box-shadow: inset 0 0 0 1px rgba($color-brand-yellow, 0.3);
+  }
+
+  .filter-select :deep(.v-field) {
+    box-shadow: inset 0 0 0 1px var(--smooth-border-color, rgba(255, 255, 255, 0.10));
+    border-radius: $border-radius-default;
+  }
+}
+
+@mixin list-filter-bar-responsive {
+  @media (max-width: 960px) {
+    .filter-bar {
+      flex-wrap: wrap;
+    }
+    .filter-search {
+      max-width: 100%;
+    }
+  }
+}

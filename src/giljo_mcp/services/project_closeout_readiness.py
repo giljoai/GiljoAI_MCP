@@ -1,0 +1,106 @@
+# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
+# Licensed under the Elastic License 2.0.
+# See LICENSE in the project root for terms.
+# [CE] Community Edition.
+
+"""Closeout-readiness data structures and batch lookup helpers.
+
+Extracted from ``ProjectCloseoutService`` (BE-9144-FIX) to keep that module
+under the line cap. Pure data classes plus session-only query helpers — no
+service state. The single readiness source
+(``ProjectCloseoutService.evaluate_closeout_readiness``) composes these; the
+dataclasses are re-exported from ``project_closeout_service`` so existing
+imports of them from that module keep working.
+"""
+
+from dataclasses import dataclass, field
+from typing import Any
+
+from sqlalchemy import select
+
+from giljo_mcp.models.agent_identity import AgentTodoItem
+from giljo_mcp.models.user_approval import UserApproval
+
+
+@dataclass
+class AgentReadinessFinding:
+    """Per-agent closeout-readiness data for one non-skipped agent.
+
+    The SUPERSET of what the former three readiness checks each inspected. How a
+    finding renders into a blocker (merged-per-agent vs per-issue, whether an
+    ``awaiting_user`` agent is a distinct blocker, whether a complete agent's
+    unread messages block) is the CALLER's concern — this is just the data.
+    """
+
+    job_id: str
+    agent_id: str | None
+    agent_name: str | None
+    status: str
+    messages_waiting: int
+    incomplete_todos: list[str]
+    incomplete_pending: int
+    incomplete_in_progress: int
+    awaiting_user: bool
+    approval_id: str | None
+
+
+@dataclass
+class CloseoutReadinessReport:
+    """One source of closeout-readiness truth (BE-3010c).
+
+    Produced by :meth:`ProjectCloseoutService.evaluate_closeout_readiness`; the
+    former ``_check_agent_readiness`` (rich list), ``_check_closeout_readiness``
+    (envelope) and ``can_close`` (coarse counts) now all SHAPE this single report
+    into their own wire format. ``findings`` covers every non-skipped agent
+    (the orchestrator excluded when ``orchestrator_job_id`` is supplied); the
+    orchestrator's own incomplete TODOs are gathered separately.
+    """
+
+    findings: list[AgentReadinessFinding]
+    agents_checked: int
+    status_counts: dict[str, Any]
+    orchestrator_incomplete: list[str] = field(default_factory=list)
+    orchestrator_pending: int = 0
+    orchestrator_in_progress: int = 0
+
+
+async def incomplete_todos_by_jobs(session: Any, job_ids: list[str], tenant_key: str) -> dict[str, list[AgentTodoItem]]:
+    """Return pending/in_progress TODO rows for many jobs in ONE query (BE-9144).
+
+    Grouped in Python by job_id — replaces the former per-job N+1. A job with
+    no incomplete TODOs is simply absent from the map (callers use
+    ``.get(id, [])``). Row order within each job matches the single-job query
+    (the same scan filtered to that job_id), so each derived
+    ``incomplete_todos`` list is unchanged.
+    """
+    if not job_ids:
+        return {}
+    stmt = select(AgentTodoItem).where(
+        AgentTodoItem.job_id.in_(job_ids),
+        AgentTodoItem.tenant_key == tenant_key,
+        AgentTodoItem.status.in_(["pending", "in_progress"]),
+    )
+    rows = list((await session.execute(stmt)).scalars().all())
+    todos_by_job: dict[str, list[AgentTodoItem]] = {}
+    for todo in rows:
+        todos_by_job.setdefault(todo.job_id, []).append(todo)
+    return todos_by_job
+
+
+async def pending_approval_ids_by_execution(
+    session: Any, agent_execution_ids: list[Any], tenant_key: str
+) -> dict[Any, Any]:
+    """Map each agent_execution_id to its pending UserApproval id in ONE query
+    (BE-9144). Replaces the former per-execution scalar lookup. At most one
+    pending approval per execution is expected (the single-lookup path used
+    ``scalar_one_or_none``); the value only surfaces an approval to the user.
+    """
+    if not agent_execution_ids:
+        return {}
+    stmt = select(UserApproval.id, UserApproval.agent_execution_id).where(
+        UserApproval.tenant_key == tenant_key,
+        UserApproval.agent_execution_id.in_(agent_execution_ids),
+        UserApproval.status == "pending",
+    )
+    rows = (await session.execute(stmt)).all()
+    return {exec_id: approval_id for approval_id, exec_id in rows}

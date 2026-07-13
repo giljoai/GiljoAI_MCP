@@ -1,0 +1,131 @@
+# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
+# Licensed under the Elastic License 2.0.
+# See LICENSE in the project root for terms.
+# [CE] Community Edition.
+
+"""
+Tasks Context Tool - Phase E of agent-parity (2026-05).
+
+Fetch the open-task summary for the current tenant + active product so an
+agent calling ``fetch_context(categories=["tasks"])`` sees what's still
+pending. Read-only; routes through TaskService.list_tasks_for_mcp() in
+summary mode for a compact projection.
+"""
+
+from __future__ import annotations
+
+import logging
+from typing import Any
+
+from sqlalchemy import and_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from giljo_mcp.database import DatabaseManager, tenant_session_context
+from giljo_mcp.models import Task, TaxonomyType
+
+
+logger = logging.getLogger(__name__)
+
+
+def _estimate_tokens(data: Any) -> int:
+    import json
+
+    return len(json.dumps(data, default=str)) // 4
+
+
+async def _query(
+    session: AsyncSession,
+    *,
+    product_id: str,
+    tenant_key: str,
+    limit: int,
+) -> list[dict[str, Any]]:
+    stmt = (
+        select(Task, TaxonomyType.abbreviation)
+        .join(
+            TaxonomyType,
+            and_(Task.task_type_id == TaxonomyType.id, TaxonomyType.tenant_key == tenant_key),
+            isouter=True,
+        )
+        .where(
+            Task.tenant_key == tenant_key,
+            Task.product_id == product_id,
+            Task.deleted_at.is_(None),  # BE-6130b: exclude trashed tasks
+            Task.status.in_(["pending", "in_progress", "blocked"]),
+        )
+        .order_by(Task.created_at.desc())
+        .limit(limit)
+    )
+    with tenant_session_context(session, tenant_key):
+        rows = (await session.execute(stmt)).all()
+    summary: list[dict[str, Any]] = []
+    for task, type_abbr in rows:
+        summary.append(
+            {
+                "task_id": str(task.id),
+                "title": task.title,
+                "status": task.status,
+                "priority": task.priority,
+                "task_type": type_abbr,
+                # FE-5046: parity with list_tasks summary projection.
+                "taxonomy_alias": task.taxonomy_alias or "",
+                "series_number": task.series_number,
+                "subseries": task.subseries,
+                "hidden": bool(task.hidden),
+                "due_date": task.due_date.isoformat() if task.due_date else None,
+                "created_at": task.created_at.isoformat() if task.created_at else None,
+            }
+        )
+    return summary
+
+
+async def get_tasks(
+    product_id: str,
+    tenant_key: str,
+    limit: int = 50,
+    db_manager: DatabaseManager | None = None,
+    session: AsyncSession | None = None,
+) -> dict[str, Any]:
+    """Fetch open/in-progress tasks for the current tenant.
+
+    Args:
+        product_id: Active product ID (used to scope tasks to product).
+        tenant_key: Tenant isolation key (mandatory).
+        limit: Max tasks returned (default 50; cap on response size).
+        db_manager: Database manager (required if ``session`` is None).
+        session: Optional preexisting session (test injection / shared txn).
+
+    Returns:
+        Dict with:
+        - source: "tasks"
+        - data: {"tasks": [<summary rows>], "open_count": N}
+        - metadata: {tenant_key, product_id, estimated_tokens, ...}
+    """
+    if not tenant_key:
+        raise ValueError("tenant_key is required")
+    if session is None and db_manager is None:
+        raise ValueError("either session or db_manager is required")
+
+    if session is not None:
+        summary_rows = await _query(session, product_id=product_id, tenant_key=tenant_key, limit=limit)
+    else:
+        async with db_manager.get_session_async(tenant_key=tenant_key) as new_session:
+            summary_rows = await _query(new_session, product_id=product_id, tenant_key=tenant_key, limit=limit)
+
+    data = {"tasks": summary_rows, "open_count": len(summary_rows)}
+    logger.info(
+        "tasks_context_fetched product_id=%s tenant_key=%s count=%d",
+        product_id,
+        tenant_key,
+        len(summary_rows),
+    )
+    return {
+        "source": "tasks",
+        "data": data,
+        "metadata": {
+            "product_id": product_id,
+            "tenant_key": tenant_key,
+            "estimated_tokens": _estimate_tokens(data),
+            "limit": limit,
+        },
+    }

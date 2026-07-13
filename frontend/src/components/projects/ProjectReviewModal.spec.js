@@ -1,0 +1,203 @@
+/**
+ * ProjectReviewModal.spec.js — FE-6021
+ *
+ * Regression test: executionModeLabel and executionModeIcon resolve from the
+ * projectStateStore (store-first) rather than from the stale REST snapshot.
+ *
+ * This guards the bug class introduced by FE-6019 parity work — the modal's
+ * REST call fires once on open (never re-fetched), so if execution_mode mutates
+ * while the modal is open the two computeds go stale unless they prefer the
+ * live store value.
+ *
+ * Edition scope: CE
+ */
+
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { mount, flushPromises } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
+import { createVuetify } from 'vuetify'
+import ProjectReviewModal from '@/components/projects/ProjectReviewModal.vue'
+import { useProjectStateStore } from '@/stores/projectStateStore'
+import api from '@/services/api'
+
+const vuetify = createVuetify()
+
+// ---------------------------------------------------------------------------
+// Fixtures
+// ---------------------------------------------------------------------------
+
+const PROJECT_ID = 'proj-fe6021'
+
+/**
+ * Stale snapshot returned by the one-shot REST call.
+ * execution_mode is 'multi_terminal' — this is the STALE value.
+ * The store will have 'subagent' — the LIVE value.
+ */
+function makeReviewResponse(executionModeOverride = 'multi_terminal') {
+  return {
+    data: {
+      project: {
+        id: PROJECT_ID,
+        project_id: PROJECT_ID,
+        name: 'FE-6021 Test Project',
+        execution_mode: executionModeOverride,
+        status: 'active',
+        agents: [],
+      },
+      agent_jobs: [],
+      memory_entries: [],
+    },
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Mount helper
+// ---------------------------------------------------------------------------
+
+async function mountModal() {
+  const pinia = createPinia()
+  setActivePinia(pinia)
+
+  // Mount with show=false so the watcher does NOT fire immediately
+  const wrapper = mount(ProjectReviewModal, {
+    props: {
+      show: false,
+      projectId: PROJECT_ID,
+    },
+    global: {
+      plugins: [pinia, vuetify],
+    },
+  })
+
+  // Seed the store with the LIVE execution_mode BEFORE opening the modal.
+  // This mirrors the real scenario: a WS event updates the store while the
+  // project list is displayed; the user then opens the review modal.
+  const projectStateStore = useProjectStateStore()
+  projectStateStore.setProject({
+    id: PROJECT_ID,
+    project_id: PROJECT_ID,
+    execution_mode: 'subagent',
+  })
+
+  // Open the modal — triggers the watcher → loadReviewData() → populates the
+  // stale snapshot from the mocked API (multi_terminal)
+  await wrapper.setProps({ show: true })
+  await flushPromises()
+
+  return { wrapper, projectStateStore }
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+describe('ProjectReviewModal.vue — execution_mode store-first (FE-6021)', () => {
+  beforeEach(() => {
+    // tests/setup.js calls vi.clearAllMocks() per-test, but we also mock here
+    // to set the return value that populates the stale snapshot.
+    api.projects.review = vi.fn().mockResolvedValue(makeReviewResponse('multi_terminal'))
+    // Phase 5 / D1(a): the modal now resolves the project's bound Hub thread on
+    // open. Default to "no bound thread" so these execution-mode tests are
+    // unaffected (the Project Comms section just renders its empty state).
+    api.threads = {
+      list: vi.fn().mockResolvedValue({ data: { threads: [] } }),
+      history: vi.fn().mockResolvedValue({ data: { thread: null, messages: [] } }),
+      create: vi.fn(),
+    }
+  })
+
+  it('executionModeLabel resolves from store, not stale REST snapshot', async () => {
+    const { wrapper } = await mountModal()
+
+    // The store has 'subagent' → label 'Subagent'
+    // The REST snapshot has 'multi_terminal' → label 'Multi-Terminal'
+    // Store-first means we must see 'Subagent'
+    expect(wrapper.vm.executionModeLabel).toBe('Subagent')
+  })
+
+  it('executionModeIcon resolves from store, not stale REST snapshot', async () => {
+    const { wrapper } = await mountModal()
+
+    // The store has 'subagent' → icon 'mdi-connection', img null
+    // The REST snapshot has 'multi_terminal' → icon 'mdi-monitor-multiple'
+    const icon = wrapper.vm.executionModeIcon
+    expect(icon.img).toBe(null)
+    expect(icon.icon).toBe('mdi-connection')
+  })
+
+  // BE-9035c: a pre-collapse project may still carry a tolerated-on-read
+  // legacy per-CLI token (here 'codex_cli') — it must still fold to the
+  // generic "Subagent" label/icon, not error or show a per-vendor label.
+  it('folds a legacy per-CLI execution_mode token to "Subagent" when project is not tracked in the store', async () => {
+    // Do NOT seed the store — simulate a project not tracked by any WS event.
+    const pinia = createPinia()
+    setActivePinia(pinia)
+
+    // For this test the snapshot has the legacy 'codex_cli' token and the store is empty
+    api.projects.review = vi.fn().mockResolvedValue(makeReviewResponse('codex_cli'))
+
+    const wrapper = mount(ProjectReviewModal, {
+      props: { show: false, projectId: PROJECT_ID },
+      global: { plugins: [pinia, vuetify] },
+    })
+
+    await wrapper.setProps({ show: true })
+    await flushPromises()
+
+    // Store is empty → getProjectState returns null → falls back to snapshot,
+    // which folds the legacy token to the generic Subagent label.
+    expect(wrapper.vm.executionModeLabel).toBe('Subagent')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Phase 5 / D1(a): the read-only "Project Comms" section surfaces the project's
+// bound Hub thread as a timeline, with a deep-link into the Hub for interaction.
+// ---------------------------------------------------------------------------
+
+describe('ProjectReviewModal.vue — Project Comms pane (Phase 5 / D1(a))', () => {
+  const BOUND = {
+    thread_id: 'thr-bound',
+    project_id: PROJECT_ID,
+    subject: '(project comms)',
+    created_at: '2026-06-01T00:00:00Z',
+  }
+
+  beforeEach(() => {
+    api.projects.review = vi.fn().mockResolvedValue(makeReviewResponse('multi_terminal'))
+  })
+
+  it('shows the empty state when the project has no bound thread', async () => {
+    api.threads = {
+      list: vi.fn().mockResolvedValue({ data: { threads: [] } }),
+      history: vi.fn().mockResolvedValue({ data: { thread: null, messages: [] } }),
+      create: vi.fn(),
+    }
+    const { wrapper } = await mountModal()
+    await flushPromises()
+    expect(wrapper.find('[data-testid="project-comms-empty"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="project-comms-timeline"]').exists()).toBe(false)
+  })
+
+  it('renders the bound thread timeline + Open-in-Hub deep link when one exists', async () => {
+    api.threads = {
+      list: vi.fn().mockResolvedValue({ data: { threads: [BOUND] } }),
+      history: vi.fn().mockResolvedValue({
+        data: {
+          thread: BOUND,
+          messages: [
+            { thread_id: 'thr-bound', message_id: 'm1', from_agent_id: 'implementer', content: 'hi', created_at: '2026-06-01T01:00:00Z' },
+          ],
+        },
+      }),
+      create: vi.fn(),
+    }
+    const { wrapper } = await mountModal()
+    await flushPromises()
+    expect(wrapper.find('[data-testid="project-comms-timeline"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="project-comms-open-hub"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="project-comms-empty"]').exists()).toBe(false)
+    // the embedded read-only timeline shows the bound thread's message
+    expect(wrapper.find('[data-testid="timeline-message-m1"]').exists()).toBe(true)
+  })
+})

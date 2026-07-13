@@ -1,0 +1,216 @@
+/* Integration cards — shared style for Settings > Integrations tab.
+   Two variants:
+     .intg-card--clickable : full card click, lift on hover (single-action cards)
+     (default)             : container with accent bar, no lift (interactive children) */
+
+.intg-card {
+  background: rgb(var(--v-theme-surface));
+  border-radius: 16px;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.25s;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Uniform action footer — bottom-aligned so primary controls + sublinks
+   line up across every Connect card regardless of description length. */
+.intg-card-foot {
+  margin-top: auto;
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Shared sublink look (blue text link below the primary control) */
+.intg-card-sublink {
+  text-transform: none;
+  font-weight: 500;
+  letter-spacing: normal;
+}
+
+.intg-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--card-accent, rgba(255,255,255,0.10));
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+
+.intg-card:hover::before {
+  opacity: 1;
+}
+
+/* Clickable variant — lift on hover */
+.intg-card--clickable {
+  cursor: pointer;
+}
+
+.intg-card--clickable:hover {
+  transform: translateY(-3px);
+  box-shadow: inset 0 0 0 1px var(--smooth-border-color, rgba(255,255,255,0.10)), 0 10px 20px -6px rgba(0,0,0,0.25);
+}
+
+/* Icon block */
+.intg-card-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 12px;
+}
+
+/* Title */
+.intg-card-title {
+  font-size: 0.92rem;
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+/* Description */
+.intg-card-desc {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin-bottom: 12px;
+}
+
+/* Header row (icon + title + spacer + toggle) for container cards */
+.intg-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.intg-card-header .intg-card-icon {
+  margin-bottom: 0;
+  flex-shrink: 0;
+}
+
+.intg-card-header .intg-card-title {
+  margin-bottom: 0;
+  flex: 1;
+}
+
+/* Body content area */
+.intg-card-body {
+  padding-top: 4px;
+}
+
+/* Toggle pill button (Enable / Enabled) */
+.intg-toggle-pill {
+  text-transform: none;
+  font-weight: 600;
+  font-size: 0.8125rem;
+  letter-spacing: 0.02em;
+  border-radius: 20px;
+  min-width: 100px;
+}
+
+/* ───────────────────────────────────────────────────────────────────────
+   Line cards — full-width horizontal rows: [icon] · title/subtitle · action.
+   The icon is the clickable link; the action sits flush right.
+   ─────────────────────────────────────────────────────────────────────── */
+.intg-line {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 16px 22px;
+  min-height: 76px;
+  background: rgb(var(--v-theme-surface));
+  border-radius: 14px;
+  transition: background 0.2s;
+}
+
+/* Left accent bar on hover */
+.intg-line::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+  background: var(--card-accent, rgba(255, 255, 255, 0.10));
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.intg-line:hover::before {
+  opacity: 1;
+}
+
+.intg-line-icon {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  text-decoration: none;
+}
+
+.intg-line-icon--link {
+  cursor: pointer;
+  transition: transform 0.15s, filter 0.15s;
+}
+
+.intg-line-icon--link:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.12);
+}
+
+.intg-line-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.intg-line-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.intg-line-title {
+  font-size: 0.98rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.intg-line-sub {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin-top: 2px;
+}
+
+.intg-line-action {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+/* Narrow screens — let the action wrap full-width below the text */
+@media (max-width: 640px) {
+  .intg-line {
+    flex-wrap: wrap;
+  }
+
+  .intg-line-action {
+    width: 100%;
+    align-items: stretch;
+  }
+}

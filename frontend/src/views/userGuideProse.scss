@@ -1,0 +1,231 @@
+// userGuideProse.scss — global stylesheet for .guide-prose rendered-markdown content.
+// Extracted from UserGuideView.vue (scoped) so the file stays under 800 lines.
+// Imported as a side-effect in UserGuideView.vue's <script setup>:
+//   import './userGuideProse.scss'
+// Because this file is global (not scoped), all :deep() wrappers from the
+// original scoped block are replaced with plain descendant selectors — the
+// match set is identical because .guide-prose exists only inside this view.
+
+@use '../styles/design-tokens' as *;
+@use '../styles/variables' as *;
+
+// ─── PROSE STYLES ───
+
+.guide-prose h1 {
+  color: var(--color-text-primary);
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 0 0 8px;
+  line-height: 1.3;
+}
+
+.guide-prose h2 {
+  color: var(--color-text-primary);
+  font-size: 1.35rem;
+  font-weight: 600;
+  margin: 40px 0 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  line-height: 1.3;
+  scroll-margin-top: 16px;
+
+  &:first-child {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+  }
+}
+
+.guide-prose h3 {
+  color: var(--color-text-primary);
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 28px 0 12px;
+  line-height: 1.3;
+}
+
+.guide-prose h4 {
+  color: var(--color-text-primary);
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 20px 0 8px;
+}
+
+.guide-prose p {
+  margin: 0 0 16px;
+  color: var(--text-secondary);
+}
+
+.guide-prose em {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.guide-prose strong {
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.guide-prose a {
+  color: $yellow;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.guide-prose ul,
+.guide-prose ol {
+  margin: 0 0 16px;
+  padding-left: 24px;
+  color: var(--text-secondary);
+}
+
+.guide-prose li {
+  margin-bottom: 6px;
+  color: var(--text-secondary);
+}
+
+.guide-prose code {
+  background: var(--color-bg-elevated);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.85em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--color-text-primary);
+}
+
+.guide-prose pre {
+  background: var(--color-bg-elevated);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.875rem;
+  border-radius: 8px;
+  padding: 16px;
+  overflow-x: auto;
+  margin: 0 0 20px;
+  line-height: 1.6;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+
+  code {
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
+    font-size: inherit;
+  }
+}
+
+.guide-prose hr {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  margin: 32px 0;
+}
+
+.guide-prose blockquote {
+  border-left: 3px solid $yellow;
+  margin: 0 0 16px;
+  padding: 8px 16px;
+  background: rgba($yellow, 0.05);
+  border-radius: 0 6px 6px 0;
+  color: var(--text-secondary);
+}
+
+// ─── EDITION CALLOUT STYLES ───
+// CE callout: brand yellow (#ffc300).
+//   Text color (#e1e1e1 / --color-text-primary) on tinted background
+//   (rgba(#ffc300, 0.08)) meets WCAG AA (>4.5:1) via dark card bg.
+//   Accent bar: full-strength $yellow.
+// SaaS callout: deep violet (#440165 = --banner-bg).
+//   #e1e1e1 on #440165 = 11.16:1 ✅  |  $yellow on #440165 = 9.08:1 ✅
+//   Uses $color-banner-bg (from design-tokens.scss) for the tint — NOT
+//   $purple (#8b5cf6) which fails contrast.
+
+.guide-prose .guide-callout {
+  position: relative;
+  border-left: 3px solid;
+  border-radius: 0 6px 6px 0;
+  margin: 0 0 20px;
+  padding: 12px 16px 12px 20px;
+
+  // Reset default blockquote colour so body text inherits the callout's own text colour
+  color: var(--color-text-primary);
+
+  p {
+    margin-bottom: 8px;
+    color: inherit;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+}
+
+.guide-prose .guide-callout__label {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  // Closed-set class — text and bg set per variant below.
+}
+
+// CE variant — brand yellow
+.guide-prose .guide-callout--ce {
+  border-left-color: $yellow;
+  background: rgba($yellow, 0.08);
+
+  .guide-callout__label {
+    background: rgba($yellow, 0.18);
+    color: $yellow;
+    // $yellow (#ffc300) on rgba($yellow, 0.18) blended over dark bg ≈ 7:1 ✅
+  }
+}
+
+// SaaS variant — banner violet (#440165)
+// Body text (#e1e1e1 / --color-text-primary) on this bg = 11.16:1 ✅
+.guide-prose .guide-callout--saas {
+  border-left-color: $color-banner-bg;
+  background: rgba($color-banner-bg, 0.18);
+
+  .guide-callout__label {
+    background: rgba($color-banner-bg, 0.35);
+    color: var(--color-text-primary);
+    // #e1e1e1 on rgba(#440165, 0.35) blended over dark bg = sufficient contrast ✅
+  }
+}
+
+// ─── TABLE STYLES ───
+
+.guide-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 20px;
+  font-size: 0.9rem;
+}
+
+.guide-prose thead {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.guide-prose th {
+  color: var(--color-text-primary);
+  font-weight: 600;
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  white-space: nowrap;
+}
+
+.guide-prose td {
+  padding: 9px 14px;
+  color: var(--text-secondary);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  vertical-align: top;
+}
+
+.guide-prose tbody tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}

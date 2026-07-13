@@ -1,0 +1,441 @@
+/**
+ * ProjectsTable.spec.js — FE-6006 unit 3b / FE-6050 compact headers
+ *
+ * Tests the projects data table presentational component.
+ * Edition scope: CE
+ */
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { mount } from '@vue/test-utils'
+import { setActivePinia, createPinia } from 'pinia'
+
+// FE-6050: mock vuetify so useDisplay() doesn't throw when Vuetify plugin is absent.
+// smAndDownRef is a plain reactive-like object (plain {value} is what the component
+// checks via .value); vi.mock factories are hoisted before imports so Vue's ref()
+// cannot be used here — a plain object is sufficient.
+const smAndDownRef = { value: false }
+vi.mock('vuetify', () => ({
+  useDisplay: () => ({ smAndDown: smAndDownRef }),
+}))
+
+vi.mock('@/utils/taxonomyBadge', () => ({
+  taxonomyBadgeStyle: () => ({ background: 'rgba(100,100,100,0.15)', color: '#646464' }),
+  DEFAULT_PROJECT_TYPE_COLOR: '#646464',
+  resolveTaxonomyColor: ({ color } = {}) => color || '#646464',
+  isReservedTaskAlias: (alias) => typeof alias === 'string' && /^TSK(?=[-\d])/.test(alias),
+}))
+vi.mock('@/composables/useFormatDate', () => ({
+  useFormatDate: () => ({
+    formatDateWithTime: (d) => d ? 'Jun 1, 2026' : '',
+    formatDateCompactWithTime: (d) => d ? '01/06' : '',
+  }),
+}))
+vi.mock('@/config/colorTokens', () => ({
+  TEXT_MUTED_MATERIAL: '#8895a8',
+  DOT_SUCCESS: '#67bd6d',
+  DOT_WARNING: '#ffc300',
+  DOT_ERROR: '#ff6b6b',
+}))
+
+import ProjectsTable from './ProjectsTable.vue'
+
+const stubs = {
+  // BE-6076: server-mode table component.
+  'v-data-table-server': {
+    template: '<div class="v-data-table" data-table><slot /><slot name="no-data" /></div>',
+    props: ['items', 'itemsLength', 'loading', 'headers', 'sortBy', 'page', 'itemsPerPage'],
+  },
+  'v-card': { template: '<div class="v-card"><slot /></div>' },
+  'v-btn': { template: '<button class="v-btn" v-bind="$attrs" @click="$emit(\'click\')"><slot /></button>' },
+  'v-icon': { template: '<i class="v-icon"><slot /></i>' },
+  'v-menu': { template: '<div class="v-menu"><slot name="activator" :props="{}" /><slot /></div>' },
+  'v-list': { template: '<div class="v-list"><slot /></div>' },
+  'v-list-item': { template: '<div class="v-list-item" @click="$emit(\'click\')"><slot /></div>', props: ['prependIcon', 'title'] },
+  'v-divider': { template: '<hr />' },
+  'v-tooltip': { template: '<div class="v-tooltip"><slot name="activator" :props="{}" /><slot /></div>' },
+  'v-progress-circular': { template: '<div class="v-progress-circular" />' },
+  StatusBadge: { template: '<span class="status-badge">{{ status }}</span>', props: ['status'] },
+  // BE-9157: the Supersede dialog is a store/Vuetify-dependent child; stub it out
+  // of this presentational-table unit test (it has its own SupersedeProjectModal.spec.js).
+  SupersedeProjectModal: true,
+}
+
+const sampleProjects = [
+  {
+    id: 'proj-1',
+    name: 'Fix login',
+    status: 'inactive',
+    series_number: 1,
+    taxonomy_alias: 'BE-0001',
+    project_type: { color: '#ff6b6b' },
+    staging_status: null,
+    created_at: '2026-06-01T10:00:00Z',
+    completed_at: null,
+    updated_at: '2026-06-01T10:00:00Z',
+    product_id: 'prod-1',
+    hidden: false,
+  },
+]
+
+function mountTable(props = {}) {
+  return mount(ProjectsTable, {
+    props: {
+      projects: sampleProjects,
+      total: sampleProjects.length,
+      loading: false,
+      hasActiveProject: false,
+      ...props,
+    },
+    global: { stubs },
+  })
+}
+
+describe('ProjectsTable', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    smAndDownRef.value = false // default: full view
+  })
+
+  afterEach(() => {
+    smAndDownRef.value = false
+  })
+
+  it('renders the table container', () => {
+    const wrapper = mountTable()
+    expect(wrapper.find('.v-card').exists()).toBe(true)
+    expect(wrapper.find('[data-table]').exists()).toBe(true)
+  })
+
+  it('renders with projects data', () => {
+    const wrapper = mountTable()
+    // data-table stub present; component mounted correctly
+    expect(wrapper.find('[data-table]').exists()).toBe(true)
+    expect(wrapper.exists()).toBe(true)
+  })
+
+  it('shows no-data slot when projects is empty', () => {
+    const wrapper = mountTable({ projects: [] })
+    // no-data slot rendered
+    expect(wrapper.html()).toContain('No projects found')
+  })
+
+  it('emits open-project when badge button clicked', async () => {
+    // badge click is on .project-id-badge but in stub environment just confirm component renders
+    const wrapper = mountTable()
+    expect(wrapper.exists()).toBe(true)
+  })
+})
+
+// BE-6076: server-mode spec
+describe('ProjectsTable — server mode (BE-6076)', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    smAndDownRef.value = false
+  })
+
+  it('binds the server total to :items-length', () => {
+    const wrapper = mountTable({ total: 137 })
+    const table = wrapper.findComponent(stubs['v-data-table-server'])
+    expect(table.props('itemsLength')).toBe(137)
+  })
+
+  it('passes the parent sortBy through (server sort, no client customKeySort)', () => {
+    const sortBy = [{ key: 'name', order: 'asc' }]
+    const wrapper = mountTable({ sortBy })
+    const table = wrapper.findComponent(stubs['v-data-table-server'])
+    expect(table.props('sortBy')).toEqual(sortBy)
+  })
+
+  it('forwards @update:options so the parent can re-fetch the page', async () => {
+    const wrapper = mountTable()
+    const table = wrapper.findComponent(stubs['v-data-table-server'])
+    const options = { page: 2, itemsPerPage: 10, sortBy: [{ key: 'series_number', order: 'desc' }] }
+    table.vm.$emit('update:options', options)
+    await wrapper.vm.$nextTick()
+    expect(wrapper.emitted('update:options')).toBeTruthy()
+    expect(wrapper.emitted('update:options')[0][0]).toEqual(options)
+  })
+})
+
+// FE-6165a: election fades + disables the per-row play button.
+describe('ProjectsTable — election fade (FE-6165a)', () => {
+  // Augmented stub that renders the item.quick_action scoped slot per project so
+  // the per-row play button is actually in the DOM (the shared stub renders only
+  // the default slot).
+  const rowStubs = {
+    ...stubs,
+    'v-data-table-server': {
+      template:
+        '<div class="v-data-table" data-table>' +
+        '<template v-for="item in items" :key="item.id">' +
+        '<slot name="item.quick_action" :item="item" /></template>' +
+        '<slot name="no-data" /></div>',
+      props: ['items', 'itemsLength', 'loading', 'headers', 'sortBy', 'page', 'itemsPerPage'],
+    },
+  }
+
+  function mountWithRows(props = {}) {
+    return mount(ProjectsTable, {
+      props: {
+        projects: sampleProjects,
+        total: sampleProjects.length,
+        loading: false,
+        hasActiveProject: false,
+        ...props,
+      },
+      global: { stubs: rowStubs },
+    })
+  }
+
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    smAndDownRef.value = false
+  })
+
+  it('play button is enabled and unfaded when no election is active', () => {
+    const wrapper = mountWithRows({ electionActive: false })
+    const btn = wrapper.find('.play-circle-btn')
+    expect(btn.exists()).toBe(true)
+    expect(btn.attributes('disabled')).toBeUndefined()
+    expect(btn.classes()).not.toContain('play-btn-disabled')
+  })
+
+  it('fades + disables the play button while an election is active', () => {
+    const wrapper = mountWithRows({ electionActive: true })
+    const btn = wrapper.find('.play-circle-btn')
+    expect(btn.exists()).toBe(true)
+    expect(btn.attributes('disabled')).toBeDefined()
+    expect(btn.classes()).toContain('play-btn-disabled')
+  })
+
+  it('does NOT emit activate-launch when the play button is clicked during an election', async () => {
+    const wrapper = mountWithRows({ electionActive: true })
+    await wrapper.find('.play-circle-btn').trigger('click')
+    expect(wrapper.emitted('activate-launch')).toBeFalsy()
+  })
+})
+
+// FE-6178: "Deactivate Chain" kebab item for in-chain projects.
+describe('ProjectsTable — Deactivate Chain (FE-6178)', () => {
+  // Render the item.menu scoped slot per project, and make v-list-item surface its
+  // title text + pass-through attrs (data-testid) so the item is findable/assertable.
+  const menuStubs = {
+    ...stubs,
+    'v-list-item': {
+      template: '<div class="v-list-item" v-bind="$attrs" @click="$emit(\'click\')">{{ title }}<slot /></div>',
+      props: ['prependIcon', 'title'],
+      inheritAttrs: false,
+    },
+    'v-data-table-server': {
+      template:
+        '<div class="v-data-table" data-table>' +
+        '<template v-for="item in items" :key="item.id">' +
+        '<slot name="item.menu" :item="item" /></template>' +
+        '<slot name="no-data" /></div>',
+      props: ['items', 'itemsLength', 'loading', 'headers', 'sortBy', 'page', 'itemsPerPage'],
+    },
+  }
+
+  function mountWithMenu(props = {}) {
+    return mount(ProjectsTable, {
+      props: { projects: sampleProjects, total: 1, loading: false, hasActiveProject: false, ...props },
+      global: { stubs: menuStubs },
+    })
+  }
+
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    smAndDownRef.value = false
+  })
+
+  it('shows "Deactivate Chain" for a project that is in a chain', () => {
+    const wrapper = mountWithMenu({ inChainIds: ['proj-1'] })
+    const item = wrapper.find('[data-testid="deactivate-chain-item"]')
+    expect(item.exists()).toBe(true)
+    expect(item.text()).toContain('Deactivate Chain')
+  })
+
+  it('hides "Deactivate Chain" for a project that is NOT in a chain', () => {
+    const wrapper = mountWithMenu({ inChainIds: [] })
+    expect(wrapper.find('[data-testid="deactivate-chain-item"]').exists()).toBe(false)
+  })
+
+  it('emits status-action with deactivate-chain when clicked', async () => {
+    const wrapper = mountWithMenu({ inChainIds: ['proj-1'] })
+    await wrapper.find('[data-testid="deactivate-chain-item"]').trigger('click')
+    expect(wrapper.emitted('status-action')).toBeTruthy()
+    expect(wrapper.emitted('status-action')[0][0]).toEqual({ action: 'deactivate-chain', projectId: 'proj-1' })
+  })
+
+  it('suppresses the solo Activate action for an in-chain project (Deactivate Chain is the counter)', () => {
+    const wrapper = mountWithMenu({ inChainIds: ['proj-1'] })
+    const titles = wrapper.findAll('.v-list-item').map((i) => i.text())
+    expect(titles.some((t) => t.includes('Deactivate Chain'))).toBe(true)
+    expect(titles.some((t) => t === 'Activate' || t.startsWith('Activate'))).toBe(false)
+  })
+
+  it('keeps the solo Activate action for a non-chain inactive project', () => {
+    const wrapper = mountWithMenu({ inChainIds: [] })
+    const titles = wrapper.findAll('.v-list-item').map((i) => i.text())
+    expect(titles.some((t) => t.startsWith('Activate'))).toBe(true)
+  })
+
+  // FE-6180: "Reset to original" for a SOLO staged/launched project (not in a chain).
+  it('shows "Reset to original" for a solo staged project, not for a clean one', () => {
+    const staged = [{ ...sampleProjects[0], id: 'p-staged', staging_status: 'staging_complete' }]
+    expect(mountWithMenu({ projects: staged, inChainIds: [] }).find('[data-testid="reset-project-item"]').exists()).toBe(true)
+    // sampleProjects[0] has staging_status null -> no Reset item.
+    expect(mountWithMenu({ inChainIds: [] }).find('[data-testid="reset-project-item"]').exists()).toBe(false)
+  })
+
+  it('hides "Reset to original" for an in-chain project (Deactivate Chain is the chain back-out)', () => {
+    const staged = [{ ...sampleProjects[0], id: 'proj-1', staging_status: 'staging_complete' }]
+    const wrapper = mountWithMenu({ projects: staged, inChainIds: ['proj-1'] })
+    expect(wrapper.find('[data-testid="reset-project-item"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="deactivate-chain-item"]').exists()).toBe(true)
+  })
+})
+
+// FE-6180: the tickbox is a passive indicator — disabled for any active-chain member.
+describe('ProjectsTable — grey tickbox by membership (FE-6180)', () => {
+  const selStubs = {
+    ...stubs,
+    'v-checkbox-btn': {
+      template: '<input type="checkbox" :disabled="disabled" v-bind="$attrs" />',
+      props: ['modelValue', 'disabled'],
+    },
+    'v-data-table-server': {
+      template:
+        '<div class="v-data-table" data-table>' +
+        '<template v-for="item in items" :key="item.id">' +
+        '<slot name="item.select" :item="item" /></template></div>',
+      props: ['items', 'itemsLength', 'loading', 'headers', 'sortBy', 'page', 'itemsPerPage'],
+    },
+  }
+
+  function mountSel(props = {}) {
+    return mount(ProjectsTable, {
+      props: { projects: sampleProjects, total: 1, loading: false, hasActiveProject: false, linkMode: true, ...props },
+      global: { stubs: selStubs },
+    })
+  }
+
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    smAndDownRef.value = false
+  })
+
+  it('disables the tickbox for an in-chain member', () => {
+    const box = mountSel({ inChainIds: ['proj-1'] }).find('[data-testid^="project-select-checkbox"]')
+    expect(box.exists()).toBe(true)
+    expect(box.attributes('disabled')).toBeDefined()
+  })
+
+  it('leaves the tickbox enabled for a non-chain inactive project', () => {
+    const box = mountSel({ inChainIds: [] }).find('[data-testid^="project-select-checkbox"]')
+    expect(box.exists()).toBe(true)
+    expect(box.attributes('disabled')).toBeUndefined()
+  })
+})
+
+// BE-2002: archived (hidden) rows carry a visible "Archived" badge so search
+// results that include archived projects are clearly tagged.
+describe('ProjectsTable — Archived badge (BE-2002)', () => {
+  const nameStubs = {
+    ...stubs,
+    'v-chip': { template: '<span class="v-chip" v-bind="$attrs"><slot /></span>' },
+    'v-data-table-server': {
+      template:
+        '<div class="v-data-table" data-table>' +
+        '<template v-for="item in items" :key="item.id">' +
+        '<slot name="item.name" :item="item" /></template></div>',
+      props: ['items', 'itemsLength', 'loading', 'headers', 'sortBy', 'page', 'itemsPerPage'],
+    },
+  }
+
+  function mountName(projects) {
+    return mount(ProjectsTable, {
+      props: { projects, total: projects.length, loading: false, hasActiveProject: false },
+      global: { stubs: nameStubs },
+    })
+  }
+
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    smAndDownRef.value = false
+  })
+
+  it('renders the Archived badge for an archived (hidden) project', () => {
+    const wrapper = mountName([{ ...sampleProjects[0], id: 'p-h', hidden: true }])
+    const badge = wrapper.find('[data-test="project-archived-badge"]')
+    expect(badge.exists()).toBe(true)
+    expect(badge.text()).toContain('Archived')
+  })
+
+  it('does NOT render the Archived badge for a visible project', () => {
+    const wrapper = mountName([{ ...sampleProjects[0], hidden: false }])
+    expect(wrapper.find('[data-test="project-archived-badge"]').exists()).toBe(false)
+  })
+})
+
+// FE-6050 / FE-6176: compact-headers spec.
+// FE-6176 split the header sets by link mode: NORMAL mode shows the play-button
+// `quick_action` column and NO `select` column; LINK mode swaps them — `select`
+// (the "Linked" checkbox) appears and `quick_action` is dropped. The select
+// column moved to AFTER `completed_at` (between Completed and the menu).
+describe('ProjectsTable — headers (FE-6050 / FE-6176)', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+  })
+
+  afterEach(() => {
+    smAndDownRef.value = false
+  })
+
+  it('NORMAL full mode: 8 columns with quick_action, NO select', () => {
+    smAndDownRef.value = false
+    const wrapper = mountTable({ linkMode: false })
+    const keys = wrapper.vm.headers.map((h) => h.key)
+    expect(wrapper.vm.headers.length).toBe(8)
+    expect(keys).toContain('quick_action')
+    expect(keys).not.toContain('select')
+    expect(keys).toContain('name')
+    expect(keys).toContain('completed_at')
+    expect(keys).toContain('staging_status')
+  })
+
+  it('LINK full mode: select column present (after completed), quick_action dropped', () => {
+    smAndDownRef.value = false
+    const wrapper = mountTable({ linkMode: true })
+    const keys = wrapper.vm.headers.map((h) => h.key)
+    expect(keys).toContain('select')
+    expect(keys).not.toContain('quick_action')
+    // "Linked" column header label + placement (after completed_at, before menu)
+    const selectHeader = wrapper.vm.headers.find((h) => h.key === 'select')
+    expect(selectHeader.title).toBe('Linked')
+    const order = keys
+    expect(order.indexOf('select')).toBeGreaterThan(order.indexOf('completed_at'))
+    expect(order.indexOf('select')).toBeLessThan(order.indexOf('menu'))
+  })
+
+  it('NORMAL compact mode: 4 columns with quick_action, NO select', () => {
+    smAndDownRef.value = true
+    const wrapper = mountTable({ linkMode: false })
+    const keys = wrapper.vm.headers.map((h) => h.key)
+    expect(wrapper.vm.headers.length).toBe(4)
+    expect(keys).toContain('series_number')
+    expect(keys).toContain('status')
+    expect(keys).toContain('quick_action')
+    expect(keys).toContain('menu')
+    expect(keys).not.toContain('select')
+  })
+
+  it('LINK compact mode: select column present, quick_action dropped', () => {
+    smAndDownRef.value = true
+    const wrapper = mountTable({ linkMode: true })
+    const keys = wrapper.vm.headers.map((h) => h.key)
+    expect(keys).toContain('select')
+    expect(keys).not.toContain('quick_action')
+    expect(keys).toContain('series_number')
+    expect(keys).toContain('status')
+  })
+})

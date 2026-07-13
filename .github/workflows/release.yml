@@ -1,0 +1,166 @@
+# Release workflow -- creates a GitHub Release with distribution tarball
+# when you push a version tag to the public repo.
+#
+# What this does:
+#   1. Checks out the tagged commit
+#   2. Strips dev-only and test files from the workspace
+#   3. Creates a distribution tarball + SHA256 checksum
+#   4. Generates version-manifest.json for the update checker
+#   5. Publishes a GitHub Release with all assets attached
+#
+# How to use (from the private repo):
+#   ./scripts/export_ce.sh --push       # push CE code to public repo
+#   git -C /path/to/public tag -a v1.2.0 -m "Release 1.2.0: description"
+#   git -C /path/to/public push origin v1.2.0
+#
+# Pre-release tags (e.g. v1.2.0-rc.1) are automatically marked as prerelease.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and Publish Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          RAW_TAG="${GITHUB_REF_NAME}"
+          VERSION="${RAW_TAG#v}"
+          echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "TAG=${RAW_TAG}" >> "$GITHUB_OUTPUT"
+
+          # Detect pre-release tags (e.g. v1.2.0-rc.1, v1.2.0-beta.2)
+          if [[ "$VERSION" == *-* ]]; then
+            echo "PRERELEASE=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "PRERELEASE=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Assert tag matches VERSION + CHANGELOG entry exists (INF-9115)
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          REPO_VERSION="$(cat VERSION)"
+          if [[ "$REPO_VERSION" != "$VERSION" ]]; then
+            echo "FATAL: tag v${VERSION} does not match the repo's VERSION file (${REPO_VERSION})." >&2
+            echo "A public release tag must match the committed VERSION at that commit." >&2
+            exit 1
+          fi
+          # At the public boundary, [Unreleased] is NOT acceptable — the release
+          # ritual must rename it to the version being tagged first.
+          if ! grep -q "^## \[$VERSION\]" CHANGELOG.md; then
+            echo "FATAL: CHANGELOG.md has no '## [$VERSION]' heading." >&2
+            echo "Rename [Unreleased] to [$VERSION] - <date> before tagging a public release." >&2
+            exit 1
+          fi
+          echo "VERSION file and CHANGELOG.md both match tag v${VERSION}."
+
+      - name: Strip dev-only files from workspace
+        run: |
+          # Remove test suites
+          rm -rf tests/
+
+          # Remove dev tooling and config
+          rm -f dev-requirements.txt
+          rm -f .pre-commit-config.yaml
+          rm -f .ruff.toml
+          rm -f pytest.ini
+          rm -f pytest_no_coverage.ini
+
+          # Remove build/cache artifacts
+          rm -rf htmlcov/
+          rm -rf .pytest_cache/
+          rm -rf .ruff_cache/
+          find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+          find . -name "*.pyc" -delete 2>/dev/null || true
+
+          # Remove git directory (not needed in tarball)
+          rm -rf .git/
+
+          # Remove CI workflows (users do not need them)
+          rm -rf .github/
+
+          echo "Workspace stripped for distribution."
+
+      - name: Create distribution tarball
+        id: tarball
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          TARBALL_NAME="giljoai-mcp-${VERSION}.tar.gz"
+
+          # Create tarball from the cleaned workspace
+          tar -czf "/tmp/${TARBALL_NAME}" -C "$GITHUB_WORKSPACE" .
+
+          echo "TARBALL_PATH=/tmp/${TARBALL_NAME}" >> "$GITHUB_OUTPUT"
+          echo "TARBALL_NAME=${TARBALL_NAME}" >> "$GITHUB_OUTPUT"
+
+          ls -lh "/tmp/${TARBALL_NAME}"
+
+      - name: Generate SHA256 checksum
+        id: checksum
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          TARBALL_PATH="${{ steps.tarball.outputs.TARBALL_PATH }}"
+          CHECKSUM_FILE="/tmp/giljoai-mcp-${VERSION}.sha256"
+
+          SHA256=$(sha256sum "$TARBALL_PATH" | awk '{print $1}')
+          echo "${SHA256}  giljoai-mcp-${VERSION}.tar.gz" > "$CHECKSUM_FILE"
+
+          echo "SHA256=${SHA256}" >> "$GITHUB_OUTPUT"
+          echo "CHECKSUM_PATH=${CHECKSUM_FILE}" >> "$GITHUB_OUTPUT"
+
+          echo "SHA256: ${SHA256}"
+
+      - name: Generate version-manifest.json
+        id: manifest
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          TAG="${{ steps.version.outputs.TAG }}"
+          SHA256="${{ steps.checksum.outputs.SHA256 }}"
+          REPO="${{ github.repository }}"
+          MANIFEST_PATH="/tmp/version-manifest.json"
+
+          cat > "$MANIFEST_PATH" <<MANIFEST_EOF
+          {
+            "version": "${VERSION}",
+            "tarball_url": "https://github.com/${REPO}/releases/download/${TAG}/giljoai-mcp-${VERSION}.tar.gz",
+            "sha256": "${SHA256}",
+            "min_python": "3.12",
+            "min_postgres": "18"
+          }
+          MANIFEST_EOF
+
+          # Remove leading whitespace from heredoc indentation
+          sed -i 's/^          //' "$MANIFEST_PATH"
+
+          echo "MANIFEST_PATH=${MANIFEST_PATH}" >> "$GITHUB_OUTPUT"
+
+          echo "version-manifest.json:"
+          cat "$MANIFEST_PATH"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          name: "GiljoAI MCP v${{ steps.version.outputs.VERSION }}"
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ steps.version.outputs.PRERELEASE == 'true' }}
+          files: |
+            ${{ steps.tarball.outputs.TARBALL_PATH }}
+            ${{ steps.checksum.outputs.CHECKSUM_PATH }}
+            ${{ steps.manifest.outputs.MANIFEST_PATH }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

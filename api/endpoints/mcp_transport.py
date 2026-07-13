@@ -1,0 +1,346 @@
+# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
+# Licensed under the Elastic License 2.0.
+# See LICENSE in the project root for terms.
+# [CE] Community Edition.
+
+"""
+MCP transport-layer helpers -- Streamable HTTP edge handling for the MCP SDK server.
+
+BE-9060 (item 1): these transport primitives were split out of
+``api.endpoints.mcp_sdk_server`` (the hottest file in the repo) into this module.
+They are the pre-auth / wire-level helpers the ASGI auth middleware composes:
+body buffer-and-replay, the raw-ASGI status emitters (405 / 413), JSON-RPC body
+peeking, protocol-version validation, the Mcp-Session-Id send wrapper, the
+WWW-Authenticate + JSON-RPC error response builders, and the best-effort session
+"stamp" helpers that surface a declared tool profile / detected harness onto ASGI
+state. Behavior is unchanged -- these were extracted verbatim; ``mcp_sdk_server``
+re-exports every name so existing importers keep working.
+"""
+
+import json
+from typing import Any
+
+from starlette.requests import Request as StarletteRequest
+from starlette.responses import JSONResponse
+from starlette.types import Receive, Scope, Send
+
+# One-way imports (no cycle): oauth exposes the supported-spec list; mcp_tools owns
+# the shared logger + the tool-profile registry. Neither imports this module.
+from api.endpoints.mcp_tools import TOOL_PROFILES, logger
+from api.endpoints.oauth import MCP_SPEC_VERSIONS_SUPPORTED
+from giljo_mcp.http.url_resolver import get_canonical_mcp_resource_uri_from_scope
+
+
+# JSON-RPC implementation-defined server-error code (reserved -32000..-32099) for
+# a tenant whose subscription is not active. Surfaces the canonical activation
+# copy to the MCP client as the error message.
+_SUBSCRIPTION_REQUIRED_CODE = -32001
+
+
+def _subscription_required_response(message: str, request_id=None) -> JSONResponse:
+    """Build a JSON-RPC-compatible 403 for a tenant with no active subscription.
+
+    The body is a JSON-RPC 2.0 error envelope so an MCP client renders ``message``
+    (the canonical "Please activate your subscription to keep working." copy) as
+    the tool error text rather than a cryptic transport failure. ``id`` is echoed
+    when known, else ``null`` (valid per JSON-RPC for an undeterminable id).
+    """
+    return JSONResponse(
+        {
+            "jsonrpc": "2.0",
+            "id": request_id,
+            "error": {"code": _SUBSCRIPTION_REQUIRED_CODE, "message": message},
+        },
+        status_code=403,
+    )
+
+
+def _build_www_authenticate_header(scope: Scope) -> str:
+    """Construct the RFC 6750 WWW-Authenticate value for /mcp 401s.
+
+    Includes the RFC 9728 `resource_metadata` parameter pointing at the
+    protected-resource document. Spec-compliant clients (Claude.ai, MCP CLI)
+    use it to bootstrap themselves after a 401 instead of failing closed.
+    """
+    canonical = get_canonical_mcp_resource_uri_from_scope(scope)
+    base, _, _ = canonical.rpartition("/mcp")
+    metadata_url = f"{base}/.well-known/oauth-protected-resource"
+    return f'Bearer realm="MCP", resource_metadata="{metadata_url}"'
+
+
+def _unauthenticated_response(scope: Scope, error: str, status_code: int = 401) -> JSONResponse:
+    """Build a 401/403 JSONResponse with the spec-required WWW-Authenticate header."""
+    return JSONResponse(
+        {"error": error},
+        status_code=status_code,
+        headers={"WWW-Authenticate": _build_www_authenticate_header(scope)},
+    )
+
+
+# ---------------------------------------------------------------------------
+# API-0021j: MCP-Protocol-Version + Mcp-Session-Id transport-layer helpers
+#
+# Streamable HTTP spec requires:
+#   - Non-initialize requests with an unsupported MCP-Protocol-Version → 400
+#     (NOT 401 — clients use this to negotiate; auth is downstream of it).
+#   - Initialize responses carry an Mcp-Session-Id; subsequent requests echo
+#     it and the server MUST return 404 on unknown / expired / cross-tenant
+#     ids (matches SDK behavior at streamable_http.py:498).
+#
+# Single source of truth: import MCP_SPEC_VERSIONS_SUPPORTED from
+# api.endpoints.oauth — locked by tests/api/test_spec_conformance.py. The
+# frozenset below is a derived O(1) membership view, not a parallel constant.
+# ---------------------------------------------------------------------------
+
+
+_SUPPORTED_VERSIONS: frozenset[str] = frozenset(MCP_SPEC_VERSIONS_SUPPORTED)
+_DEFAULT_SPEC_VERSION = "2025-03-26"
+_INITIALIZE_METHOD = "initialize"
+
+
+async def _read_full_body(receive: Receive, *, max_bytes: int | None = None) -> bytes:
+    """Drain the ASGI request body in full, optionally capping the total size.
+
+    Returns the concatenated bytes. The middleware buffers the body once so the
+    JSON-RPC method can be peeked before the inner ASGI app is invoked; the
+    buffered bytes are then replayed via :func:`_replay_receive`.
+
+    BE-6060a: when ``max_bytes`` is set, a running counter aborts the read with
+    :class:`_BodyTooLargeError` as soon as the streamed total exceeds the cap
+    (Layer 2 of the two-layer guard; Layer 1 is the Content-Length pre-check in
+    the middleware). This keeps an unauthenticated oversize body from being
+    buffered in full before auth.
+    """
+    chunks: list[bytes] = []
+    total = 0
+    while True:
+        message = await receive()
+        if message["type"] == "http.disconnect":
+            break
+        if message["type"] != "http.request":
+            break
+        chunk = message.get("body", b"")
+        if max_bytes is not None:
+            total += len(chunk)
+            if total > max_bytes:
+                raise _BodyTooLargeError
+        chunks.append(chunk)
+        if not message.get("more_body", False):
+            break
+    return b"".join(chunks)
+
+
+def _replay_receive(body: bytes, original_receive: Receive) -> Receive:
+    """Build a ``receive`` that yields ``body`` once, then delegates to the real stream.
+
+    BE-6060a: the prior implementation synthesized ``{"type": "http.disconnect"}``
+    on every call after the first. For a long-lived GET/SSE stream the SDK's
+    ``await receive()`` then observed an immediate fake disconnect and
+    sse_starlette closed the stream instantly — spec-compliant TS SDK clients
+    re-polled every 1000ms forever. Delegating to ``original_receive`` after the
+    buffered frame restores the real client-driven backpressure: the inner app
+    blocks on the actual connection instead of a fabricated disconnect.
+    """
+    sent = {"done": False}
+
+    async def _receive() -> dict:
+        if not sent["done"]:
+            sent["done"] = True
+            return {"type": "http.request", "body": body, "more_body": False}
+        return await original_receive()
+
+    return _receive
+
+
+# BE-6060a: pre-auth body-size cap. _read_full_body buffered the request body
+# UNBOUNDED before auth ran, so an unauthenticated client could pin worker
+# memory (DoS). 5 MB comfortably exceeds any legitimate JSON-RPC tool call.
+_MAX_MCP_BODY_BYTES = 5 * 1024 * 1024
+
+
+class _BodyTooLargeError(Exception):
+    """Raised by _read_full_body when the streaming body exceeds the cap."""
+
+
+async def _send_raw_status(send: Send, *, status: int, headers: list[tuple[bytes, bytes]] | None = None) -> None:
+    """Emit a bodyless raw-ASGI response.
+
+    Used for the pre-auth 405 / 413 edges: the middleware is RAW ASGI here, so
+    we cannot raise HTTPException and expect FastAPI to catch it — we drive
+    ``send`` directly. The response carries NO body and is NOT text/event-stream,
+    so a spec-compliant client treats it as terminal (no SSE re-poll).
+    """
+    await send(
+        {
+            "type": "http.response.start",
+            "status": status,
+            "headers": headers or [],
+        }
+    )
+    await send({"type": "http.response.body", "body": b""})
+
+
+async def _send_method_not_allowed(send: Send) -> None:
+    """Emit 405 for GET /mcp with ``Allow: POST, DELETE`` and no SSE retry hint.
+
+    The TS SDK special-cases 405 in ``_startOrAuthSse`` and permanently stops
+    GET polling, which is exactly what kills the re-poll storm. Critically this
+    response must NOT be ``text/event-stream`` and must NOT carry a ``retry:``
+    field, or the client would treat it as a transient SSE close and retry.
+    """
+    await _send_raw_status(
+        send,
+        status=405,
+        headers=[(b"allow", b"POST, DELETE")],
+    )
+
+
+def _peek_jsonrpc_method(body: bytes) -> str | None:
+    """Return the JSON-RPC ``method`` if the body decodes cleanly, else ``None``.
+
+    Malformed bodies are tolerated — the inner SDK will respond with the
+    canonical JSON-RPC error, and the middleware short-circuits no further
+    on its own. Header-version + session-id flows treat missing-method as
+    'not initialize' (the safe default).
+    """
+    if not body:
+        return None
+    try:
+        payload = json.loads(body)
+    except (ValueError, UnicodeDecodeError):
+        return None
+    if isinstance(payload, dict):
+        method = payload.get("method")
+        return method if isinstance(method, str) else None
+    return None
+
+
+def _peek_jsonrpc_client_info(body: bytes) -> dict[str, Any] | None:
+    """Return the JSON-RPC ``params.clientInfo`` dict for an ``initialize`` body, else ``None``.
+
+    Same tolerate-malformed-body policy as :func:`_peek_jsonrpc_method` — a
+    parse failure or missing/malformed field yields ``None`` rather than
+    raising; the inner SDK owns the authoritative error path. This is a hint
+    for session bookkeeping, never a security boundary (INF-8003d DoD #3's
+    out-of-scope note).
+    """
+    if not body:
+        return None
+    try:
+        payload = json.loads(body)
+    except (ValueError, UnicodeDecodeError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    params = payload.get("params")
+    if not isinstance(params, dict):
+        return None
+    client_info = params.get("clientInfo")
+    return client_info if isinstance(client_info, dict) else None
+
+
+def _unsupported_version_response(version: str) -> JSONResponse:
+    """Build the 400 response for an unsupported MCP-Protocol-Version header."""
+    return JSONResponse(
+        {
+            "error": "Unsupported MCP-Protocol-Version",
+            "requested": version,
+            "supported": list(MCP_SPEC_VERSIONS_SUPPORTED),
+        },
+        status_code=400,
+    )
+
+
+def _not_found_response(detail: str) -> JSONResponse:
+    """Build the 404 response for an invalid / expired / cross-tenant session id."""
+    return JSONResponse({"error": detail}, status_code=404)
+
+
+def _validate_protocol_version(request: StarletteRequest, method: str | None) -> JSONResponse | None:
+    """Phase 1 validator. Returns a 400 response if the header is unsupported, else ``None``.
+
+    Initialize requests are exempt because negotiation lives in JSON-RPC
+    params (spec 2025-06-18 §Transport). Missing header on non-initialize
+    SHOULD-defaults to 2025-03-26 — accepted with a debug log.
+    """
+    if method == _INITIALIZE_METHOD:
+        return None
+    version = request.headers.get("mcp-protocol-version")
+    if version is None:
+        logger.debug(
+            "No MCP-Protocol-Version header on %s; defaulting to %s per spec",
+            method or "<no-method>",
+            _DEFAULT_SPEC_VERSION,
+        )
+        return None
+    if version not in _SUPPORTED_VERSIONS:
+        logger.info("Rejecting unsupported MCP-Protocol-Version=%r on method=%r", version, method)
+        return _unsupported_version_response(version)
+    return None
+
+
+def _wrap_send_with_session_id(send: Send, session_id: str) -> Send:
+    """Return a Send that injects ``Mcp-Session-Id`` into the first response start frame."""
+
+    async def _send(message: dict) -> None:
+        if message["type"] == "http.response.start":
+            headers = list(message.get("headers", []))
+            headers.append((b"mcp-session-id", session_id.encode("ascii")))
+            message = {**message, "headers": headers}
+        await send(message)
+
+    return _send
+
+
+# WO-8003k: the well-known key inside the (d)-captured ``client_info`` blob a
+# session uses to DECLARE its tool profile (core/standard/full). Reusing the
+# client_info vehicle keeps this out of a second declaration mechanism; the value
+# is validated against TOOL_PROFILES before it is trusted (a garbage value is
+# ignored, degrading to the auth-derived default).
+_DECLARED_PROFILE_CLIENT_INFO_KEY = "giljo_tool_profile"
+
+
+def _stamp_declared_profile(scope: Scope, session_row: Any) -> None:
+    """Stamp a session-declared tool profile from ``client_info`` onto ASGI state.
+
+    Reads the declared profile out of the loaded session's
+    ``session_data['client_info']`` (the INF-8003d capture) and, when it names a
+    known profile, writes it to ``scope['state']['tool_profile']`` so
+    :func:`_profile_toolset_from_request` can honor "declared wins". Best-effort:
+    any missing/malformed field leaves state untouched (falls back to the
+    auth-derived default). Never raises — a bookkeeping hint, not a security gate.
+    """
+    session_data = getattr(session_row, "session_data", None)
+    if not isinstance(session_data, dict):
+        return
+    client_info = session_data.get("client_info")
+    if not isinstance(client_info, dict):
+        return
+    declared = client_info.get(_DECLARED_PROFILE_CLIENT_INFO_KEY)
+    if isinstance(declared, str) and declared in TOOL_PROFILES:
+        scope.setdefault("state", {})["tool_profile"] = declared
+
+
+def _stamp_resolved_harness(scope: Scope, session_row: Any) -> None:
+    """Stamp the persisted DETECTED harness onto ASGI state (BE-9035d).
+
+    ``FastMCP(stateless_http=True)`` drops the ``initialize`` clientInfo on every
+    non-initialize tools/call, so ``_detected_harness`` cannot read the live
+    ``ctx.session.client_params`` on the render path — it always saw ``generic`` and
+    a claude-code CLI got the ``<your-harness>`` generic ladder instead of the
+    Claude-native ``Task(subagent_type=...)`` prose (FINDING #4). BE-9035b already
+    persisted the resolved token to ``session_data['resolved_harness']`` at the
+    initialize-time capture; this stamps it onto ``scope['state']`` off the
+    already-loaded session row so the tool render can read it without a second DB
+    hit (mirrors :func:`_stamp_declared_profile`). Only a CONCRETE (non-generic)
+    token is stamped — a generic/absent value leaves state untouched so the declared
+    CLI hint still governs. Best-effort, never raises — a render hint, not a gate.
+    """
+    from giljo_mcp.platform_registry import GENERIC_HARNESS
+
+    session_data = getattr(session_row, "session_data", None)
+    if not isinstance(session_data, dict):
+        return
+    resolved = session_data.get("resolved_harness")
+    if isinstance(resolved, str) and resolved and resolved != GENERIC_HARNESS:
+        scope.setdefault("state", {})["resolved_harness"] = resolved

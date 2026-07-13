@@ -1,0 +1,480 @@
+# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
+# Licensed under the Elastic License 2.0.
+# See LICENSE in the project root for terms.
+# [CE] Community Edition.
+
+"""
+ProductLifecycleService - Product lifecycle state management
+
+Handover 0950n: Extracted from ProductService to keep all files under 1000 lines.
+
+Responsibilities:
+- Activate / deactivate products (single-active-per-tenant rule)
+- Soft delete, restore, and hard-purge products
+- Auto-purge expired soft-deleted products on startup
+- WebSocket event emission for lifecycle state changes
+"""
+
+import logging
+from datetime import UTC, datetime
+from typing import Any
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from giljo_mcp.database import DatabaseManager
+from giljo_mcp.exceptions import (
+    BaseGiljoError,
+    DatabaseError,
+    ResourceNotFoundError,
+)
+from giljo_mcp.models import Product
+from giljo_mcp.repositories.product_repository import ProductRepository
+from giljo_mcp.schemas.service_responses import DeleteResult, PurgeResult
+from giljo_mcp.services._session_helpers import tenant_scoped_session
+
+
+logger = logging.getLogger(__name__)
+
+
+class ProductLifecycleService:
+    """
+    Service for product lifecycle state transitions.
+
+    Handles activation, deactivation, soft delete, restore, hard purge,
+    and automatic expiry purge. Emits WebSocket events for state changes.
+
+    Thread Safety: Each instance is session-scoped. Do not share across requests.
+    """
+
+    def __init__(
+        self,
+        db_manager: DatabaseManager,
+        tenant_key: str,
+        websocket_manager=None,
+        test_session: AsyncSession | None = None,
+    ):
+        """
+        Initialize ProductLifecycleService.
+
+        Args:
+            db_manager: Database manager for async database operations
+            tenant_key: Tenant key for multi-tenant isolation
+            websocket_manager: Optional WebSocket manager for event emission
+            test_session: Optional AsyncSession for tests to share the same transaction
+        """
+        self.db_manager = db_manager
+        self.tenant_key = tenant_key
+        self._test_session = test_session
+        self._websocket_manager = websocket_manager
+        self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+        self._repo = ProductRepository()
+
+    def _get_session(self):
+        """Yield a tenant-scoped DB session, honoring an injected test session (shared helper, BE-8000d)."""
+        return tenant_scoped_session(self.db_manager, self.tenant_key, self._test_session)
+
+    async def _emit_websocket_event(self, event_type: str, data: dict[str, Any]) -> None:
+        """
+        Emit WebSocket event to tenant clients.
+
+        Provides graceful degradation - events are emitted if a WebSocket manager
+        is available, but operations don't fail if it's absent.
+
+        Args:
+            event_type: Event type (e.g., "projects:bulk:deactivated")
+            data: Event payload data
+        """
+        if not self._websocket_manager:
+            self._logger.debug(f"No WebSocket manager available for event: {event_type}")
+            return
+
+        try:
+            event_data_with_timestamp = {
+                **data,
+                "tenant_key": self.tenant_key,
+                "timestamp": datetime.now(UTC).isoformat(),
+            }
+
+            await self._websocket_manager.broadcast_to_tenant(
+                tenant_key=self.tenant_key, event_type=event_type, data=event_data_with_timestamp
+            )
+
+            self._logger.debug(f"WebSocket event emitted: {event_type} for tenant {self.tenant_key}")
+
+        except (RuntimeError, ValueError) as e:
+            self._logger.warning(f"Failed to emit WebSocket event {event_type}: {e}", exc_info=True)
+
+    async def activate_product(self, product_id: str) -> Product:
+        """
+        Activate a product, deactivating all other products for the tenant.
+
+        Only one product can be active at a time per tenant. Cascades project
+        and job deactivation to previously active products.
+
+        Args:
+            product_id: Product UUID to activate
+
+        Returns:
+            Product ORM model after activation
+
+        Raises:
+            ResourceNotFoundError: If product not found
+            BaseGiljoError: If database operation fails
+        """
+        try:
+            async with self._get_session() as session:
+                product = await self._repo.get_by_id(session, self.tenant_key, product_id)
+
+                if not product:
+                    raise ResourceNotFoundError(
+                        message="Product not found", context={"product_id": product_id, "tenant_key": self.tenant_key}
+                    )
+
+                # Deactivate all other products for tenant FIRST
+                # Must flush deactivation before activation due to unique constraint
+                products_to_deactivate = await self._repo.find_other_active_products(
+                    session, self.tenant_key, product_id
+                )
+
+                for p in products_to_deactivate:
+                    p.is_active = False
+                    p.updated_at = datetime.now(UTC)
+
+                deactivated_product_ids = []
+                if products_to_deactivate:
+                    await self._repo.flush(session)
+
+                    deactivated_product_ids = [p.id for p in products_to_deactivate]
+
+                    # Bulk deactivate projects in all deactivated products
+                    await self._repo.bulk_deactivate_projects(session, self.tenant_key, deactivated_product_ids)
+
+                    # Cascade: cancel active jobs under deactivated products
+                    await self._repo.bulk_cancel_jobs(session, self.tenant_key, deactivated_product_ids)
+                    await self._repo.flush(session)
+
+                product.is_active = True
+                product.updated_at = datetime.now(UTC)
+
+                await session.commit()
+
+                # BE-3006c: emit AFTER the commit is durable. The
+                # projects:bulk:deactivated event previously fired BEFORE this
+                # owner commit -- if the commit then failed, the dashboard showed
+                # phantom "deactivated" state for rows that rolled back.
+                if deactivated_product_ids:
+                    await self._emit_websocket_event(
+                        event_type="projects:bulk:deactivated",
+                        data={
+                            "product_ids": [str(pid) for pid in deactivated_product_ids],
+                            "timestamp": datetime.now(UTC).isoformat(),
+                        },
+                    )
+                # BE-6066 P2: no post-commit refresh. The only HTTP caller discards
+                # this return and re-hydrates via get_product(); sessions use
+                # expire_on_commit=False so the manually-set is_active/updated_at
+                # columns stay readable on the detached product. Dropping the
+                # refresh removes a redundant SELECT + 4 relation selectin loads.
+                self._logger.info(f"Activated product {product_id} (deactivated {len(products_to_deactivate)} others)")
+
+                # Auto-assign all active tenant templates to the newly activated product.
+                # This ensures every product starts with the full agent roster.
+                # Uses its own session via the assignment repository (not the lifecycle session).
+                try:
+                    from giljo_mcp.repositories.product_agent_assignment_repository import (
+                        ProductAgentAssignmentRepository,
+                    )
+
+                    assignment_repo = ProductAgentAssignmentRepository()
+                    new_assignments = await assignment_repo.bulk_assign_all_templates(
+                        session, product_id, self.tenant_key
+                    )
+                    if new_assignments:
+                        await session.commit()
+                        self._logger.info(
+                            "Auto-assigned %d templates to product %s on activation",
+                            len(new_assignments),
+                            product_id,
+                        )
+                except (OSError, RuntimeError, ValueError, TypeError, AttributeError) as exc:
+                    # Non-fatal: product activation succeeded, assignment is best-effort
+                    self._logger.warning(
+                        "Failed to auto-assign templates on product activation (product_id=%s): %s",
+                        product_id,
+                        exc,
+                    )
+
+                return product
+
+        except ResourceNotFoundError:
+            raise
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
+            self._logger.exception("Failed to activate product")
+            raise BaseGiljoError(
+                message=f"Failed to activate product: {e!s}",
+                context={"product_id": product_id, "tenant_key": self.tenant_key},
+            ) from e
+
+    async def deactivate_product(self, product_id: str) -> Product:
+        """
+        Deactivate a product and cascade to its active projects and jobs.
+
+        Args:
+            product_id: Product UUID to deactivate
+
+        Returns:
+            Product ORM model after deactivation
+
+        Raises:
+            ResourceNotFoundError: If product not found
+            BaseGiljoError: If database operation fails
+        """
+        try:
+            async with self._get_session() as session:
+                product = await self._repo.get_by_id(session, self.tenant_key, product_id)
+
+                if not product:
+                    raise ResourceNotFoundError(
+                        message="Product not found", context={"product_id": product_id, "tenant_key": self.tenant_key}
+                    )
+
+                product.is_active = False
+                product.updated_at = datetime.now(UTC)
+
+                # Cascade: deactivate active projects under this product
+                await self._repo.deactivate_product_projects(session, self.tenant_key, product_id)
+
+                # Cascade: cancel active jobs under this product's projects
+                await self._repo.cancel_product_jobs(session, self.tenant_key, product_id)
+
+                await session.commit()
+                await self._repo.refresh(session, product)
+
+                self._logger.info(f"Deactivated product {product_id} (cascaded to projects and jobs)")
+
+                return product
+
+        except ResourceNotFoundError:
+            raise
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
+            self._logger.exception("Failed to deactivate product")
+            raise BaseGiljoError(
+                message=f"Failed to deactivate product: {e!s}",
+                context={"product_id": product_id, "tenant_key": self.tenant_key},
+            ) from e
+
+    async def delete_product(self, product_id: str) -> DeleteResult:
+        """
+        Soft delete a product.
+
+        Args:
+            product_id: Product UUID to delete
+
+        Returns:
+            DeleteResult Pydantic model with deleted flag and timestamp
+
+        Raises:
+            ResourceNotFoundError: If product not found
+            BaseGiljoError: If database operation fails
+        """
+        try:
+            async with self._get_session() as session:
+                product = await self._repo.get_by_id(session, self.tenant_key, product_id)
+
+                if not product:
+                    raise ResourceNotFoundError(
+                        message="Product not found", context={"product_id": product_id, "tenant_key": self.tenant_key}
+                    )
+
+                product.deleted_at = datetime.now(UTC)
+                product.is_active = False
+                product.updated_at = datetime.now(UTC)
+
+                await session.commit()
+
+                self._logger.info(f"Soft deleted product {product_id}")
+
+                return DeleteResult(deleted=True, deleted_at=product.deleted_at)
+
+        except ResourceNotFoundError:
+            raise
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
+            self._logger.exception("Failed to delete product")
+            raise BaseGiljoError(
+                message=f"Failed to delete product: {e!s}",
+                context={"product_id": product_id, "tenant_key": self.tenant_key},
+            ) from e
+
+    async def restore_product(self, product_id: str) -> Product:
+        """
+        Restore a soft-deleted product.
+
+        Args:
+            product_id: Product UUID to restore
+
+        Returns:
+            Product ORM model after restoration
+
+        Raises:
+            ResourceNotFoundError: If deleted product not found
+            BaseGiljoError: If database operation fails
+        """
+        try:
+            async with self._get_session() as session:
+                product = await self._repo.get_deleted_by_id(session, self.tenant_key, product_id)
+
+                if not product:
+                    raise ResourceNotFoundError(
+                        message="Deleted product not found",
+                        context={"product_id": product_id, "tenant_key": self.tenant_key},
+                    )
+
+                product.deleted_at = None
+                product.updated_at = datetime.now(UTC)
+
+                await session.commit()
+                await self._repo.refresh(session, product)
+
+                self._logger.info(f"Restored product {product_id}")
+
+                return product
+
+        except ResourceNotFoundError:
+            raise
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
+            self._logger.exception("Failed to restore product")
+            raise BaseGiljoError(
+                message=f"Failed to restore product: {e!s}",
+                context={"product_id": product_id, "tenant_key": self.tenant_key},
+            ) from e
+
+    async def purge_product(self, product_id: str) -> dict:
+        """
+        Permanently delete a product and ALL related data (hard delete).
+
+        Cascades via FK ondelete=CASCADE to: projects, tasks, tech_stacks,
+        architectures, test_configs, vision_documents, product_memory_entries,
+        context chunks.
+
+        Args:
+            product_id: Product UUID to permanently delete
+
+        Returns:
+            dict with product_name and message
+
+        Raises:
+            ResourceNotFoundError: If product not found
+            BaseGiljoError: If database operation fails
+        """
+        try:
+            async with self._get_session() as session:
+                product = await self._repo.get_by_id(session, self.tenant_key, product_id, include_deleted=True)
+
+                if not product:
+                    raise ResourceNotFoundError(
+                        message="Product not found",
+                        context={"product_id": product_id, "tenant_key": self.tenant_key},
+                    )
+
+                product_name = product.name
+                await self._repo.delete_hard(session, product)
+                await session.commit()
+
+                self._logger.info(f"Permanently deleted product {product_id} ({product_name})")
+
+                return {"product_name": product_name, "message": f"Product '{product_name}' permanently deleted"}
+
+        except ResourceNotFoundError:
+            raise
+        except Exception as e:  # Broad catch: service boundary, wraps unexpected errors in BaseGiljoError
+            self._logger.exception("Failed to purge product")
+            raise BaseGiljoError(
+                message=f"Failed to permanently delete product: {e!s}",
+                context={"product_id": product_id, "tenant_key": self.tenant_key},
+            ) from e
+
+    async def list_deleted_products(self) -> list[Product]:
+        """
+        List soft-deleted products for the tenant.
+
+        Returns:
+            List of Product ORM models (soft-deleted), ordered by deleted_at desc
+
+        Raises:
+            BaseGiljoError: If database operation fails
+        """
+        try:
+            async with self._get_session() as session:
+                return await self._repo.list_deleted(session, self.tenant_key)
+
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
+            self._logger.exception("Failed to list deleted products")
+            raise BaseGiljoError(
+                message=f"Failed to list deleted products: {e!s}", context={"tenant_key": self.tenant_key}
+            ) from e
+
+    async def purge_expired_deleted_products(self, days_before_purge: int = 10) -> PurgeResult:
+        """
+        Hard delete products that were soft-deleted more than the specified number of days ago.
+
+        SQLAlchemy cascade="all, delete-orphan" handles child relationships:
+        projects, tasks, vision documents, etc.
+
+        Called from startup.py on server start for automatic cleanup.
+
+        Args:
+            days_before_purge: Number of days before permanent deletion (default: 10)
+
+        Returns:
+            PurgeResult Pydantic model with purged_count and purged_ids
+
+        Raises:
+            DatabaseError: If database not available
+            BaseGiljoError: If purge operation fails
+        """
+        if not self.db_manager:
+            self._logger.error("[Product Purge] Cannot purge - database manager not available")
+            raise DatabaseError(
+                message="Database not available",
+                context={"operation": "purge_expired_deleted_products", "tenant_key": self.tenant_key},
+            )
+
+        try:
+            async with self._get_session() as session:
+                expired_products = await self._repo.find_expired_deleted(session, days_before_purge)
+
+                if not expired_products:
+                    self._logger.info(
+                        f"[Product Purge] No expired deleted products to purge (cutoff: {days_before_purge} days)"
+                    )
+                    return PurgeResult(purged_count=0, purged_ids=[])
+
+                purged_ids = []
+                for product in expired_products:
+                    days_ago = (datetime.now(UTC) - product.deleted_at).days
+                    purged_ids.append(str(product.id))
+
+                    await self._repo.delete_hard(session, product)
+
+                    self._logger.info(
+                        f"[Product Purge] Auto-purged expired product {product.id} (deleted {days_ago} days ago)"
+                    )
+
+                await session.commit()
+
+                self._logger.info(f"[Product Purge] Successfully purged {len(purged_ids)} expired deleted products")
+
+                return PurgeResult(purged_count=len(purged_ids), purged_ids=purged_ids)
+
+        except DatabaseError:
+            raise
+        except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
+            self._logger.exception("[Product Purge] Failed to purge expired deleted products")
+            raise BaseGiljoError(
+                message=f"Failed to purge expired deleted products: {e!s}",
+                context={
+                    "operation": "purge_expired_deleted_products",
+                    "tenant_key": self.tenant_key,
+                    "days_before_purge": days_before_purge,
+                },
+            ) from e

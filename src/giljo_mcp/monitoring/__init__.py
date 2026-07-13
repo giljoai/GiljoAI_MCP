@@ -1,0 +1,22 @@
+# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
+# Licensed under the Elastic License 2.0.
+# See LICENSE in the project root for terms.
+# [CE] Community Edition.
+
+"""
+Agent Health Monitoring System.
+
+Provides background monitoring of agent job health with automatic detection
+of waiting timeouts, stalled jobs, and heartbeat failures.
+
+Components:
+- HealthCheckConfig: Configurable monitoring thresholds
+- AgentHealthStatus: Health status data structure
+- AgentHealthMonitor: Background monitoring service
+"""
+
+from giljo_mcp.monitoring.agent_health_monitor import AgentHealthMonitor
+from giljo_mcp.monitoring.health_config import AgentHealthStatus, HealthCheckConfig
+
+
+__all__ = ["AgentHealthMonitor", "AgentHealthStatus", "HealthCheckConfig"]

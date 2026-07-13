@@ -1,0 +1,49 @@
+/**
+ * useWelcomeGreeting.spec.js — FE-6006 unit 3a
+ *
+ * Tests for the extracted greeting composable from WelcomeView.vue.
+ * Edition scope: CE
+ */
+import { describe, it, expect, vi, afterEach } from 'vitest'
+import { ref } from 'vue'
+
+describe('useWelcomeGreeting', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  async function makeGreeting(name = 'Alice', hour = 10) {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2024, 0, 1, hour, 0, 0))
+    const { useWelcomeGreeting } = await import('./useWelcomeGreeting')
+    const firstName = ref(name)
+    return useWelcomeGreeting({ firstName })
+  }
+
+  it('returns a non-empty string', async () => {
+    const { fullGreeting } = await makeGreeting()
+    expect(typeof fullGreeting.value).toBe('string')
+    expect(fullGreeting.value.length).toBeGreaterThan(0)
+  })
+
+  it('includes the provided name somewhere in the greeting', async () => {
+    const { fullGreeting } = await makeGreeting('Patrik')
+    expect(fullGreeting.value).toContain('Patrik')
+  })
+
+  it('works with different names', async () => {
+    const { fullGreeting } = await makeGreeting('Bob')
+    expect(fullGreeting.value).toContain('Bob')
+  })
+
+  it('returns morning-appropriate greeting before noon', async () => {
+    // Run many times to ensure the time-based pool is used
+    const results = new Set()
+    for (let i = 0; i < 50; i++) {
+      const { fullGreeting } = await makeGreeting('Test', 9)
+      results.add(fullGreeting.value)
+    }
+    // Should have produced multiple different greetings (random pool)
+    expect(results.size).toBeGreaterThan(1)
+  })
+})

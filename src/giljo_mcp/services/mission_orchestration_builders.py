@@ -1,0 +1,293 @@
+# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
+# Licensed under the Elastic License 2.0.
+# See LICENSE in the project root for terms.
+# [CE] Community Edition.
+
+"""Staging-response builder helpers for MissionOrchestrationService (BE-9073).
+
+Verbatim split from ``mission_orchestration_service.py`` to keep that module under
+the shrink-only size budget. Every function here takes already-fetched objects (or
+the service's ``db_manager``/``tenant_manager``/``repo`` handles) as explicit params
+and opens no new sessions beyond what the caller passes in — the service keeps thin
+back-compat shims of unchanged name/signature that delegate here. Pure move, no
+behavior change. Edition Scope: CE.
+"""
+
+from __future__ import annotations
+
+import logging
+from typing import Any
+
+from giljo_mcp.platform_registry import (
+    GENERIC_SUBAGENT_SPAWN_SYNTAX,
+    SUBAGENT_EXECUTION_MODES,
+    get_harness,
+)
+from giljo_mcp.services.protocol_builder import _build_orchestrator_protocol
+from giljo_mcp.services.vision_hash import (
+    compute_vision_inputs_hash,
+    vision_inputs_hash_matches_consolidated,
+)
+
+
+logger = logging.getLogger(__name__)
+
+
+def build_execution_mode_fields(
+    execution_mode: str,
+    templates: list,
+    job_id: str,
+    resolved_harness: str | None = None,
+) -> dict[str, Any]:
+    """Build execution-mode-specific response fields (CLI rules or phase assignment).
+
+    BE-9035c: for a subagent-shaped mode (canonical ``subagent`` or a stored legacy
+    ``*_cli`` token), the per-harness spawn syntax + template install locations come
+    from the resolved HARNESS (``resolved_harness``, produced by ``effective_harness``
+    at the caller — DETECTED harness beats the declared-CLI hint), NOT from the mode.
+    When no concrete harness resolves (``generic`` floor / no detection) the universal
+    subagent spawn guidance is emitted — the harness is runtime-resolved and the
+    orchestrator uses whatever spawn mechanism its harness provides, or self-adopts.
+    """
+    fields: dict[str, Any] = {}
+
+    if execution_mode in SUBAGENT_EXECUTION_MODES:
+        allowed_agent_names = [t.name for t in templates]
+
+        # Handover 0389: Build dynamic example from actual allowed agent names
+        example_agents = allowed_agent_names[:2] if len(allowed_agent_names) >= 2 else allowed_agent_names
+        example_str = ", ".join(f"'{n}'" for n in example_agents) if example_agents else "'implementer'"
+
+        # Harness-specific spawning syntax + template install locations (BE-6116/9035c).
+        # These per-harness behavior facets live on the HARNESSES registry row.
+        # get_harness() returns None for the generic floor -> universal guidance.
+        harness = get_harness(resolved_harness)
+        if harness is not None:
+            task_tool_mapping = harness.spawn_syntax
+            template_locations = list(harness.template_locations)
+        else:
+            task_tool_mapping = GENERIC_SUBAGENT_SPAWN_SYNTAX
+            template_locations = []
+
+        fields["cli_mode_rules"] = {
+            "agent_name_usage": (
+                "SINGLE SOURCE OF TRUTH - binds DB record, spawning tool, and template filename. "
+                f"MUST match template filename exactly (e.g., {example_str})."
+            ),
+            "agent_display_name_usage": (
+                "Dashboard label - what humans see in UI. "
+                "MUST be unique per agent instance when spawning multiple agents of same template."
+            ),
+            "multi_agent_example": {
+                "scenario": "Spawning 2 implementers for different domains",
+                "agent_1": {"agent_name": "implementer", "agent_display_name": "api-implementer"},
+                "agent_2": {"agent_name": "implementer", "agent_display_name": "ui-implementer"},
+            },
+            "task_tool_mapping": task_tool_mapping,
+            "validation": "soft",
+            "template_locations": template_locations,
+        }
+
+        logger.info(
+            f"[CLI_MODE_RULES] Added CLI mode rules for orchestrator {job_id}",
+            extra={
+                "job_id": job_id,
+                "execution_mode": execution_mode,
+                "allowed_names": allowed_agent_names,
+            },
+        )
+    else:
+        # Handover 0411a: Phase assignment instructions for multi-terminal mode
+        fields["phase_assignment_instructions"] = (
+            "## Execution Phase Assignment (Multi-Terminal Mode)\n\n"
+            "When creating agent jobs with spawn_job, assign a `phase` number to each agent:\n"
+            "- Phase 1: Agents that should run first (no dependencies). Usually: analyzer, researcher.\n"
+            "- Phase 2: Agents that depend on Phase 1 completion. Usually: implementer, designer.\n"
+            "- Phase 3: Agents that depend on Phase 2 completion. Usually: tester, reviewer.\n"
+            "- Phase 4+: Final agents. Usually: documenter.\n\n"
+            "Agents in the SAME phase can run in parallel (user opens multiple terminals).\n"
+            "Higher phases should wait until lower phases complete.\n\n"
+            "Use your judgment based on the actual agent team and project requirements."
+        )
+
+    return fields
+
+
+async def build_category_metadata(
+    session: Any,
+    product: Any | None,
+    tenant_key: str,
+    repo: Any,
+) -> dict[str, dict]:
+    """Build category_metadata dict with Modified timestamps for protocol display.
+
+    CE-OPT-001: Enables warm orchestrators to skip unchanged context categories.
+
+    Returns:
+        Dict mapping category name -> {modified: str, entries?: int}
+    """
+    metadata: dict[str, dict] = {}
+    if not product:
+        return metadata
+
+    # Product-level categories use product.updated_at
+    product_updated = getattr(product, "updated_at", None)
+    if product_updated:
+        # Truncate to minute precision, ISO format
+        ts = product_updated.strftime("%Y-%m-%dT%H:%M")
+        for cat in ("product_core", "vision_documents", "tech_stack", "architecture", "testing"):
+            metadata[cat] = {"modified": ts}
+
+    # memory_360: COUNT + MAX(created_at) from ProductMemoryEntry
+    entry_count, max_created = await repo.get_category_metadata(session, tenant_key, product.id)
+    if entry_count > 0 and max_created:
+        metadata["memory_360"] = {
+            "modified": max_created.strftime("%Y-%m-%dT%H:%M"),
+            "entries": entry_count,
+        }
+
+    # git_history: skip (no server-side data, falls back to local git)
+
+    return metadata
+
+
+def maybe_build_ctx_self_close_directive(ctx: dict[str, Any]) -> dict[str, Any] | None:
+    """Return a SELF_CLOSE directive when a CTX orchestrator has nothing to do (BE-5122).
+
+    Trigger: project_type abbreviation == 'CTX' AND the derived
+    ``vision_inputs_hash`` of the product's current vision documents equals
+    the persisted ``Product.consolidated_vision_hash``. In that case the
+    consolidated aggregates are already fresh — spawning agents would be a
+    no-op project that just consumes context.
+    """
+    if ctx.get("project_type_abbreviation") != "CTX":
+        return None
+    product = ctx.get("product")
+    if product is None:
+        return None
+
+    vision_inputs_hash = compute_vision_inputs_hash(getattr(product, "vision_documents", None))
+    if not vision_inputs_hash_matches_consolidated(
+        vision_inputs_hash, getattr(product, "consolidated_vision_hash", None)
+    ):
+        return None
+
+    return {
+        "action": "SELF_CLOSE",
+        "status": "completed",
+        "closeout_note": "hash already fresh at project launch",
+        "vision_inputs_hash": vision_inputs_hash,
+        "consolidated_vision_hash": getattr(product, "consolidated_vision_hash", None),
+    }
+
+
+async def is_chain_member(
+    session: Any, project_id: str, tenant_key: str, *, db_manager: Any, tenant_manager: Any
+) -> bool:
+    """Return True if the project belongs to an ACTIVE chain run (BE-6198 Fix #2 / S3).
+
+    Mirrors mission_service.is_chain_member. Best-effort: a resolution failure
+    returns False so the staging redirect falls back to the solo "click Implement"
+    wording and staging instructions are NEVER broken by a chain lookup.
+    """
+    try:
+        from giljo_mcp.services.sequence_run_service import SequenceRunService
+
+        svc = SequenceRunService(
+            db_manager=db_manager,
+            tenant_manager=tenant_manager,
+            session=session,
+        )
+        run = await svc.find_active_run_for_project(project_id=str(project_id), tenant_key=tenant_key)
+        return run is not None
+    except Exception:  # noqa: BLE001 - best-effort chain detection; never break staging
+        logger.warning("[BE-6198] chain-member check failed (non-fatal); falling back to solo staging redirect")
+        return False
+
+
+def check_staging_redirect(project: Any, job_id: str, *, is_chain_member: bool = False) -> dict[str, Any] | None:
+    """Return a staging redirect response if applicable, else None."""
+    if project.staging_status == "staging_complete":
+        identity = {
+            "job_id": job_id,
+            "project_id": str(project.id),
+            "project_name": project.name,
+        }
+        if project.implementation_launched_at is not None:
+            return {
+                "staging_complete": True,
+                "redirect": "get_job_mission",
+                "identity": identity,
+                "message": (
+                    "Implementation is already launched. Your operating protocol and live team "
+                    "state are in get_job_mission. "
+                    f"Call get_job_mission(job_id='{job_id}') to receive your current team "
+                    "state and coordination protocol."
+                ),
+                "thin_client": True,
+            }
+        if is_chain_member:
+            return {
+                "staging_complete": True,
+                "redirect": "get_job_mission",
+                "identity": identity,
+                "message": (
+                    "Staging is complete. You are a chain sub-orchestrator -- there is NO "
+                    "gate to wait behind. Call get_job_mission now; it returns your "
+                    "implementation protocol immediately, then continue implementing -- "
+                    "do NOT wait for a human and do NOT return to the dashboard."
+                ),
+                "thin_client": True,
+            }
+        return {
+            "staging_complete": True,
+            "redirect": None,
+            "identity": identity,
+            "message": (
+                "Staging is complete. Return to the dashboard and click Implement to launch "
+                "the implementation phase. Then start (or paste) the orchestrator implementation "
+                "prompt in your agent session (terminal, desktop, or web tab)."
+            ),
+            "thin_client": True,
+        }
+    return None
+
+
+def attach_protocol_and_identity(
+    response: dict[str, Any],
+    *,
+    ctx: dict[str, Any],
+    protocol_tool: str,
+    chain_ctx: Any,
+    build_kwargs: dict[str, Any],
+) -> None:
+    """Attach the orchestrator protocol + identity to the staging response.
+
+    BE-6212: a chain SUB-ORCHESTRATOR has ALREADY received the identical static
+    identity + full protocol from its mandatory boot get_job_mission call, so re-shipping
+    them here is the ~52.9 KB duplication the field report flagged. For that role (only)
+    SKIP BUILDING both (saves render compute too) and return a pointer. Solo chain_ctx is
+    None -> the full build runs -> byte-identical; the project-less conductor never reaches
+    this assembler (it uses conductor_staging_builder via the early-return).
+    """
+    is_chain_suborch = chain_ctx is not None and getattr(chain_ctx, "role", None) == "sub_orchestrator"
+    if is_chain_suborch:
+        response["protocol_unchanged"] = True
+        response["protocol_source"] = "get_job_mission"
+        response["protocol_note"] = (
+            "Chain sub-orchestrator: your orchestrator identity + full protocol were "
+            "delivered at boot by get_job_mission and are unchanged here. Reuse that copy "
+            "(re-fetch via get_job_mission(job_id) if not cached). This staging call returns "
+            "only the delta: agent_templates, identity IDs, project description, and toggles."
+        )
+        return
+
+    # Handover 0431 / SEC-0005b / HO1027: the system harness (MCP Tool Usage,
+    # CHECK-IN PROTOCOL, HARNESS REMINDER OVERRIDE for Claude Code) is ALWAYS appended
+    # via compose_orchestrator_identity even when an admin override is set, so harness
+    # mechanics never leak into the admin textarea but always reach the orchestrator.
+    from giljo_mcp.template_seeder import compose_orchestrator_identity
+
+    response["orchestrator_protocol"] = _build_orchestrator_protocol(**build_kwargs)
+    override_content = ctx.get("orchestrator_prompt_override")
+    response["orchestrator_identity"] = compose_orchestrator_identity(override_content, tool=protocol_tool)

@@ -1,0 +1,160 @@
+# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
+# Licensed under the Elastic License 2.0.
+# See LICENSE in the project root for terms.
+# [CE] Community Edition.
+
+"""Runtime harness identity resolver (BE-9035b) — pure detection from clientInfo.
+
+The HARNESS is *which CLI / agent app* drives an MCP session (claude-code / codex /
+gemini / antigravity / opencode / ...), resolved at runtime from the ``initialize``
+handshake's clientInfo and NEVER declared by the user. This module is the PURE,
+leaf-level detection layer (token vocabulary + the seed table + the resolver
+functions); the two-axis registry, the HARNESSES knowledge table, and the
+``effective_harness`` precedence helper live in :mod:`giljo_mcp.platform_registry`,
+which imports and re-exports these names. Split out of platform_registry (BE-9035c)
+purely for the 800-line file-size guardrail; it stays a clean seam (detection vs the
+static registry) with no dependency back on platform_registry.
+
+SECURITY FRAMING (load-bearing): detection drives per-harness RENDERING only —
+spawn syntax, wake / reactivation prose, launch commands, autonomy flags. It is
+NEVER an authentication or authorization signal; auth stays tenant/scope-based. A
+wrong or absent detection degrades ergonomics only, and the declared CLI hint can
+correct it. clientInfo is client-supplied and trivially spoofable, so it must never
+gate access.
+
+WHAT DETECTION RESCUES: it upgrades harnesses that send a RICH clientInfo —
+claude-code (``name=="claude-code"``), codex (``name=="codex-mcp-client"``),
+opencode (``name=="opencode"``), gemini (``name=="gemini-cli-mcp-client"``), and
+antigravity (``name=="antigravity-client"``), the identifiers confirmed by
+harvest/verification. gemini and antigravity were seeded in TSK-9088 from a live
+capture sweep (Gemini CLI, and the Antigravity desktop app / CLI which share the one
+``antigravity-client`` string). Empty/unrecognized clientInfo resolves to ``generic``
+BY DESIGN; the universal generic subagent prose (BE-9035c) carries it.
+The seed table is SELF-IMPROVING: an unrecognized non-empty name is logged (raw
+name+version) at INFO so the table grows from observed traffic, never guessed
+literals. Conservative always: ambiguous -> generic.
+
+KNOWN-GENERIC ROWS: a handful of observed names are hosted chat/connector surfaces
+or connection-test probes, NOT terminal CLIs — they map to ``generic`` EXPLICITLY so
+the self-improve INFO log stays quiet for known-benign, high-frequency traffic. See
+``_KNOWN_GENERIC_CLIENT_NAMES``.
+
+Edition Scope: Both.
+"""
+
+from __future__ import annotations
+
+import logging
+
+
+logger = logging.getLogger(__name__)
+
+
+# Harness token vocabulary. The 4 CLI tokens equal their HARNESSES ``tool_type`` (so a
+# declared-mode hint maps to a harness with no translation); ``GENERIC_HARNESS`` is the
+# fail-safe floor. Defined here (the leaf) so both the registry table and the resolver
+# reference one source.
+HARNESS_CLAUDE_CODE = "claude-code"
+HARNESS_CODEX = "codex"
+HARNESS_GEMINI = "gemini"
+HARNESS_ANTIGRAVITY = "antigravity"
+HARNESS_OPENCODE = "opencode"
+GENERIC_HARNESS = "generic"
+
+
+# clientInfo.name (EXACT, case-sensitive) -> harness token. SEEDED from the BE-9035
+# harvest: ``claude-code`` (rich identifier captured in prod), ``codex-mcp-client``
+# (local Codex CLI + desktop app — auth-method-independent), and ``opencode`` (name+
+# version, from the CE dogfood chain trial). TSK-9088 added ``gemini-cli-mcp-client``
+# (Gemini CLI) and ``antigravity-client`` (Antigravity desktop app AND CLI — one shared
+# string) from a live capture sweep on the SaaS test stack. Matching is EXACT (never
+# substring/prefix): a lookalike name (``"claude-code-proxy"``, ``"claudecode"``,
+# ``"gemini-cli"``) MUST resolve to generic.
+_HARNESS_BY_CLIENT_NAME: dict[str, str] = {
+    "claude-code": HARNESS_CLAUDE_CODE,
+    "codex-mcp-client": HARNESS_CODEX,
+    "opencode": HARNESS_OPENCODE,
+    "gemini-cli-mcp-client": HARNESS_GEMINI,
+    "antigravity-client": HARNESS_ANTIGRAVITY,
+}
+
+
+# clientInfo.name (EXACT) values observed in live traffic that are hosted chat /
+# connector surfaces or connection-test probes — NOT terminal CLIs. They map to
+# ``generic`` EXPLICITLY (case (a) fast-path) so the self-improve INFO log stays quiet
+# for known-benign, high-frequency traffic. Captured 2026-07-07 (TSK-9088 sweep):
+#   - Anthropic/ClaudeAI   : Claude Desktop AND claude.ai web (identical string).
+#   - Anthropic/Toolbox    : Anthropic's connector-validation probe.
+#   - openai-mcp           : chatgpt.com steady-state (OpenAI-hosted, no terminal).
+#   - openai-mcp (ChatGPT) : chatgpt.com connector validation/tool-discovery.
+#   - openai-mcp (Codex)   : Codex hosted-connector surface (≠ the native codex-mcp-client).
+#   - opencode-check       : opencode's connection-test probe (≠ the real ``opencode``).
+# The desktop_app-vs-chat distinction for these comes from the capability vector, NEVER
+# from clientInfo — do not try to split them here.
+_KNOWN_GENERIC_CLIENT_NAMES: frozenset[str] = frozenset(
+    {
+        "Anthropic/ClaudeAI",
+        "Anthropic/Toolbox",
+        "openai-mcp",
+        "openai-mcp (ChatGPT)",
+        "openai-mcp (Codex)",
+        "opencode-check",
+    }
+)
+
+
+def harness_from_client_info(name: str | None, version: str | None = None) -> str:
+    """Resolve the session harness token from the MCP ``initialize`` clientInfo (BE-9035b).
+
+    THREE cases (per the BE-9035 harvest design):
+      (a) a RECOGNIZED ``name`` -> its harness token via the seeded table;
+      (b) an ABSENT / empty / whitespace-only name -> ``generic`` (a real connect
+          that self-identifies with nothing -- the common case; no log);
+      (c) an UNRECOGNIZED non-empty name -> ``generic`` AND an INFO log of the raw
+          name+version, so the seed table self-improves from observed traffic
+          instead of from guessed literals.
+
+    Pure and conservative: exact (case-sensitive) name match; anything ambiguous
+    degrades to ``generic``. Detection drives RENDERING only, never auth.
+    ``version`` is accepted for a future claude-family tie-break (Claude Desktop vs
+    Claude Code) and for the observation log; it does not affect resolution today.
+    """
+    key = (name or "").strip()
+    if not key:
+        return GENERIC_HARNESS  # (b) absent / {} / whitespace-only
+    harness = _HARNESS_BY_CLIENT_NAME.get(key)
+    if harness is not None:
+        return harness  # (a) recognized
+    if key in _KNOWN_GENERIC_CLIENT_NAMES:
+        return GENERIC_HARNESS  # (a) recognized-as-generic: hosted surface / probe, no log
+    # (c) unrecognized non-empty name -- observe it so the seed table can grow.
+    logger.info(
+        "[harness-detect] unrecognized MCP clientInfo name=%r version=%r -> generic "
+        "(add a table row if this is a real harness)",
+        key,
+        (version or "").strip() or None,
+    )
+    return GENERIC_HARNESS
+
+
+def _detected_harness_from_session(session: object | None) -> str | None:
+    """Read a stamped ``resolved_harness`` from a tolerant session shape (BE-9035b).
+
+    Accepts an ``MCPSession``-like row (reads ``.session_data``), a raw session_data
+    dict (``resolved_harness`` key), or a capability vector carrying ``"harness"``
+    (the shape :func:`get_session_capabilities` returns). Returns the harness token,
+    or ``None`` when nothing is stamped. Never raises -- a bookkeeping read, not a gate.
+    """
+    if session is None:
+        return None
+    data = getattr(session, "session_data", None)
+    if isinstance(data, dict):
+        stamped = data.get("resolved_harness")
+        if isinstance(stamped, str) and stamped:
+            return stamped
+    if isinstance(session, dict):
+        for candidate_key in ("resolved_harness", "harness"):
+            value = session.get(candidate_key)
+            if isinstance(value, str) and value:
+                return value
+    return None
