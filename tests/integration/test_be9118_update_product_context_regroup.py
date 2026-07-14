@@ -372,24 +372,59 @@ def _onboarding_prompt_region() -> str:
 
 
 def test_onboarding_prompt_only_references_live_update_product_context_params():
-    """INVARIANT 2 (drift): the onboarding prompt may only instruct the agent to
-    pass params that exist on the live update_product_context schema. Because
-    FastMCP silently DROPS an unknown top-level arg, a prompt that still named a
-    removed flat param would cause silent data loss — so this guard fails if any of
-    the 17 regrouped flat names reappears in the prompt, and requires the 4 grouped
-    names to be present. Fail-first: re-insert e.g. 'programming_languages=' into
-    the prompt region and this trips."""
+    """INVARIANT 2 (drift): the instruction authority for update_product_context's
+    param shape may only name params that exist on the live tool schema. Because
+    FastMCP silently DROPS an unknown top-level arg, an instruction that still named
+    a removed flat param would cause silent data loss.
+
+    BE-9164 superseded the BE-5118-era wizard prompt as that authority: the wizard
+    prompt (useVisionAnalysis.js) is now a slim pointer at get_vision_doc's
+    extraction_instructions, and VISION_EXTRACTION_PROMPT (server-side, in
+    giljo_mcp.tools.vision_analysis) is the single source of truth for the param
+    shape. So the guard splits in two:
+    - the wizard prompt must still never leak a removed flat param (it could
+      resurrect the drift even without naming grouped params), and must defer to
+      the server instructions instead of naming params itself;
+    - VISION_EXTRACTION_PROMPT must name all 4 grouped params and never leak a
+      removed flat param as a top-level kwarg.
+
+    Fail-first: re-insert e.g. 'programming_languages=' into either prompt, or
+    delete 'tech_stack'/'architecture'/'quality'/'testing' from
+    VISION_EXTRACTION_PROMPT, and this trips.
+    """
+    from giljo_mcp.tools.vision_analysis import VISION_EXTRACTION_PROMPT
+
     live = _live_update_product_context_params()
     # The regroup actually happened: no removed flat name survives as a live param.
     assert not (_REMOVED_FLAT_PARAMS & live), f"flat params still on the live schema: {_REMOVED_FLAT_PARAMS & live}"
 
+    # -- Wizard prompt (useVisionAnalysis.js): no longer the instruction authority.
+    # It must never leak a removed flat param, and must defer to the server prompt.
     region = _onboarding_prompt_region()
     leaked = sorted(name for name in _REMOVED_FLAT_PARAMS if name in region)
-    assert not leaked, f"onboarding prompt references removed flat param(s) (regrouped in BE-9118): {leaked}"
-    missing = sorted(name for name in _GROUPED_PARAMS if name not in region)
-    assert not missing, f"onboarding prompt must name the grouped params it now instructs: missing {missing}"
+    assert not leaked, f"wizard prompt references removed flat param(s) (regrouped in BE-9118): {leaked}"
+    assert "extraction_instructions" in region, (
+        "wizard prompt must defer to get_vision_doc's extraction_instructions (BE-9164) instead of naming params itself"
+    )
+
+    # -- Server prompt (VISION_EXTRACTION_PROMPT): the real instruction authority.
+    # Must name all 4 grouped params...
+    missing = sorted(name for name in _GROUPED_PARAMS if name not in VISION_EXTRACTION_PROMPT)
+    assert not missing, f"VISION_EXTRACTION_PROMPT must name the grouped params it instructs: missing {missing}"
     # Every grouped name the prompt uses is a real live param.
     assert live >= _GROUPED_PARAMS
+
+    # ...and must never leak a removed flat name as a TOP-LEVEL kwarg. The grouped
+    # call example legitimately contains these names as dict sub-keys, e.g.
+    # tech_stack={"programming_languages": "..."} -- that renders as
+    # '"programming_languages":' in the prompt text, never 'programming_languages='.
+    # So checking for the '=' call-site form (not bare substring containment)
+    # correctly allows the sub-key usage while still catching a real top-level leak.
+    leaked_server = sorted(name for name in _REMOVED_FLAT_PARAMS if f"{name}=" in VISION_EXTRACTION_PROMPT)
+    assert not leaked_server, (
+        f"VISION_EXTRACTION_PROMPT references removed flat param(s) as a top-level "
+        f"kwarg (regrouped in BE-9118): {leaked_server}"
+    )
 
 
 def test_update_product_context_wrapper_has_zero_toggle_linkage():

@@ -39,34 +39,59 @@ from giljo_mcp.services.product_vision_service import ProductVisionService
 logger = logging.getLogger(__name__)
 
 
-VISION_EXTRACTION_PROMPT = """You are analyzing a product vision document for a software
-development orchestration platform. Extract structured information and generate summaries.
+VISION_EXTRACTION_PROMPT = """You are analyzing the vision documents for a software product.
+Work in TWO roles, then commit everything in ONE update_product_context call.
 
-RULES:
-- Extract ONLY information explicitly stated in the document chunks below
-- If a field cannot be determined from the document, OMIT it entirely
-- Do NOT guess, invent, or infer information not present
-- Keep descriptions concise and factual, not promotional
-- product_description should be 2-3 sentences maximum
-- testing_strategy MUST be one of: TDD, BDD, Integration-First, E2E-First, Manual, Hybrid
-- target_platforms MUST be a list of: windows, linux, macos, android, ios, web, all
+ROLE 1 — PRODUCT MANAGER (the summaries)
+Write a synthesized narrative that explains what the product is and WHY it exists: the
+developer's purpose, what they are trying to achieve, important callouts, and any proposal
+context worth retaining. This is a product story, not a mechanical extraction.
+- vision_summaries: a list of {doc_id, light, medium} entries -- ONE per active vision
+  document. doc_id is the UUID returned alongside each chunk's content by get_vision_doc.
+  light ≈ 33% of that document's original length; medium ≈ 66%.
+- consolidated_vision: a single {light, medium} dict telling the UNIFIED cross-document
+  product story at the same two zoom levels (light ≈ 33%, medium ≈ 66% of the combined
+  originals). Do NOT put per-document section headers (e.g. `## filename.md`) inside the
+  consolidated summary -- it is one product narrative, not a stitched concatenation.
+  Per-document traceability lives elsewhere in the UI.
+
+ROLE 2 — ENGINEERING MANAGER (the structured fields)
+For tech_stack / architecture / quality / testing, write absolutes -- committed technical
+decisions. EXTRACT them if the user defined them in the documents; PROPOSE sensible defaults
+if the user did not (the user can modify them later). Do not leave a structured field blank
+just because the document is silent on it -- propose a reasonable value instead.
+
+FIELD RULES
+- product_description: 2-3 sentences.
+- testing_strategy MUST be one of: TDD, BDD, Integration-First, E2E-First, Manual, Hybrid.
+- target_platforms MUST be a list from: windows, linux, macos, android, ios, web, all.
   Use 'web' for browser-based apps (SPA, PWA, responsive). Use 'all' alone if cross-platform.
-- For summaries: preserve technical specs, architecture decisions, and constraints
-- For summaries: remove marketing prose, user personas, and storytelling
+- Do NOT pass product_name unless the product currently has no name -- the product name is
+  user-owned.
 
-After reading ALL chunks, call the update_product_context tool with all fields you were
-able to extract. Summaries are passed via two parameters:
+HOW TO CALL
+Make ONE single update_product_context call covering EVERYTHING (per-doc summaries,
+consolidated summary, and all structured fields) so the backend evaluates the
+completion flag atomically. tech_stack / architecture / quality / testing are NESTED JSON
+OBJECTS -- not flat top-level parameters and not strings. Example call shape:
 
-- vision_summaries: a list of {doc_id, light, medium} entries -- ONE entry per active
-  vision document. The doc_id is the UUID returned alongside each chunk's content in
-  the get_vision_doc response. light is a concise ~33% per-document summary; medium
-  is a thorough ~66% per-document summary preserving decisions, architecture, and
-  feature descriptions.
-- consolidated_vision: a single {light, medium} dict aggregating ALL documents at the
-  same two zoom levels.
-
-After extracting per-doc summaries, produce a consolidated_vision aggregating all
-docs at the same two zoom levels.
+  update_product_context(
+      product_id="<id>",
+      product_description="...",
+      core_features="...",
+      tech_stack={"programming_languages": "...", "frontend_frameworks": "...",
+                  "backend_frameworks": "...", "databases": "...",
+                  "infrastructure": "...", "target_platforms": ["web"]},
+      architecture={"architecture_pattern": "...", "design_patterns": "...",
+                    "api_style": "...", "architecture_notes": "...",
+                    "coding_conventions": "...", "brand_guidelines": "..."},
+      quality={"quality_standards": "..."},
+      testing={"testing_strategy": "TDD", "testing_frameworks": "...",
+               "test_coverage_target": 80},
+      vision_summaries=[{"doc_id": "<uuid from get_vision_doc>", "light": "...",
+                         "medium": "..."}],
+      consolidated_vision={"light": "...", "medium": "..."},
+  )
 
 {custom_instructions}"""
 
@@ -220,10 +245,32 @@ async def get_vision_doc(
         total_chunks = len(chunk_list)
         total_tokens = sum(c["token_count"] for c in chunk_list)
 
+        active_doc_ids = [str(doc.id) for doc in active_docs]
+
+        if chunk is not None:
+            # -- Single-chunk retrieval: minimal routing payload. The extraction
+            #    instructions are NOT re-sent on chunk responses (BE-9164): they
+            #    ride only on the metadata call to avoid resending the prompt on
+            #    every chunk. --
+            if chunk < 1 or chunk > total_chunks:
+                raise ResourceNotFoundError(
+                    f"Chunk {chunk} not found (valid range: 1-{total_chunks})",
+                    context={"product_id": product_id, "chunk": chunk, "total_chunks": total_chunks},
+                )
+            selected = chunk_list[chunk - 1]
+            return {
+                "chunk": chunk,
+                "doc_id": selected["doc_id"],
+                "content": selected["content"],
+                "chunk_token_count": selected["token_count"],
+                "total_chunks": total_chunks,
+                "product_id": product_id,
+                "write_tool": "update_product_context",
+            }
+
+        # -- Metadata call (chunk is None): carries the extraction_instructions. --
         custom_instructions = product.extraction_custom_instructions or ""
         extraction_instructions = VISION_EXTRACTION_PROMPT.replace("{custom_instructions}", custom_instructions)
-
-        active_doc_ids = [str(doc.id) for doc in active_docs]
         base = {
             "total_chunks": total_chunks,
             "total_tokens": total_tokens,
@@ -234,18 +281,15 @@ async def get_vision_doc(
             "doc_ids": active_doc_ids,
         }
 
-        if chunk is not None:
-            # Return a single chunk
-            if chunk < 1 or chunk > total_chunks:
-                raise ResourceNotFoundError(
-                    f"Chunk {chunk} not found (valid range: 1-{total_chunks})",
-                    context={"product_id": product_id, "chunk": chunk, "total_chunks": total_chunks},
-                )
-            selected = chunk_list[chunk - 1]
-            base["chunk"] = chunk
-            base["doc_id"] = selected["doc_id"]
-            base["content"] = selected["content"]
-            base["chunk_token_count"] = selected["token_count"]
+        if total_chunks == 1:
+            # BE-9164: single-chunk docs need no follow-up call. Inline the only
+            # chunk's content directly in the metadata response.
+            only = chunk_list[0]
+            base["chunk"] = 1
+            base["doc_id"] = only["doc_id"]
+            base["content"] = only["content"]
+            base["chunk_token_count"] = only["token_count"]
+            base["usage"] = "All content is included above; no further get_vision_doc calls are needed."
         else:
             # Metadata only — no content, agent should request chunks individually
             base["usage"] = f"Call again with chunk=1 through chunk={total_chunks} to retrieve content"
@@ -284,6 +328,49 @@ def _build_update_kwargs(
             column_values[column_name] = fields[field_name]
             fields_written.append(field_name)
     return assemble_update_kwargs(column_values)
+
+
+async def _apply_overwrite_protection(
+    exc: ValidationError,
+    product_service: Any,
+    product_id: str,
+    kwargs: dict[str, Any],
+    fields_written: list[str],
+    fields_skipped: list[dict[str, str]],
+    *,
+    force: bool,
+) -> None:
+    """Handle ProductService JSONB overwrite-protection as structured skips.
+
+    ProductService raises ValidationError with context={"populated_fields": [...]}
+    when JSONB blocks (tech_stack/architecture/test_config) are already populated and
+    force=False. Roll the affected fields out of ``fields_written`` into
+    ``fields_skipped``, then re-attempt the write with the conflicting blocks stripped
+    so non-conflicting fields still land. Re-raise any other ValidationError.
+    """
+    populated = (exc.context or {}).get("populated_fields") if hasattr(exc, "context") else None
+    if not populated:
+        raise exc
+    block_field_map = {
+        "tech_stack": _TECH_STACK_FIELDS,
+        "architecture": _ARCHITECTURE_FIELDS,
+        "test_config": _TEST_CONFIG_FIELDS,
+    }
+    for block in populated:
+        block_fields = block_field_map.get(block, set())
+        for field_name in list(fields_written):
+            if field_name in block_fields:
+                fields_written.remove(field_name)
+                fields_skipped.append(
+                    {
+                        "field": field_name,
+                        "reason": f"{block} already populated",
+                        "hint": "Pass force=True to overwrite.",
+                    }
+                )
+    safe_kwargs = {k: v for k, v in kwargs.items() if k not in populated}
+    if safe_kwargs:
+        await product_service.update_product(product_id, force=force, **safe_kwargs)
 
 
 async def update_product_fields(
@@ -402,6 +489,21 @@ async def update_product_fields(
                 context={"product_id": product_id},
             )
 
+        # BE-9164: the product name is user-owned. Skip an incoming product_name
+        # when the product already has a non-empty name, unless force=True. When
+        # the existing name is empty/None the extracted name writes normally.
+        if "product_name" in fields and not force:
+            existing_name = (product.name or "").strip()
+            if existing_name:
+                fields.pop("product_name")
+                fields_skipped.append(
+                    {
+                        "field": "product_name",
+                        "reason": "product name is user-owned and already set",
+                        "hint": "Pass force=True to overwrite.",
+                    }
+                )
+
         kwargs = _build_update_kwargs(fields, fields_written)
 
         # -- Route writes through ProductService (the validated single write path) --
@@ -418,36 +520,15 @@ async def update_product_fields(
             try:
                 await product_service.update_product(product_id, force=force, **kwargs)
             except ValidationError as exc:
-                # Overwrite-protection error: surface as structured skip rather than raise.
-                # ProductService raises with context={"populated_fields": [...]} when
-                # JSONB blocks (tech_stack/architecture/test_config) are populated and
-                # force=False. Other ValidationError causes still propagate.
-                populated = (exc.context or {}).get("populated_fields") if hasattr(exc, "context") else None
-                if not populated:
-                    raise
-                # Roll back fields_written: any field belonging to a skipped block didn't write.
-                block_field_map = {
-                    "tech_stack": _TECH_STACK_FIELDS,
-                    "architecture": _ARCHITECTURE_FIELDS,
-                    "test_config": _TEST_CONFIG_FIELDS,
-                }
-                for block in populated:
-                    block_fields = block_field_map.get(block, set())
-                    for field_name in list(fields_written):
-                        if field_name in block_fields:
-                            fields_written.remove(field_name)
-                            fields_skipped.append(
-                                {
-                                    "field": field_name,
-                                    "reason": f"{block} already populated",
-                                    "hint": "Pass force=True to overwrite.",
-                                }
-                            )
-                # Re-attempt with the skipped blocks stripped out, so non-conflicting
-                # fields (other blocks + direct product fields) still write.
-                safe_kwargs = {k: v for k, v in kwargs.items() if k not in populated}
-                if safe_kwargs:
-                    await product_service.update_product(product_id, force=force, **safe_kwargs)
+                await _apply_overwrite_protection(
+                    exc,
+                    product_service,
+                    product_id,
+                    kwargs,
+                    fields_written,
+                    fields_skipped,
+                    force=force,
+                )
 
         # -- BE-5117: per-doc vision_summaries + aggregate consolidated_vision --
         # Both payloads are persisted via owning services (VisionDocumentRepository

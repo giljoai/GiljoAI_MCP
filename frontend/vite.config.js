@@ -20,9 +20,10 @@ try {
     // v3.0: Read from server.dashboard_host (no mode-based logic)
     dashboardHost = configData?.server?.dashboard_host || '0.0.0.0'
     console.log(`[Vite] v3.0 binding to: ${dashboardHost}:${FRONTEND_PORT}`)
-  } else {
-    console.log(`[Vite] config.yaml not found, using default: ${dashboardHost}:${FRONTEND_PORT}`)
   }
+  // No log when config.yaml is absent: that is the NORMAL state during install
+  // (frontend builds before config generation) and for contributor checkouts —
+  // a "not found" line there reads as an error to fresh installers (v2.0.0.1 QA).
 } catch (err) {
   console.warn('[Vite] Could not read config.yaml, using default 0.0.0.0:', err.message)
 }

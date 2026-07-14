@@ -132,16 +132,17 @@ describe('useVisionAnalysis', () => {
     const PRODUCT_ID = 'prod-123'
 
     function expectsBasePrompt(prompt) {
-      // BE-5118: validate the canonical 5-step structure without pinning the
-      // exact prose (so future tweaks to the wording don't break the suite).
+      // BE-9164: the expanded two-role prompt template (BE-5118) now lives
+      // server-side in VISION_EXTRACTION_PROMPT (get_vision_doc's
+      // extraction_instructions) as the single source of truth. This wizard
+      // prompt only needs to point the agent at that flow and require a
+      // single atomic update_product_context call.
       expect(prompt).toContain('Analyze the vision documents for product "My Product"')
       expect(prompt).toContain(`get_vision_doc(product_id="${PRODUCT_ID}")`)
-      expect(prompt).toMatch(/Light summary.*33%/i)
-      expect(prompt).toMatch(/Medium summary.*66%/i)
-      expect(prompt).toMatch(/CONSOLIDATED/i)
-      expect(prompt).toContain('vision_summaries')
-      expect(prompt).toContain('consolidated_vision')
+      expect(prompt).toMatch(/extraction_instructions/)
       expect(prompt).toMatch(/update_product_context/)
+      expect(prompt).toMatch(/ONE single|single call/i)
+      expect(prompt).toMatch(/vision_analysis_complete/)
     }
 
     it('appends custom instructions to prompt when extractionCustomInstructions is non-empty', async () => {

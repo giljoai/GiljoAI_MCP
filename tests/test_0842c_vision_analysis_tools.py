@@ -308,10 +308,13 @@ async def test_write_product_core_fields(
     """Writes product_name, description, and core_features to product."""
     from giljo_mcp.tools.vision_analysis import update_product_fields
 
+    # force=True: product_a already has a name, and product_name is user-owned
+    # (BE-9164) — force is required to overwrite it in this core-fields write.
     result = await update_product_fields(
         product_id=product_a.id,
         tenant_key=tenant_a,
         _test_session=db_session,
+        force=True,
         product_name="Updated Product Name",
         product_description="A new description.",
         core_features="Feature A, Feature B",
@@ -516,11 +519,14 @@ async def test_write_product_websocket_event(
 
     mock_ws = AsyncMock()
 
+    # force=True: product_a already has a name and product_name is user-owned
+    # (BE-9164), so an unforced write would be skipped and emit no event.
     await update_product_fields(
         product_id=product_a.id,
         tenant_key=tenant_a,
         _test_session=db_session,
         websocket_manager=mock_ws,
+        force=True,
         product_name="WS Test Product",
     )
 
@@ -595,3 +601,193 @@ async def test_write_product_invalid_coverage_target(
             _test_session=db_session,
             test_coverage_target=150,
         )
+
+
+# ---------------------------------------------------------------------------
+# BE-9164: instruction placement, single-chunk inlining, product-name ownership,
+# validator bound, and prompt content.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_instructions_only_on_metadata_not_chunk(
+    db_session: AsyncSession,
+    db_manager,
+    tenant_a: str,
+    product_a: Product,
+    doc_a: VisionDocument,
+    doc_a2: VisionDocument,
+):
+    """extraction_instructions ride only the metadata call, never a chunk response."""
+    from giljo_mcp.tools.vision_analysis import get_vision_doc
+
+    meta = await get_vision_doc(
+        product_id=product_a.id,
+        tenant_key=tenant_a,
+        _test_session=db_session,
+    )
+    # Two active docs -> two chunks (raw fallback = one chunk per doc).
+    assert meta["total_chunks"] == 2
+    assert "extraction_instructions" in meta
+
+    chunk = await get_vision_doc(
+        product_id=product_a.id,
+        tenant_key=tenant_a,
+        chunk=1,
+        _test_session=db_session,
+    )
+    assert "extraction_instructions" not in chunk
+    assert chunk["chunk"] == 1
+    assert "content" in chunk
+    assert chunk["write_tool"] == "update_product_context"
+
+
+@pytest.mark.asyncio
+async def test_single_chunk_metadata_inlines_content(
+    db_session: AsyncSession,
+    db_manager,
+    tenant_a: str,
+    product_a: Product,
+    doc_a: VisionDocument,
+):
+    """Single-chunk doc: metadata call inlines the content, no follow-up call needed."""
+    from giljo_mcp.tools.vision_analysis import get_vision_doc
+
+    meta = await get_vision_doc(
+        product_id=product_a.id,
+        tenant_key=tenant_a,
+        _test_session=db_session,
+    )
+    assert meta["total_chunks"] == 1
+    assert meta["chunk"] == 1
+    assert "content" in meta
+    assert "vision document content" in meta["content"]
+    assert "extraction_instructions" in meta
+    assert "no further" in meta["usage"].lower()
+
+
+@pytest.mark.asyncio
+async def test_multi_chunk_metadata_has_no_inline_content(
+    db_session: AsyncSession,
+    db_manager,
+    tenant_a: str,
+    product_a: Product,
+    doc_a: VisionDocument,
+    doc_a2: VisionDocument,
+):
+    """Multi-chunk doc: metadata call carries no inline content."""
+    from giljo_mcp.tools.vision_analysis import get_vision_doc
+
+    meta = await get_vision_doc(
+        product_id=product_a.id,
+        tenant_key=tenant_a,
+        _test_session=db_session,
+    )
+    assert meta["total_chunks"] == 2
+    assert "content" not in meta
+    assert "chunk" not in meta
+
+
+@pytest.mark.asyncio
+async def test_product_name_skipped_when_already_set(
+    db_session: AsyncSession,
+    db_manager,
+    tenant_a: str,
+    product_a: Product,
+):
+    """product_name is user-owned: skipped with a fields_skipped entry when a name exists."""
+    from giljo_mcp.tools.vision_analysis import update_product_fields
+
+    result = await update_product_fields(
+        product_id=product_a.id,
+        tenant_key=tenant_a,
+        _test_session=db_session,
+        product_name="Agent Renamed",
+    )
+
+    assert "product_name" not in result["fields"]
+    skipped = {s["field"]: s for s in result["fields_skipped"]}
+    assert "product_name" in skipped
+    assert "user-owned" in skipped["product_name"]["reason"]
+
+    await db_session.refresh(product_a)
+    assert product_a.name == "Test Product A"
+
+
+@pytest.mark.asyncio
+async def test_product_name_written_when_empty(
+    db_session: AsyncSession,
+    db_manager,
+    tenant_a: str,
+):
+    """product_name writes normally when the product currently has no name."""
+    from giljo_mcp.tools.vision_analysis import update_product_fields
+
+    product = Product(
+        id=str(uuid.uuid4()),
+        name="",
+        tenant_key=tenant_a,
+        is_active=True,
+        product_memory={},
+    )
+    db_session.add(product)
+    await db_session.flush()
+
+    result = await update_product_fields(
+        product_id=product.id,
+        tenant_key=tenant_a,
+        _test_session=db_session,
+        product_name="Fresh Name",
+    )
+
+    assert "product_name" in result["fields"]
+    await db_session.refresh(product)
+    assert product.name == "Fresh Name"
+
+
+@pytest.mark.asyncio
+async def test_product_name_force_overwrites(
+    db_session: AsyncSession,
+    db_manager,
+    tenant_a: str,
+    product_a: Product,
+):
+    """force=True overwrites an existing user-owned name."""
+    from giljo_mcp.tools.vision_analysis import update_product_fields
+
+    result = await update_product_fields(
+        product_id=product_a.id,
+        tenant_key=tenant_a,
+        _test_session=db_session,
+        force=True,
+        product_name="Forced Name",
+    )
+
+    assert "product_name" in result["fields"]
+    await db_session.refresh(product_a)
+    assert product_a.name == "Forced Name"
+
+
+def test_validate_vision_summaries_bound():
+    """Bound raised to 500K (BE-9164): 60K accepted, 500_001 rejected."""
+    from giljo_mcp.schemas.jsonb_validators import validate_vision_summaries
+
+    doc_id = str(uuid.uuid4())
+    ok = validate_vision_summaries([{"doc_id": doc_id, "light": "a" * 60_000, "medium": "b" * 60_000}])
+    assert ok is not None
+    assert len(ok[0]["light"]) == 60_000
+
+    with pytest.raises(Exception):
+        validate_vision_summaries([{"doc_id": doc_id, "light": "a" * 500_001, "medium": "ok"}])
+
+
+def test_vision_extraction_prompt_content():
+    """Prompt teaches the grouped-dict shape and two roles, not the old flat schema."""
+    from giljo_mcp.tools.vision_analysis import VISION_EXTRACTION_PROMPT
+
+    assert "tech_stack={" in VISION_EXTRACTION_PROMPT
+    assert "architecture={" in VISION_EXTRACTION_PROMPT
+    assert "PRODUCT MANAGER" in VISION_EXTRACTION_PROMPT
+    assert "ENGINEERING MANAGER" in VISION_EXTRACTION_PROMPT
+    # No stale flat-schema instruction.
+    assert "call the update_product_context tool with all fields" not in VISION_EXTRACTION_PROMPT

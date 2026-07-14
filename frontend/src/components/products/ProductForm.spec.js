@@ -721,15 +721,19 @@ describe('ProductForm.vue — FE-6088 three-path onboarding gate', () => {
   })
 })
 
-// BE-5118 prompt template expansion is unchanged. The single-call instruction
-// MUST survive the modal refactor.
-describe('useVisionAnalysis — BE-5118 expanded prompt template', () => {
+// BE-9164 superseded the BE-5118 expanded prompt template: the detailed
+// two-role extraction brief now lives server-side in VISION_EXTRACTION_PROMPT
+// (returned by get_vision_doc as extraction_instructions) so it can't drift
+// out of sync with the update_product_context schema. This wizard prompt is
+// now a slim pointer at that single source of truth. The single-call
+// instruction MUST survive the modal refactor.
+describe('useVisionAnalysis — BE-9164 slim single-source prompt', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.resetModules()
   })
 
-  it('includes all 5 mandated prompt steps and the single-call instruction', async () => {
+  it('points the agent at get_vision_doc + extraction_instructions and requires a single update_product_context call', async () => {
     vi.doUnmock('@/composables/useVisionAnalysis')
     const copyMock = vi.fn(() => Promise.resolve(true))
     vi.doMock('@/composables/useClipboard', () => ({
@@ -743,14 +747,11 @@ describe('useVisionAnalysis — BE-5118 expanded prompt template', () => {
     expect(copyMock).toHaveBeenCalledTimes(1)
     const prompt = copyMock.mock.calls[0][0]
     expect(prompt).toContain('get_vision_doc(product_id="prod-xyz")')
-    expect(prompt).toMatch(/Light summary.*33%/i)
-    expect(prompt).toMatch(/Medium summary.*66%/i)
-    expect(prompt).toMatch(/CONSOLIDATED/i)
-    expect(prompt).toMatch(/tech stack/i)
+    expect(prompt).toMatch(/extraction_instructions/)
     expect(prompt).toContain('update_product_context')
-    expect(prompt).toContain('vision_summaries')
-    expect(prompt).toContain('consolidated_vision')
-    expect(prompt).toMatch(/single|once/i)
+    expect(prompt).toMatch(/ONE single|single call/i)
+    expect(prompt).toMatch(/vision_analysis_complete/)
+    expect(prompt).toContain('MyProduct')
   })
 })
 

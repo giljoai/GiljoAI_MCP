@@ -550,10 +550,11 @@ def validate_string_list(
 
 # --- update_product_context MCP tool payloads (BE-5117) ---
 
-# Cap per-summary length so a runaway agent cannot OOM Postgres TOAST.
-# 50_000 chars ≈ 12_500 tokens — well above realistic light/medium summary sizes
-# but bounded for safety.
-_VISION_SUMMARY_MAX_CHARS = 50_000
+# Runaway-agent tripline, NOT a product limit. Ingest auto-chunks documents and
+# delivery paginates summaries, so legitimate light/medium summaries can exceed
+# 50K chars; the only job of this bound is to stop a broken agent from OOMing
+# Postgres TOAST with an unbounded blob.
+_VISION_SUMMARY_MAX_CHARS = 500_000
 
 
 class VisionSummaryEntry(BaseModel):
