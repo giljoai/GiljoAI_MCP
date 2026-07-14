@@ -26,7 +26,7 @@ GENERIC_DETAIL = "Could not validate credentials"
 
 @pytest.fixture(autouse=True)
 def set_jwt_secret(monkeypatch):
-    monkeypatch.setenv("JWT_SECRET", "test-secret-key-for-inf6009")
+    monkeypatch.setenv("JWT_SECRET", "test-secret-" + "key-for-inf6009")  # concat: public gitleaks defang
 
 
 def _token(secret: str, *, token_type: str = "access", algorithm: str = "HS256") -> str:

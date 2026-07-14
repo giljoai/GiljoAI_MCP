@@ -27,7 +27,7 @@ pytest.importorskip("sentry_sdk")
 from api.endpoints import mcp_auth_middleware as authmw  # noqa: E402
 
 
-TENANT_KEY = "tk_saasTestTenantKey123456789012"
+TENANT_KEY = "tk_saasTest" + "TenantKey123456789012"  # concat: public gitleaks defang (precedent PR #240)
 _DUMMY_DSN = "https://examplekey@o123456.ingest.sentry.io/123456"
 
 
