@@ -1,0 +1,125 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { mount, flushPromises } from '@vue/test-utils'
+import { createRouter, createMemoryHistory } from 'vue-router'
+import { createPinia, setActivePinia } from 'pinia'
+import configService from '@/services/configService'
+
+const modeState = vi.hoisted(() => ({ value: 'ce' }))
+const apiMock = vi.hoisted(() => ({
+  settings: {
+    get: vi.fn(() =>
+      Promise.resolve({
+        data: {
+          notifications: {
+            position: 'top-right',
+            duration: 7,
+            agent_silence_threshold_minutes: 99,
+          },
+        },
+      }),
+    ),
+    getAgentSilenceThreshold: vi.fn(() =>
+      Promise.resolve({ data: { agent_silence_threshold_minutes: 22 } }),
+    ),
+    updateAgentSilenceThreshold: vi.fn(() =>
+      Promise.resolve({ data: { agent_silence_threshold_minutes: 22 } }),
+    ),
+  },
+}))
+
+vi.mock('@/services/api', () => ({
+  default: apiMock,
+  api: apiMock,
+}))
+
+vi.mock('@/services/setupService', () => ({
+  default: {
+    checkEnhancedStatus: vi.fn(() => Promise.resolve({ mode: modeState.value })),
+    getSerenaStatus: vi.fn(() => Promise.resolve({ enabled: false })),
+    getGitSettings: vi.fn(() => Promise.resolve({ enabled: false })),
+    toggleSerena: vi.fn(() => Promise.resolve({ success: true, enabled: true })),
+    toggleGit: vi.fn(() => Promise.resolve({ success: true, enabled: true })),
+  },
+}))
+
+const childStubs = {
+  TemplateManager: { template: '<div data-test="template-manager" />' },
+  ApiKeyManager: { template: '<div data-test="api-key-manager" />' },
+  AgentExport: { template: '<div data-test="agent-export" />' },
+  ContextPriorityConfig: { template: '<div data-test="context-priority" />' },
+  McpIntegrationCard: { template: '<div data-test="mcp-card" />' },
+  SerenaIntegrationCard: { template: '<div data-test="serena-card" />' },
+  GitIntegrationCard: { template: '<div data-test="git-card" />' },
+  CertTrustModal: { template: '<div data-test="cert-modal" />' },
+}
+
+describe('ToolsView agent silence threshold settings', () => {
+  let router
+
+  beforeEach(async () => {
+    vi.clearAllMocks()
+    localStorage.clear()
+    modeState.value = 'ce'
+    // FE-6055: getGiljoMode() now returns 'unknown' (not 'ce') without a real
+    // config. The settings store CE-gates its server load on a confirmed 'ce',
+    // so seed a confirmed-CE config for this CE-mode suite.
+    configService.config = { giljo_mode: 'ce', mode: 'server', api: {} }
+    setActivePinia(createPinia())
+    router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: '/', name: 'Tools', component: { template: '<div />' } }],
+    })
+    await router.push('/')
+    await router.isReady()
+  })
+
+  async function mountView() {
+    const { default: ToolsView } = await import('@/views/ToolsView.vue')
+    const wrapper = mount(ToolsView, {
+      global: {
+        plugins: [router],
+        stubs: childStubs,
+      },
+    })
+    await flushPromises()
+    return wrapper
+  }
+
+  it('CE mode loads and saves the threshold through the system setting API', async () => {
+    modeState.value = 'ce'
+    const wrapper = await mountView()
+
+    expect(apiMock.settings.getAgentSilenceThreshold).toHaveBeenCalledTimes(1)
+    expect(wrapper.find('[data-test="agent-monitoring-settings"]').exists()).toBe(true)
+    expect(wrapper.vm.agentSilenceThresholdMinutes).toBe(22)
+
+    wrapper.vm.agentSilenceThresholdMinutes = 17
+    await wrapper.vm.saveNotificationSettings()
+
+    // FE-9000d: notifications are browser-only now -- no server-sync call.
+    // Persistence is via localStorage (verified across-reload in tests/unit/stores/settings.spec.js).
+    const lastSave = JSON.parse(window.localStorage.setItem.mock.calls.at(-1)[1])
+    expect(lastSave.notifications).toEqual({ position: 'top-right', duration: 7 })
+    expect(apiMock.settings.updateAgentSilenceThreshold).toHaveBeenCalledWith(17)
+    // load-sensitive: the dynamic import + mount in mountView() can exceed vitest's 5s
+    // default when this spec runs alongside the two -n6 pytest jobs on a busy CI runner.
+  }, 15000)
+
+  it('hosted mode hides the CE-only threshold and does not save it', async () => {
+    modeState.value = 'demo'
+    const wrapper = await mountView()
+
+    expect(wrapper.find('[data-test="agent-monitoring-settings"]').exists()).toBe(false)
+    expect(apiMock.settings.getAgentSilenceThreshold).not.toHaveBeenCalled()
+
+    wrapper.vm.agentSilenceThresholdMinutes = 17
+    await wrapper.vm.saveNotificationSettings()
+
+    // FE-9000d: notifications still persist to localStorage in hosted mode
+    // (browser-only save path is edition-agnostic); only the CE-only
+    // agent-silence-threshold sync is skipped.
+    const lastSave = JSON.parse(window.localStorage.setItem.mock.calls.at(-1)[1])
+    expect(lastSave.notifications).toBeDefined()
+    expect(apiMock.settings.updateAgentSilenceThreshold).not.toHaveBeenCalled()
+  }, 15000)
+})

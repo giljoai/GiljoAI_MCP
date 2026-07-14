@@ -8,8 +8,7 @@
 # (tests/unit/test_dependency_manifest_sync.py) REDs the build on any mismatch.
 #
 # This file contains ONLY the essential packages needed to run GiljoAI MCP.
-# For development tools, install: pip install -r dev-requirements.txt
-# For optional integrations, install: pip install -r optional-requirements.txt
+# (Development/test tooling is not listed here; see the project docs for the dev setup.)
 
 # Core Framework
 # PINNED (INF-6053; deferral now lifted): fastapi 0.137 reworked include_router — app.routes no longer

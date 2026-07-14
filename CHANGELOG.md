@@ -2,6 +2,12 @@
 
 All notable changes to this project are recorded here. This changelog follows the [Keep a Changelog](https://keepachangelog.com/) convention — entries are grouped by change type (Added / Changed / Fixed / Removed / Security). Internal project IDs appear in parentheses for traceability. Versions follow `MAJOR.MINOR.PATCH[.HOTFIX]` and tags live on the public repository (`giljoai/GiljoAI_MCP`).
 
+## [2.0.0.1] — 2026-07-13
+
+### Fixed
+
+- **Installer no longer fails on non-UTF-8 Windows systems.** The generated `.env` template contained typographic characters that, on machines using a legacy locale (e.g. Windows-1252), were written as bytes the installer could not read back — the very first setup step crashed with a decode error. All installer-generated files are now written explicitly as UTF-8 and the `.env` template is pure ASCII, so installs behave identically on every locale. (INF-9159)
+
 ## [2.0.0] — 2026-07-13
 
 ### Added

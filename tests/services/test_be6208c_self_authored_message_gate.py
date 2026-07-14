@@ -1,0 +1,163 @@
+# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
+# Licensed under the Elastic License 2.0.
+# See LICENSE in the project root for terms.
+# [CE] Community Edition.
+
+"""BE-6208c — self-authored Hub posts must not arm an agent's own completion gate.
+
+An agent that posted a message authored by ITSELF can still complete_job; a
+pending ACTION-REQUIRED message from ANOTHER agent still blocks (BE-9012b/D7: the
+gate now keys on requires_action; the self-authored exclusion of row 14 is
+preserved). The acknowledge_messages_on_complete escape hatch is retired
+(accepted-and-ignored under D7).
+"""
+
+from __future__ import annotations
+
+import random
+from datetime import UTC, datetime, timedelta
+from unittest.mock import MagicMock
+from uuid import uuid4
+
+import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from giljo_mcp.exceptions import ValidationError
+from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+from giljo_mcp.models.products import Product
+from giljo_mcp.models.projects import Project
+from giljo_mcp.models.tasks import Message, MessageRecipient
+from giljo_mcp.services.job_completion_service import JobCompletionService
+
+
+@pytest.fixture
+async def test_product(db_session: AsyncSession, test_tenant_key: str) -> Product:
+    product = Product(
+        id=str(uuid4()),
+        tenant_key=test_tenant_key,
+        name="BE-6208c Product",
+        description="self-authored message gate",
+        product_memory={},
+    )
+    db_session.add(product)
+    await db_session.commit()
+    await db_session.refresh(product)
+    return product
+
+
+@pytest.fixture
+async def active_project(db_session: AsyncSession, test_tenant_key: str, test_product: Product) -> Project:
+    project = Project(
+        id=str(uuid4()),
+        tenant_key=test_tenant_key,
+        product_id=test_product.id,
+        name="BE-6208c Project",
+        description="self-authored message gate",
+        mission="test",
+        status="active",
+        created_at=datetime.now(UTC),
+        series_number=random.randint(1, 9000),
+    )
+    db_session.add(project)
+    await db_session.commit()
+    await db_session.refresh(project)
+    return project
+
+
+@pytest.fixture
+def completion_service(db_session: AsyncSession, test_tenant_key: str) -> JobCompletionService:
+    tenant_manager = MagicMock()
+    tenant_manager.get_current_tenant.return_value = test_tenant_key
+    return JobCompletionService(
+        db_manager=MagicMock(),
+        tenant_manager=tenant_manager,
+        test_session=db_session,
+    )
+
+
+async def _seed_worker(db_session: AsyncSession, tenant_key: str, project_id: str) -> tuple[AgentJob, AgentExecution]:
+    job_id = str(uuid4())
+    job = AgentJob(
+        job_id=job_id,
+        tenant_key=tenant_key,
+        project_id=project_id,
+        job_type="implementer",
+        mission="do work",
+        status="active",
+    )
+    db_session.add(job)
+    execution = AgentExecution(
+        job_id=job_id,
+        tenant_key=tenant_key,
+        agent_display_name="implementer",
+        status="working",
+        messages_sent_count=0,
+        messages_waiting_count=0,
+        messages_read_count=0,
+        started_at=datetime.now(UTC) - timedelta(minutes=5),
+    )
+    db_session.add(execution)
+    await db_session.commit()
+    await db_session.refresh(job)
+    await db_session.refresh(execution)
+    return job, execution
+
+
+async def _add_pending_message(
+    db_session: AsyncSession, tenant_key: str, project_id: str, from_agent_id: str, to_agent_id: str
+) -> None:
+    msg = Message(
+        tenant_key=tenant_key,
+        project_id=project_id,
+        from_agent_id=from_agent_id,
+        content="hub post",
+        status="pending",
+        # BE-9012b (D7): the completion gate keys on action-required posts, so a
+        # blocking peer message must be requires_action=True. A self-authored one is
+        # still excluded regardless (row 14), which is what the first test asserts.
+        requires_action=True,
+        created_at=datetime.now(UTC) - timedelta(minutes=1),
+    )
+    db_session.add(msg)
+    await db_session.flush()
+    db_session.add(MessageRecipient(message_id=msg.id, agent_id=to_agent_id, tenant_key=tenant_key))
+    await db_session.commit()
+
+
+@pytest.mark.asyncio
+async def test_self_authored_message_does_not_block_completion(
+    db_session: AsyncSession,
+    completion_service: JobCompletionService,
+    test_tenant_key: str,
+    active_project: Project,
+):
+    job, execution = await _seed_worker(db_session, test_tenant_key, active_project.id)
+    # Agent's OWN outbound post fanned back to itself.
+    await _add_pending_message(db_session, test_tenant_key, active_project.id, execution.agent_id, execution.agent_id)
+
+    result = await completion_service.complete_job(
+        job_id=job.job_id,
+        result={"summary": "done"},
+        tenant_key=test_tenant_key,
+    )
+    assert result.status == "success"
+
+
+@pytest.mark.asyncio
+async def test_other_authored_message_still_blocks(
+    db_session: AsyncSession,
+    completion_service: JobCompletionService,
+    test_tenant_key: str,
+    active_project: Project,
+):
+    job, execution = await _seed_worker(db_session, test_tenant_key, active_project.id)
+    await _add_pending_message(db_session, test_tenant_key, active_project.id, str(uuid4()), execution.agent_id)
+
+    with pytest.raises(ValidationError) as exc_info:
+        await completion_service.complete_job(
+            job_id=job.job_id,
+            result={"summary": "done"},
+            tenant_key=test_tenant_key,
+        )
+    assert exc_info.value.error_code == "COMPLETION_BLOCKED"
+    assert (exc_info.value.context or {}).get("unread_messages") == 1

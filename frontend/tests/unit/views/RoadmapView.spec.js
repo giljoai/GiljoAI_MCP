@@ -1,0 +1,688 @@
+/**
+ * RoadmapView.vue — FE-6022b
+ *
+ * Covers the load-bearing view behavior:
+ *   - reorder recomputes sort_order = position and PATCHes the WHOLE list with
+ *     the correct [{id, sort_order}] payload (this is what makes "survives
+ *     refresh" true — GET re-sorts by these priorities).
+ *   - demote moves an item to the bottom and persists the same way.
+ *   - a 404 from GET /roadmap (no active product) shows the info alert.
+ *
+ * Edition Scope: CE
+ */
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { mount, flushPromises } from '@vue/test-utils'
+import { ref } from 'vue'
+
+// ── hoisted spies ────────────────────────────────────────────────────────────
+const { mockGet, mockReorder, mockRemoveItem, wsHandlers, mockWsOn } = vi.hoisted(() => {
+  const handlers = {}
+  return {
+    mockGet: vi.fn(),
+    mockReorder: vi.fn().mockResolvedValue({ data: {} }),
+    mockRemoveItem: vi.fn().mockResolvedValue({ data: { removed: 1 } }),
+    wsHandlers: handlers,
+    mockWsOn: vi.fn((type, cb) => {
+      handlers[type] = cb
+      return () => {
+        delete handlers[type]
+      }
+    }),
+  }
+})
+
+const ITEMS = [
+  { id: 'a', item_type: 'project', project_id: 'pa', task_id: null, title: 'A', taxonomy_alias: 'BE-0001', sort_order: 0, risk: 'low', complexity: 'heavy' },
+  { id: 'b', item_type: 'task', project_id: null, task_id: 'tb', title: 'B', taxonomy_alias: 'TASK-1', sort_order: 1, risk: 'high', complexity: 'light' },
+  { id: 'c', item_type: 'project', project_id: 'pc', task_id: null, title: 'C', taxonomy_alias: 'BE-0002', sort_order: 2, risk: 'med', complexity: 'med' },
+]
+
+// ── mocks ────────────────────────────────────────────────────────────────────
+vi.mock('@/services/api', () => {
+  const svc = {
+    roadmap: { get: mockGet, reorder: mockReorder, removeItem: mockRemoveItem },
+    taxonomyTypes: { list: vi.fn().mockResolvedValue({ data: [] }) },
+    tasks: {
+      get: vi.fn().mockResolvedValue({ data: {} }),
+      convertToProject: vi.fn().mockResolvedValue({ data: { name: 'New Project' } }),
+    },
+  }
+  return { default: svc, api: svc }
+})
+
+vi.mock('@/stores/products', () => ({
+  useProductStore: () => ({
+    activeProduct: { id: 'prod-1', name: 'Test Product' },
+    effectiveProductId: 'prod-1',
+    fetchActiveProduct: vi.fn().mockResolvedValue(),
+  }),
+}))
+
+vi.mock('@/stores/projects', () => ({
+  useProjectStore: () => ({
+    projects: [],
+    fetchProject: vi.fn().mockResolvedValue(null),
+    activateProject: vi.fn().mockResolvedValue(),
+    deactivateProject: vi.fn().mockResolvedValue(),
+  }),
+}))
+
+vi.mock('@/stores/websocket', () => ({
+  useWebSocketStore: () => ({ on: mockWsOn }),
+}))
+
+vi.mock('@/composables/useToast', () => ({
+  useToast: () => ({ showToast: vi.fn() }),
+}))
+
+vi.mock('@/composables/useTaskCrud', () => ({
+  useTaskCrud: () => ({
+    showTaskDialog: ref(false),
+    editingTask: ref(null),
+    saving: ref(false),
+    currentTask: ref({}),
+    editTask: vi.fn(),
+    cancelTask: vi.fn(),
+    saveTask: vi.fn().mockResolvedValue(),
+  }),
+}))
+
+vi.mock('vue-router', () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}))
+
+// Stub vuedraggable so the suite drives the move via an `update:modelValue`
+// emit instead of pulling SortableJS into jsdom. It renders the #item slot per
+// element exactly like the real component.
+vi.mock('vuedraggable', () => ({
+  default: {
+    name: 'draggable',
+    props: { modelValue: { type: Array, default: () => [] } },
+    emits: ['update:modelValue'],
+    template:
+      '<div class="vdraggable"><div v-for="(element, index) in modelValue" :key="element.id"><slot name="item" :element="element" :index="index" /></div></div>',
+  },
+}))
+
+import RoadmapView from '@/views/RoadmapView.vue'
+
+const stubs = {
+  RoadmapCard: true,
+  ProjectCreateEditDialog: true,
+  TaskEditDialog: true,
+  BaseDialog: true,
+  'v-container': { template: '<div><slot /></div>' },
+  'v-row': { template: '<div><slot /></div>' },
+  'v-col': { template: '<div><slot /></div>' },
+  'v-alert': { template: '<div class="v-alert"><slot /></div>' },
+  'v-switch': { template: '<input type="checkbox" />' },
+  'v-btn': { template: '<button class="v-btn"><slot /></button>' },
+  'v-icon': { template: '<i><slot /></i>' },
+  'v-tooltip': { template: '<div><slot name="activator" :props="{}" /></div>' },
+  'v-progress-circular': { template: '<div />' },
+}
+
+async function mountView() {
+  const w = mount(RoadmapView, { global: { stubs } })
+  await flushPromises()
+  return w
+}
+
+// TSK-6243: the shared tests/setup.js installs a no-op localStorage stub whose
+// getItem is a bare vi.fn() (returns undefined, never null) and whose setItem/
+// removeItem/clear don't persist anything. A real browser (and real jsdom)
+// localStorage returns null for a missing key and actually stores. The
+// reload-continuity assertions below (getItem toBeNull, and a spinner re-raised
+// from a persisted stamp) need that real behavior, so install a correct,
+// Map-backed localStorage LOCAL to this spec. A fresh store per test keeps cases
+// isolated; scoping it here (not in the shared setup) means no other spec that
+// relies on the shared stub is affected.
+beforeEach(() => {
+  const store = new Map()
+  window.localStorage = {
+    getItem: (k) => (store.has(String(k)) ? store.get(String(k)) : null),
+    setItem: (k, v) => store.set(String(k), String(v)),
+    removeItem: (k) => store.delete(String(k)),
+    clear: () => store.clear(),
+    key: (i) => Array.from(store.keys())[i] ?? null,
+    get length() {
+      return store.size
+    },
+  }
+})
+
+// Clear the stamp between every test so a persisted spinner never leaks across
+// cases (the per-test beforeEach above already gives a fresh store; this stays
+// as a belt-and-suspenders guard).
+afterEach(() => localStorage.clear())
+
+describe('RoadmapView.vue — reorder persistence', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockGet.mockResolvedValue({ data: { product_id: 'prod-1', roadmap: { summary: null }, items: ITEMS.map((i) => ({ ...i })) } })
+  })
+
+  it('loads the sort_order-sorted items from GET /roadmap', async () => {
+    const w = await mountView()
+    expect(mockGet).toHaveBeenCalled()
+    expect(w.vm.items.map((i) => i.id)).toEqual(['a', 'b', 'c'])
+  })
+
+  it('a vuedraggable move PATCHes the whole list with recomputed sort_order = position', async () => {
+    const w = await mountView()
+    const byId = Object.fromEntries(w.vm.items.map((i) => [i.id, i]))
+    const drag = w.findComponent({ name: 'draggable' })
+    // user drags 'c' above 'a' -> vuedraggable emits the new visible order
+    drag.vm.$emit('update:modelValue', [byId.c, byId.a, byId.b])
+    await flushPromises()
+    expect(mockReorder).toHaveBeenCalledTimes(1)
+    expect(mockReorder).toHaveBeenCalledWith([
+      { id: 'c', sort_order: 0 },
+      { id: 'a', sort_order: 1 },
+      { id: 'b', sort_order: 2 },
+    ])
+    // optimistic local order updated
+    expect(w.vm.items.map((i) => i.id)).toEqual(['c', 'a', 'b'])
+  })
+
+  it('persists exactly the order vuedraggable produces (move down)', async () => {
+    const w = await mountView()
+    const byId = Object.fromEntries(w.vm.items.map((i) => [i.id, i]))
+    const drag = w.findComponent({ name: 'draggable' })
+    // user drags 'a' below 'b' -> [b, a, c]
+    drag.vm.$emit('update:modelValue', [byId.b, byId.a, byId.c])
+    await flushPromises()
+    expect(mockReorder).toHaveBeenCalledWith([
+      { id: 'b', sort_order: 0 },
+      { id: 'a', sort_order: 1 },
+      { id: 'c', sort_order: 2 },
+    ])
+  })
+
+  it('demote moves an item to the bottom and persists', async () => {
+    const w = await mountView()
+    await w.vm.demote({ id: 'a' })
+    expect(mockReorder).toHaveBeenCalledWith([
+      { id: 'b', sort_order: 0 },
+      { id: 'c', sort_order: 1 },
+      { id: 'a', sort_order: 2 },
+    ])
+    expect(w.vm.items.map((i) => i.id)).toEqual(['b', 'c', 'a'])
+  })
+
+  it('rolls the optimistic order back if the PATCH fails', async () => {
+    const w = await mountView()
+    const byId = Object.fromEntries(w.vm.items.map((i) => [i.id, i]))
+    mockReorder.mockRejectedValueOnce(new Error('boom'))
+    // re-fetch after rollback returns the original order
+    mockGet.mockResolvedValueOnce({ data: { product_id: 'prod-1', roadmap: null, items: ITEMS.map((i) => ({ ...i })) } })
+    const drag = w.findComponent({ name: 'draggable' })
+    drag.vm.$emit('update:modelValue', [byId.c, byId.a, byId.b])
+    await flushPromises()
+    expect(w.vm.items.map((i) => i.id)).toEqual(['a', 'b', 'c'])
+  })
+})
+
+describe('RoadmapView.vue — remove from roadmap (FE-6022c-polish)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockGet.mockResolvedValue({ data: { product_id: 'prod-1', roadmap: null, items: ITEMS.map((i) => ({ ...i })) } })
+    mockRemoveItem.mockResolvedValue({ data: { removed: 1 } })
+  })
+
+  it('optimistically removes the card and calls DELETE with the item id', async () => {
+    const w = await mountView()
+    await w.vm.removeItem({ id: 'b' })
+    await flushPromises()
+    expect(mockRemoveItem).toHaveBeenCalledWith('b')
+    expect(w.vm.items.map((i) => i.id)).toEqual(['a', 'c']) // 'b' gone
+  })
+
+  it('rolls the removal back if the DELETE fails', async () => {
+    const w = await mountView()
+    mockRemoveItem.mockRejectedValueOnce(new Error('boom'))
+    await w.vm.removeItem({ id: 'b' })
+    await flushPromises()
+    expect(w.vm.items.map((i) => i.id)).toEqual(['a', 'b', 'c']) // restored
+  })
+})
+
+// ── 0006 hard auto-drop is server-side ───────────────────────────────────────
+// Terminal projects/tasks are excluded by the backend get_roadmap read, NOT by
+// the FE. These pin that contract: the view renders exactly what GET returns
+// (it must NOT re-implement a client-side terminal filter that could diverge
+// from / mask the server), and the existing per-card remove control still works
+// for a live item the user no longer wants planned.
+describe('RoadmapView.vue — 0006 auto-drop is server-side', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('renders exactly the items GET returns (server already excluded terminal items)', async () => {
+    // Server returns only the live items — a completed project was dropped server-side.
+    const live = [
+      { ...ITEMS[0], status: 'inactive' },
+      { ...ITEMS[1], status: 'pending' },
+    ]
+    mockGet.mockResolvedValue({ data: { product_id: 'prod-1', roadmap: null, items: live } })
+    const w = await mountView()
+    expect(w.vm.items.map((i) => i.id)).toEqual(['a', 'b'])
+    expect(w.vm.displayItems.map((i) => i.id)).toEqual(['a', 'b'])
+  })
+
+  it('applies NO client-side terminal filter (a terminal item from the server still renders)', async () => {
+    // If the server (hypothetically) returns a terminal item, the FE renders it
+    // verbatim — proving the drop is purely server-side and the view never
+    // double-filters or masks the read contract.
+    const withTerminal = [
+      { ...ITEMS[0], status: 'completed' },
+      { ...ITEMS[1], status: 'pending' },
+    ]
+    mockGet.mockResolvedValue({ data: { product_id: 'prod-1', roadmap: null, items: withTerminal } })
+    const w = await mountView()
+    expect(w.vm.items.map((i) => i.id)).toEqual(['a', 'b'])
+  })
+
+  it('the per-card remove control evicts a still-live item via DELETE', async () => {
+    mockGet.mockResolvedValue({ data: { product_id: 'prod-1', roadmap: null, items: ITEMS.map((i) => ({ ...i })) } })
+    mockRemoveItem.mockResolvedValue({ data: { removed: 1 } })
+    const w = await mountView()
+    await w.vm.removeItem({ id: 'a' })
+    await flushPromises()
+    expect(mockRemoveItem).toHaveBeenCalledWith('a')
+    expect(w.vm.items.map((i) => i.id)).toEqual(['b', 'c'])
+  })
+})
+
+describe('RoadmapView.vue — fold toggle', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockGet.mockResolvedValue({ data: { product_id: 'prod-1', roadmap: null, items: ITEMS.map((i) => ({ ...i })) } })
+  })
+
+  it('fold toggle off hides task items from the displayed list (reorder still over full set)', async () => {
+    const w = await mountView()
+    expect(w.vm.displayItems.map((i) => i.id)).toEqual(['a', 'b', 'c'])
+    w.vm.foldInTasks = false
+    await flushPromises()
+    expect(w.vm.displayItems.map((i) => i.id)).toEqual(['a', 'c']) // task 'b' hidden
+    // underlying source of truth is untouched
+    expect(w.vm.items.map((i) => i.id)).toEqual(['a', 'b', 'c'])
+  })
+})
+
+describe('RoadmapView.vue — empty / no-product states', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('shows the no-active-product alert when GET returns 404', async () => {
+    mockGet.mockRejectedValue({ response: { status: 404 } })
+    const w = await mountView()
+    expect(w.text()).toContain('No active product selected')
+  })
+
+  it('shows the empty-roadmap state when items is empty', async () => {
+    mockGet.mockResolvedValue({ data: { product_id: 'prod-1', roadmap: null, items: [] } })
+    const w = await mountView()
+    expect(w.text()).toContain('No roadmap yet')
+  })
+})
+
+describe('RoadmapView.vue — copy-prompt bridge (FE-6022c)', () => {
+  let mockWriteText
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockWriteText = vi.fn().mockResolvedValue()
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText: mockWriteText }, configurable: true })
+    Object.defineProperty(window, 'isSecureContext', { value: true, configurable: true })
+  })
+
+  it('shows "Create Roadmap" when empty and copies a build prompt w/ product + host (no longer sets the indicator)', async () => {
+    mockGet.mockResolvedValue({ data: { product_id: 'prod-1', roadmap: null, items: [] } })
+    const w = await mountView()
+    expect(w.text()).toContain('Create Roadmap')
+
+    await w.vm.copyRoadmapPrompt()
+    expect(mockWriteText).toHaveBeenCalledTimes(1)
+    const prompt = mockWriteText.mock.calls[0][0]
+    expect(prompt).toContain('Build a product roadmap')
+    expect(prompt).toContain('Test Product') // active product NAME embedded
+    expect(prompt).toContain('host:') // env/host embedded
+    expect(prompt).toContain('update_roadmap_metadata')
+    expect(prompt).toContain('get_roadmap') // FE-6240: create now reads first so it trips agent_active
+    // FE-6240: copy no longer raises the spinner — the agent's roadmap:agent_active does.
+    expect(w.vm.waiting).toBe(false)
+  })
+
+  it('shows "Refresh Roadmap" when items exist and copies a re-rank prompt (reads get_roadmap)', async () => {
+    mockGet.mockResolvedValue({ data: { product_id: 'prod-1', roadmap: null, items: ITEMS.map((i) => ({ ...i })) } })
+    const w = await mountView()
+    expect(w.text()).toContain('Refresh Roadmap')
+
+    await w.vm.copyRoadmapPrompt()
+    const prompt = mockWriteText.mock.calls[0][0]
+    expect(prompt).toContain('Re-rank the roadmap')
+    expect(prompt).toContain('get_roadmap')
+  })
+
+  it('does NOT set the waiting indicator when the clipboard copy fails', async () => {
+    mockGet.mockResolvedValue({ data: { product_id: 'prod-1', roadmap: null, items: [] } })
+    // No secure clipboard + execCommand returns falsy -> copy fails.
+    Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true })
+    Object.defineProperty(window, 'isSecureContext', { value: false, configurable: true })
+    document.execCommand = vi.fn().mockReturnValue(false)
+    const w = await mountView()
+    await w.vm.copyRoadmapPrompt()
+    expect(w.vm.waiting).toBe(false)
+  })
+})
+
+describe('RoadmapView.vue — editable custom prompt (FE-6240)', () => {
+  let mockWriteText
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockWriteText = vi.fn().mockResolvedValue()
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText: mockWriteText }, configurable: true })
+    Object.defineProperty(window, 'isSecureContext', { value: true, configurable: true })
+    mockGet.mockResolvedValue({ data: { product_id: 'prod-1', roadmap: null, items: ITEMS.map((i) => ({ ...i })) } })
+  })
+
+  it('is off by default; copy uses the generated prompt', async () => {
+    const w = await mountView()
+    expect(w.vm.customPromptEnabled).toBe(false)
+    await w.vm.copyRoadmapPrompt()
+    expect(mockWriteText.mock.calls[0][0]).toContain('Re-rank the roadmap') // generated
+  })
+
+  it('enabling pre-fills the editable text with the generated prompt for the current mode', async () => {
+    const w = await mountView()
+    w.vm.onCustomPromptToggle(true)
+    expect(w.vm.customPromptEnabled).toBe(true)
+    expect(w.vm.customPromptText).toContain('Re-rank the roadmap') // non-empty roadmap -> refresh
+  })
+
+  it('when enabled, copy uses the user-edited text instead of the generated prompt', async () => {
+    const w = await mountView()
+    w.vm.onCustomPromptToggle(true)
+    w.vm.customPromptText = 'work on the UI first, then the database'
+    await w.vm.copyRoadmapPrompt()
+    expect(mockWriteText).toHaveBeenCalledWith('work on the UI first, then the database')
+  })
+})
+
+describe('RoadmapView.vue — WS live refresh + indicator (FE-6022c)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockGet.mockResolvedValue({ data: { product_id: 'prod-1', roadmap: null, items: ITEMS.map((i) => ({ ...i })) } })
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText: vi.fn().mockResolvedValue() }, configurable: true })
+    Object.defineProperty(window, 'isSecureContext', { value: true, configurable: true })
+  })
+
+  it('subscribes to roadmap:updated on mount', async () => {
+    await mountView()
+    expect(mockWsOn).toHaveBeenCalledWith('roadmap:updated', expect.any(Function))
+    expect(typeof wsHandlers['roadmap:updated']).toBe('function')
+  })
+
+  // FE-6240: the spinner is now raised by the agent's first roadmap-tool touch
+  // (roadmap:agent_active WS event), not by the user's copy-prompt click.
+  it('subscribes to roadmap:agent_active on mount', async () => {
+    await mountView()
+    expect(mockWsOn).toHaveBeenCalledWith('roadmap:agent_active', expect.any(Function))
+    expect(typeof wsHandlers['roadmap:agent_active']).toBe('function')
+  })
+
+  it('a roadmap:agent_active event raises the waiting spinner', async () => {
+    const w = await mountView()
+    expect(w.vm.waiting).toBe(false)
+    wsHandlers['roadmap:agent_active']({ product_id: 'prod-1' }) // agent connected
+    expect(w.vm.waiting).toBe(true)
+  })
+
+  // TSK-6243: the spinner must survive a browser reload while an agent is mid-build.
+  it('re-raises the spinner on remount when agent_active landed within the window', async () => {
+    const first = await mountView()
+    wsHandlers['roadmap:agent_active']({ product_id: 'prod-1' }) // agent connected -> stamp persisted
+    expect(first.vm.waiting).toBe(true)
+    first.unmount() // browser reload drops the in-memory spinner
+
+    const second = await mountView() // fresh mount reads the persisted stamp
+    expect(second.vm.waiting).toBe(true) // continuity restored
+  })
+
+  it('does NOT re-raise the spinner on mount when the persisted stamp is stale', async () => {
+    localStorage.setItem('giljo.roadmap.agentActiveAt.prod-1', String(Date.now() - 200000)) // > 150s window
+    const w = await mountView()
+    expect(w.vm.waiting).toBe(false) // outside the window -> no spurious spinner
+    expect(localStorage.getItem('giljo.roadmap.agentActiveAt.prod-1')).toBeNull() // stale stamp dropped
+  })
+
+  it('dismissWaiting clears the persisted stamp so a later reload stays clean', async () => {
+    const first = await mountView()
+    wsHandlers['roadmap:agent_active']({ product_id: 'prod-1' })
+    expect(localStorage.getItem('giljo.roadmap.agentActiveAt.prod-1')).not.toBeNull()
+
+    first.vm.dismissWaiting() // agent saved / user dismissed
+    expect(localStorage.getItem('giljo.roadmap.agentActiveAt.prod-1')).toBeNull()
+    first.unmount()
+
+    const second = await mountView()
+    expect(second.vm.waiting).toBe(false) // no leftover stamp -> no spinner
+  })
+
+  it('copyRoadmapPrompt does NOT raise the spinner (trigger is the agent, not the copy)', async () => {
+    const w = await mountView()
+    await w.vm.copyRoadmapPrompt()
+    expect(w.vm.waiting).toBe(false)
+  })
+
+  it('a roadmap:updated event re-fetches (debounced) and clears the waiting indicator', async () => {
+    const w = await mountView()
+    wsHandlers['roadmap:agent_active']({ product_id: 'prod-1' }) // agent connected -> spinner up
+    expect(w.vm.waiting).toBe(true)
+
+    mockGet.mockClear()
+    vi.useFakeTimers()
+    wsHandlers['roadmap:updated']() // agent write arrives over WS
+    vi.advanceTimersByTime(600) // debounce window
+    vi.useRealTimers()
+    await flushPromises()
+
+    expect(mockGet).toHaveBeenCalledTimes(1) // live re-fetch
+    expect(w.vm.waiting).toBe(false) // indicator WS-cleared
+  })
+
+  it('debounces a multi-write burst into a single re-fetch', async () => {
+    const w = await mountView()
+    mockGet.mockClear()
+    vi.useFakeTimers()
+    w.vm.onRoadmapUpdated()
+    vi.advanceTimersByTime(200)
+    w.vm.onRoadmapUpdated()
+    vi.advanceTimersByTime(200)
+    w.vm.onRoadmapUpdated()
+    vi.advanceTimersByTime(600)
+    vi.useRealTimers()
+    await flushPromises()
+    expect(mockGet).toHaveBeenCalledTimes(1) // collapsed to one
+  })
+
+  it('auto-clears the indicator after the safety timeout', async () => {
+    const w = await mountView()
+    vi.useFakeTimers()
+    w.vm.onAgentActive() // agent connected -> sets waiting + the fake-timer safety timeout
+    expect(w.vm.waiting).toBe(true)
+    vi.advanceTimersByTime(150000)
+    vi.useRealTimers()
+    expect(w.vm.waiting).toBe(false)
+  })
+
+  it('a manual dismiss clears the indicator', async () => {
+    const w = await mountView()
+    w.vm.onAgentActive()
+    expect(w.vm.waiting).toBe(true)
+    w.vm.dismissWaiting()
+    expect(w.vm.waiting).toBe(false)
+  })
+
+  it('defers a WS re-fetch while a reorder PATCH is in flight (isPersisting guard)', async () => {
+    const w = await mountView()
+    mockGet.mockClear()
+    w.vm.isPersisting = true // simulate an in-flight optimistic reorder
+    vi.useFakeTimers()
+    w.vm.onRoadmapUpdated()
+    vi.advanceTimersByTime(600) // first debounce fires -> sees guard -> re-arms
+    await flushPromises()
+    expect(mockGet).not.toHaveBeenCalled() // refetch deferred, optimistic order safe
+
+    w.vm.isPersisting = false
+    vi.advanceTimersByTime(600) // re-armed debounce fires
+    vi.useRealTimers()
+    await flushPromises()
+    expect(mockGet).toHaveBeenCalledTimes(1) // now it re-fetches
+  })
+})
+
+// ── status-sync regression (fix/roadmap-card-status-sync) ────────────────────
+// Bug: RoadmapView only subscribed to roadmap:updated, so a project deactivated
+// OUTSIDE the roadmap (project list or agent) while the view was mounted left
+// the card's local ref stale: status stayed 'active' → card stayed LOCKED.
+// Fix: also subscribe to project_update (the WS event project lifecycle fires
+// for status_changed / deactivated) and call the existing debounced fetchRoadmap.
+describe('RoadmapView.vue — project status-sync from external deactivation', () => {
+  // Item 'a' starts with status 'active' (the locked/terminal state to clear).
+  const ACTIVE_ITEMS = [
+    { ...ITEMS[0], status: 'active', project_id: 'pa' },
+    { ...ITEMS[1] },
+    { ...ITEMS[2] },
+  ]
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    // Initial fetch: item 'a' is active (locked).
+    mockGet.mockResolvedValueOnce({
+      data: { product_id: 'prod-1', roadmap: null, items: ACTIVE_ITEMS.map((i) => ({ ...i })) },
+    })
+  })
+
+  it('subscribes to project_update on mount (alongside roadmap:updated)', async () => {
+    await mountView()
+    expect(mockWsOn).toHaveBeenCalledWith('project_update', expect.any(Function))
+    expect(typeof wsHandlers['project_update']).toBe('function')
+  })
+
+  it('a project_update status_changed event triggers a debounced re-fetch', async () => {
+    const w = await mountView()
+    // After the re-fetch the backend returns the card as inactive (no longer locked).
+    mockGet.mockResolvedValueOnce({
+      data: {
+        product_id: 'prod-1',
+        roadmap: null,
+        items: [{ ...ACTIVE_ITEMS[0], status: 'inactive' }, ...ACTIVE_ITEMS.slice(1)],
+      },
+    })
+    mockGet.mockClear() // clear the initial mount call count
+
+    vi.useFakeTimers()
+    // Simulate the WS event the project lifecycle service broadcasts on deactivation.
+    wsHandlers['project_update']({ project_id: 'pa', update_type: 'status_changed', status: 'inactive' })
+    vi.advanceTimersByTime(600) // debounce window
+    vi.useRealTimers()
+    await flushPromises()
+
+    expect(mockGet).toHaveBeenCalledTimes(1) // exactly one re-fetch
+    // Card is now 'inactive' — no longer active/locked.
+    expect(w.vm.items[0].status).toBe('inactive')
+  })
+
+  it('a project_update deactivated event also triggers a debounced re-fetch', async () => {
+    await mountView()
+    mockGet.mockResolvedValueOnce({
+      data: {
+        product_id: 'prod-1',
+        roadmap: null,
+        items: [{ ...ACTIVE_ITEMS[0], status: 'inactive' }, ...ACTIVE_ITEMS.slice(1)],
+      },
+    })
+    mockGet.mockClear()
+
+    vi.useFakeTimers()
+    wsHandlers['project_update']({ project_id: 'pa', update_type: 'deactivated' })
+    vi.advanceTimersByTime(600)
+    vi.useRealTimers()
+    await flushPromises()
+
+    expect(mockGet).toHaveBeenCalledTimes(1)
+  })
+
+  it('a project_update "updated" event (rename) triggers a debounced re-fetch of live title/alias', async () => {
+    // Bug-2 (alias 0005): a project renamed OUTSIDE the roadmap fires
+    // project_update with update_type 'updated'. The backend joins title +
+    // taxonomy_alias live, so the card must re-fetch to drop the stale name —
+    // previously 'updated' was filtered out and the old name/alias persisted.
+    const w = await mountView()
+    // After the re-fetch the backend returns the renamed title + new alias.
+    mockGet.mockResolvedValueOnce({
+      data: {
+        product_id: 'prod-1',
+        roadmap: null,
+        items: [
+          { ...ACTIVE_ITEMS[0], title: 'Renamed', taxonomy_alias: 'FE-0013' },
+          ...ACTIVE_ITEMS.slice(1),
+        ],
+      },
+    })
+    mockGet.mockClear()
+
+    vi.useFakeTimers()
+    wsHandlers['project_update']({ project_id: 'pa', update_type: 'updated' })
+    vi.advanceTimersByTime(600) // debounce window
+    vi.useRealTimers()
+    await flushPromises()
+
+    expect(mockGet).toHaveBeenCalledTimes(1) // exactly one re-fetch
+    expect(w.vm.items[0].title).toBe('Renamed')
+    expect(w.vm.items[0].taxonomy_alias).toBe('FE-0013')
+  })
+
+  it('project_update events from status_changed are debounced (burst → single fetch)', async () => {
+    const w = await mountView()
+    mockGet.mockResolvedValue({
+      data: { product_id: 'prod-1', roadmap: null, items: ACTIVE_ITEMS.map((i) => ({ ...i })) },
+    })
+    mockGet.mockClear()
+
+    vi.useFakeTimers()
+    // Three rapid status events — only one fetch should result.
+    wsHandlers['project_update']({ project_id: 'pa', update_type: 'status_changed', status: 'inactive' })
+    vi.advanceTimersByTime(100)
+    wsHandlers['project_update']({ project_id: 'pb', update_type: 'status_changed', status: 'active' })
+    vi.advanceTimersByTime(100)
+    wsHandlers['project_update']({ project_id: 'pa', update_type: 'deactivated' })
+    vi.advanceTimersByTime(600) // let final debounce settle
+    vi.useRealTimers()
+    await flushPromises()
+
+    expect(mockGet).toHaveBeenCalledTimes(1) // collapsed — not 3
+
+    // Silence unused-variable lint (w is mounted to exercise the full lifecycle).
+    expect(w.vm.items).toBeDefined()
+  })
+
+  it('happy-path: deactivate-from-roadmap button still re-fetches after the fix', async () => {
+    // The roadmap-card deactivate button calls projectStore.deactivateProject then
+    // fetchRoadmap directly — this pre-existing path must be unaffected by the new
+    // project_update subscription. The projects mock already includes deactivateProject.
+    const w = await mountView()
+    // Seed a fresh GET response for the re-fetch after deactivation.
+    mockGet.mockResolvedValueOnce({
+      data: { product_id: 'prod-1', roadmap: null, items: ACTIVE_ITEMS.map((i) => ({ ...i, status: 'inactive' })) },
+    })
+    const callsBefore = mockGet.mock.calls.length
+
+    await w.vm.deactivate({ project_id: 'pa' })
+    await flushPromises()
+
+    // fetchRoadmap called once more after explicit deactivate (pre-existing behaviour, unchanged).
+    expect(mockGet.mock.calls.length).toBeGreaterThan(callsBefore)
+  })
+})

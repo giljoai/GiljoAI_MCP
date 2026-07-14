@@ -186,7 +186,7 @@ class ConfigManager:
             # Idempotency (INF-5089): preserve security-sensitive secrets already
             # present in an existing .env. Regenerating .env (e.g. a --repair re-run)
             # must NOT rotate the JWT/session/API secrets out from under a live install
-            # — doing so would invalidate every session and stored API key. Only mint
+            # - doing so would invalidate every session and stored API key. Only mint
             # fresh secrets when the key is absent.
             existing_secrets: Dict[str, str] = {}
             if self.env_file.exists():
@@ -216,7 +216,7 @@ class ConfigManager:
             # the dashboard AND the API from the same origin, so for any non-localhost
             # install we leave VITE_API_URL/VITE_WS_URL EMPTY and let the resolver
             # (useApiUrl.js getApiBaseUrl) fall through to window.location.origin.
-            # That is immune to host/scheme drift — the LAN/HTTPS bug was emitting an
+            # That is immune to host/scheme drift - the LAN/HTTPS bug was emitting an
             # absolute http://localhost URL onto an https://<lan-ip> page. Only a
             # genuinely different-origin deployment (e.g. Cloudflare-tunnel demo) sets
             # VITE_API_URL explicitly via its own env. localhost installs keep the
@@ -339,7 +339,7 @@ CORS_ORIGINS=http://localhost:7274,http://127.0.0.1:7274,http://localhost:7272,h
 # had zero consumers (ENABLE_VISION_CHUNKING/AUTO_HANDOFF/DYNAMIC_DISCOVERY/
 # AUTHENTICATION/AUTO_LOGIN_LOCALHOST/API_KEYS/MULTI_USER/MULTI_TENANT/WEBSOCKET,
 # MAX_AGENTS_PER_PROJECT, AGENT_CONTEXT_LIMIT, AGENT_HANDOFF_THRESHOLD, SESSION_TIMEOUT).
-# An existing .env that still sets them is tolerated — nothing reads them.
+# An existing .env that still sets them is tolerated - nothing reads them.
 
 # =============================================================================
 # SESSION CONFIGURATION
@@ -381,7 +381,7 @@ ACTIVE_PRODUCT=GiljoAI-MCP Coding Orchestrator
 """
 
             # Write .env file (use configured path)
-            self.env_file.write_text(env_content)
+            self.env_file.write_text(env_content, encoding="utf-8")
 
             # Set restrictive permissions on Unix
             if platform.system() != "Windows":
@@ -558,7 +558,7 @@ ACTIVE_PRODUCT=GiljoAI-MCP Coding Orchestrator
             config["security"] = self._generate_security_config()
 
             # Write config.yaml (use configured path)
-            with open(self.config_file, "w") as f:
+            with open(self.config_file, "w", encoding="utf-8") as f:
                 yaml.dump(config, f, default_flow_style=False, sort_keys=False)
 
             result["success"] = True
@@ -677,7 +677,7 @@ ACTIVE_PRODUCT=GiljoAI-MCP Coding Orchestrator
 
         # Check .env file
         if self.env_file.exists():
-            env_content = self.env_file.read_text()
+            env_content = self.env_file.read_text(encoding="utf-8")
 
             # Check for required variables
             required_vars = [
@@ -753,7 +753,7 @@ def seed_default_orchestrator_template(db_manager, tenant_key: str) -> Dict[str,
                 .filter(
                     AgentTemplate.tenant_key == tenant_key,
                     AgentTemplate.role == "orchestrator",
-                    AgentTemplate.is_default == True,  # noqa: E712 — SQLAlchemy filter expression
+                    AgentTemplate.is_default == True,  # noqa: E712 - SQLAlchemy filter expression
                 )
                 .first()
             )
@@ -805,7 +805,7 @@ def seed_default_orchestrator_template(db_manager, tenant_key: str) -> Dict[str,
             session.add(template)
             session.commit()
 
-            logger.info("✓ Default orchestrator template seeded successfully")
+            logger.info("Default orchestrator template seeded successfully")
             result["success"] = True
             result["message"] = "Template seeded successfully"
             return result

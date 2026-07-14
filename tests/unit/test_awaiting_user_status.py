@@ -1,0 +1,53 @@
+# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
+# Licensed under the Elastic License 2.0.
+# See LICENSE in the project root for terms.
+# [CE] Community Edition.
+
+"""Regression test for awaiting_user agent status (BE-5029 Phase A).
+
+The Pydantic validator at events/models.py is the hard gate on WebSocket event
+payloads. If awaiting_user is missing from valid_statuses, every gate-emitted
+status_changed event would 500.
+"""
+
+import pytest
+from pydantic import ValidationError as PydanticValidationError
+
+from giljo_mcp.events.models import AgentStatusChangedData
+from giljo_mcp.services.orchestration_agent_state_service import (
+    OrchestrationAgentStateService,
+)
+
+
+def test_awaiting_user_is_a_valid_websocket_status():
+    # Tightened (BE-5083): previously this only proved no exception was raised on
+    # construction. A regression that silently coerced/dropped the status field
+    # would still have passed. Assert the validated payload actually carries
+    # status == "awaiting_user" (and preserves the old_status transition).
+    event = AgentStatusChangedData(
+        job_id="j",
+        project_id=None,
+        tenant_key="t",
+        old_status="working",
+        status="awaiting_user",
+        agent_display_name="implementer",
+    )
+    assert event.status == "awaiting_user"
+    assert event.old_status == "working"
+
+
+def test_unknown_status_still_rejected():
+    with pytest.raises(PydanticValidationError):
+        AgentStatusChangedData(
+            job_id="j",
+            project_id=None,
+            tenant_key="t",
+            old_status="working",
+            status="not_a_status",
+            agent_display_name="implementer",
+        )
+
+
+def test_awaiting_user_is_not_agent_settable():
+    """awaiting_user must be system-set only -- agents must not be able to forge it."""
+    assert "awaiting_user" not in OrchestrationAgentStateService._AGENT_SETTABLE_STATUSES

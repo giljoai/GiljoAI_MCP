@@ -1,0 +1,263 @@
+# ============================================================================
+# .gitignore - Standard Development Environment
+# ============================================================================
+# This file follows Python/Node.js best practices for version control.
+# All development files should be committed to GitHub.
+# For release file filtering, see: giltest.ignore.md
+# ============================================================================
+
+# Python
+# NOTE: directory patterns here are anchored to repo root (leading /) to avoid
+# silent-strip collisions with real source packages at any nested depth. The
+# legacy unanchored 'downloads/' pattern silently stripped src/giljo_mcp/downloads/
+# from LAN exports for weeks -- git add -A in the LAN clone's clean tree honors
+# .gitignore even for files that are force-tracked in private. Anchor or whitelist.
+# Regression: tests/integration/test_gitignore_no_strip_tracked.py
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+/build/
+/develop-eggs/
+/dist/
+/downloads/
+/eggs/
+/.eggs/
+/lib/
+/lib64/
+/parts/
+/sdist/
+/var/
+/wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+venv/
+.venv/
+.venv_lean/
+uv.lock
+env/
+ENV/
+env.bak/
+venv.bak/
+dev_tools/venv_devtools/
+dev_tools/devtools.local.ini
+
+# Testing - Python
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# Testing - Frontend (Vitest)
+frontend/coverage/
+
+# Testing - Playwright (E2E)
+frontend/playwright-report/
+frontend/test-results/
+playwright-report/
+test-results/
+playwright/.cache/
+.playwright/
+
+# Type Checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+
+# Linting
+.ruff_cache/
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+
+# AI tools -- user-private, never committed
+CLAUDE.md
+.claude/
+.claude.json
+.codex/
+CODEX.md
+AGENTS.md
+.gemini/
+GEMINI.md
+.cursor/
+.copilot/
+.aider*
+.serena/
+serena/
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Database
+*.sqlite
+*.sqlite3
+*.db
+*.db-shm
+*.db-wal
+
+# Environment Variables (sensitive data)
+.env
+.env.local
+.env.*.local
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Frontend build output (generated)
+frontend/dist/
+frontend/.nuxt/
+frontend/.output/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*.backup
+*.swp
+*.swo
+
+# Per-machine install/migration mode-switch backups (e.g., .env.ce-mode-backup,
+# config.yaml.ce-mode-backup created during demo/saas conversion per
+# handovers/DEMO_SAAS_INSTALL_MANUAL.md Step 4). Never commit — they hold
+# environment-specific credentials and only make sense on the box that wrote them.
+*-mode-backup
+
+# OS-specific
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# Project-specific runtime data
+data/giljo_mcp.db
+uploads/
+runtime/
+/products/
+backups/*.backup
+
+# SSL certificates (never commit private keys)
+*.key
+*.pem
+certs/*.key
+certs/*.pem
+
+# API keys and secrets
+api_keys.json
+secrets.json
+credentials.json
+Linux_Installer/credentials/
+
+# User-specific config (should use .example templates)
+config.yaml
+install_config.yaml
+.mcp.json
+
+# Misc cleanup scripts
+cleanup_auto.ps1
+cleanup_for_fresh_install.ps1
+IMPORTANT.txt
+external/serena-venv/bin/python
+external/serena-venv/bin/python3
+external/serena-venv/bin/python3.12
+external/serena-venv/lib64
+external/serena-venv/pyvenv.cfg
+external/serena/
+
+# Installer credentials (generated during setup, contain passwords)
+installer/credentials/
+
+# Archives (cleanup items, not for version control)
+docs/archive/0130_websocket_v1_backups/
+handovers/Project_500_Prompt.md
+backup*.sql
+tmpclaude-*-cwd
+*.dump
+*.0
+setup_test_report.json
+nul
+image.jpg
+frontend/stats.html
+audit/
+BLIND_AUDIT_REPORT.md
+
+# Operator-only quickstart lives on private NAS, not in repo
+handovers/ops_panel_operator_quickstart.md
+
+# ── Secrets & credentials — defense-in-depth ──────────────
+# Filename-based blocks. Content-based scanning runs via gitleaks in
+# the pre-commit hook (.pre-commit-config.yaml). Keep generic — never
+# name internal hostnames here.
+*.key
+*.ppk
+id_rsa*
+id_ed25519*
+id_ecdsa*
+id_dsa*
+*_rsa
+*_ed25519
+*_ecdsa
+# Catch loose SSH keys named after their target host (e.g. DEMOSERVER,
+# DEMOSERVER.pub). These belong in ~/.ssh/, never a repo working dir.
+DEMOSERVER*
+*.pub
+.stignore
+.stfolder/
+.stversions/
+.env.local
+.env.*.local
+credentials.json
+service-account*.json
+*.kdbx
+*.netrc
+
+# Browser HAR network captures — debug artifacts containing live URLs,
+# headers, cookies, response bodies. Never commit.
+*.har
+HAR_files/
+
+# Local Claude Code harness hooks (per-machine dev tooling)
+scripts/hooks/
+
+# G: Dev Drive migration backups (safety nets, never tracked)
+.venv.old/
+frontend/node_modules.old/
+.env.pre-ops-backup
+config.yaml.pre-lanbind-backup
+
+# Demo runtime artifacts (plaintext OAuth credentials written by demo/seed_demo_data.py).
+# Already CE-stripped via demo/ STRIP_DIRS — this is defense-in-depth for private history.
+demo/.runtime/
+CLAUDE.md
+CLAUDE.md
+handovers/Reference_docs/DELIVERY_PIPELINE.md
+
+# Stale DB dumps / snapshots - never commit (real backups = Railway snapshots + live DB)
+backups/
+
+# Chain conductor sub-orch spawn scratch (server-authored launcher + prompt files)
+.giljo/

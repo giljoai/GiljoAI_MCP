@@ -1,0 +1,293 @@
+# Copyright (c) 2024-2026 GiljoAI LLC. All rights reserved.
+# Licensed under the Elastic License 2.0.
+# See LICENSE in the project root for terms.
+# [CE] Community Edition.
+
+"""WS-transport regression test for BE6004C-4 (RC-4).
+
+Bug: the WebSocket scope bypasses the HTTP ``AuthMiddleware`` (which is a
+``BaseHTTPMiddleware`` and only runs on HTTP scopes), so no tenant context
+exists when the connection is established. The first DB read on the WS auth
+path is a pre-auth probe of the tenant-scoped ``SetupState`` singleton on a
+bare session. Under enforce mode the fail-closed guard rejected that read with
+``TenantIsolationError`` -> the endpoint closed the socket with code 1008 ->
+the frontend reconnected -> reconnect storm.
+
+This test drives a REAL WebSocket connection through the actual production ASGI
+app (``api.app.app``, with every middleware mounted) via Starlette's
+``TestClient.websocket_connect`` -- the FAILING layer (WS transport), not a
+service stub -- per the CLAUDE.md failing-layer rule (BE-5042 lesson). It
+asserts:
+
+1. The authenticated ``/ws/{client_id}`` handshake SUCCEEDS (no 1008 close).
+2. A liveness ``ping`` round-trips (``pong``).
+3. A ``subscribe`` to a same-tenant project DELIVERS a ``subscribed`` event
+   (the post-auth entity-resolution read is now tenant-scoped, not a bare read).
+
+Cross-loop safety: Starlette's ``TestClient`` runs the ASGI app on its own
+anyio portal thread with a dedicated event loop. asyncpg connections are
+loop-bound, so the test builds its ``DatabaseManager`` and performs all DB
+seeding ON THE PORTAL LOOP via ``client.portal.call(...)`` rather than reusing
+the pytest-asyncio ``db_manager`` fixture (whose engine is bound to a different
+loop).
+
+Parallel-safe: each test seeds its own unique tenant (``tk_...``) so concurrent
+xdist workers never collide; no module-level mutable state; no test ordering
+dependency. Isolation is by unique tenant_key (the proven ``tests/api``
+pattern); rows are explicitly deleted on teardown.
+
+Project: BE6004C-4 (RC-4).
+"""
+
+from __future__ import annotations
+
+import contextlib
+import os
+import secrets
+import uuid
+
+import bcrypt
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy import delete
+
+from giljo_mcp.auth.jwt_manager import JWTManager
+from giljo_mcp.models import Project, User
+from giljo_mcp.models.organizations import Organization
+from giljo_mcp.tenant import TenantManager
+from tests.helpers.test_db_helper import PostgreSQLTestHelper
+
+
+_TEST_CSRF_TOKEN = secrets.token_urlsafe(32)
+
+
+async def _build_portal_db_manager():
+    """Create a DatabaseManager whose async engine is bound to the caller's loop.
+
+    Invoked via ``client.portal.call`` so the asyncpg engine is created on the
+    TestClient portal loop that will later run the WS handler's DB reads.
+    """
+    from giljo_mcp.database import DatabaseManager
+
+    await PostgreSQLTestHelper.ensure_test_database_exists()
+    # NullPool (BE-6014): bounded connection use under pytest-xdist.
+    db_manager = DatabaseManager(PostgreSQLTestHelper.get_test_db_url(), is_async=True, use_null_pool=True)
+    return db_manager
+
+
+async def _seed_tenant_with_project(db_manager) -> dict:
+    """Create org + user + project in a fresh tenant; return auth + ids.
+
+    Runs on the portal loop (via ``client.portal.call``) so the seeding session
+    shares the loop the WS handler will use.
+    """
+    suffix = uuid.uuid4().hex[:8]
+    tenant_key = TenantManager.generate_tenant_key()
+
+    async with db_manager.get_session_async(tenant_key=tenant_key) as session:
+        org = Organization(
+            name=f"WS Org {suffix}",
+            slug=f"ws-org-{suffix}",
+            tenant_key=tenant_key,
+            is_active=True,
+        )
+        session.add(org)
+        await session.flush()
+
+        password_hash = bcrypt.hashpw(b"test_password", bcrypt.gensalt()).decode("utf-8")
+        user = User(
+            username=f"ws_user_{suffix}",
+            email=f"ws_user_{suffix}@example.com",
+            password_hash=password_hash,
+            tenant_key=tenant_key,
+            role="developer",
+            org_id=org.id,
+        )
+        session.add(user)
+        await session.flush()
+
+        project = Project(
+            id=str(uuid.uuid4()),
+            name=f"WS Project {suffix}",
+            description="Subscribe target for the WS tenant-scope regression test",
+            mission="WS regression",
+            status="active",
+            tenant_key=tenant_key,
+            series_number=int(uuid.uuid4().int % 900000) + 100000,
+        )
+        session.add(project)
+        await session.commit()
+
+    os.environ.setdefault("JWT_SECRET", "test_secret_key")
+    token = JWTManager.create_access_token(
+        user_id=user.id,
+        username=user.username,
+        role="developer",
+        tenant_key=tenant_key,
+    )
+    return {"tenant_key": tenant_key, "token": token, "project_id": project.id}
+
+
+async def _cleanup_tenant(db_manager, tenant_key: str) -> None:
+    """Delete the rows seeded for a tenant (runs on the portal loop)."""
+    from giljo_mcp.database import tenant_session_context
+
+    async with db_manager.get_session_async(tenant_key=tenant_key) as session:
+        with tenant_session_context(session, tenant_key):
+            await session.execute(delete(Project).where(Project.tenant_key == tenant_key))
+            await session.execute(delete(User).where(User.tenant_key == tenant_key))
+            await session.execute(delete(Organization).where(Organization.tenant_key == tenant_key))
+            await session.commit()
+
+
+@contextlib.contextmanager
+def _no_op_lifespan(app):
+    """Swap the app's lifespan for a no-op for the duration of the test.
+
+    ``TestClient.__enter__`` runs the FastAPI lifespan, which in production opens
+    the real DB and starts the cross-tenant background scans (health monitor,
+    deletion purge). Those scans are RC-5 (Slice 5) -- out of scope for this RC-4
+    WS test and they raise under enforce mode -- so this test wires ``state``
+    manually and runs a clean no-op lifespan instead. Restored on exit.
+    """
+    original = app.router.lifespan_context
+
+    @contextlib.asynccontextmanager
+    async def _noop(_app):
+        yield
+
+    app.router.lifespan_context = _noop
+    try:
+        yield
+    finally:
+        app.router.lifespan_context = original
+
+
+def _install_ws_app_state(db_manager):
+    """Wire the minimal app/state the WS endpoint needs and return a restore fn.
+
+    The WS endpoint reads ``state.db_manager`` / ``state.websocket_manager``
+    directly (NOT via Depends), so the test seeds them on the shared module
+    ``state`` object. Returns a callable that restores the prior values.
+    """
+    from unittest.mock import MagicMock
+
+    from api.app import app
+    from api.app_state import state
+    from api.websocket import WebSocketManager
+    from giljo_mcp.auth import AuthManager
+    from giljo_mcp.tenant import TenantManager as _TenantManager
+
+    prev = {
+        "db_manager": state.db_manager,
+        "websocket_manager": state.websocket_manager,
+        "tenant_manager": state.tenant_manager,
+        "config": state.config,
+        "auth": state.auth,
+        "app_db_manager": getattr(app.state, "db_manager", None),
+        "app_ws_manager": getattr(app.state, "websocket_manager", None),
+    }
+
+    state.db_manager = db_manager
+    app.state.db_manager = db_manager
+    state.websocket_manager = WebSocketManager()
+    app.state.websocket_manager = state.websocket_manager
+    if state.tenant_manager is None:
+        state.tenant_manager = _TenantManager()
+
+    mock_config = MagicMock()
+    mock_config.jwt.secret_key = "test_secret_key"
+    mock_config.jwt.algorithm = "HS256"
+    mock_config.jwt.expiration_minutes = 30
+    mock_config.get = MagicMock(
+        side_effect=lambda key, default=None: {
+            "security.auth_enabled": True,
+            "security.api_keys_required": False,
+        }.get(key, default)
+    )
+    state.config = mock_config
+    app.state.config = mock_config
+    app.state.auth = AuthManager(mock_config, db=None)
+    state.auth = app.state.auth
+
+    def restore():
+        state.db_manager = prev["db_manager"]
+        state.websocket_manager = prev["websocket_manager"]
+        state.tenant_manager = prev["tenant_manager"]
+        state.config = prev["config"]
+        state.auth = prev["auth"]
+        app.state.db_manager = prev["app_db_manager"]
+        app.state.websocket_manager = prev["app_ws_manager"]
+
+    return restore
+
+
+@pytest.mark.tenant_isolation
+def test_authenticated_ws_handshake_succeeds_and_subscribe_delivers_event():
+    """RC-4: authenticated WS connects (no 1008), pings, and subscribe delivers.
+
+    Before BE6004C-4 the pre-auth ``SetupState`` probe ran on a bare session and
+    the fail-closed guard raised ``TenantIsolationError`` -> 1008 close. After the
+    fix the probe is bypass-wrapped and the post-auth subscribe read is scoped to
+    the connection's validated tenant_key.
+    """
+    from api.app import app
+
+    os.environ.setdefault("JWT_SECRET", "test_secret_key")
+    os.environ.setdefault("GILJO_TENANT_GUARD_MODE", "enforce")
+
+    with _no_op_lifespan(app), TestClient(app) as client:
+        db_manager = client.portal.call(_build_portal_db_manager)
+        restore = _install_ws_app_state(db_manager)
+        seeded = client.portal.call(_seed_tenant_with_project, db_manager)
+        client_id = f"ws-test-{uuid.uuid4().hex[:8]}"
+        try:
+            with client.websocket_connect(f"/ws/{client_id}?token={seeded['token']}") as ws:
+                # 1. Handshake succeeded (no 1008 close on connect).
+                # 2. Liveness ping round-trips.
+                ws.send_json({"type": "ping"})
+                pong = ws.receive_json()
+                assert pong == {"type": "pong"}, pong
+
+                # 3. Subscribe to a same-tenant project delivers a 'subscribed' event.
+                ws.send_json({"type": "subscribe", "entity_type": "project", "entity_id": seeded["project_id"]})
+                msg = ws.receive_json()
+                assert msg.get("type") == "subscribed", msg
+                assert msg.get("entity_type") == "project", msg
+                assert msg.get("entity_id") == seeded["project_id"], msg
+        finally:
+            client.portal.call(_cleanup_tenant, db_manager, seeded["tenant_key"])
+            client.portal.call(db_manager.close_async)
+            restore()
+
+
+@pytest.mark.tenant_isolation
+def test_ws_subscribe_blocks_cross_tenant_project():
+    """A client cannot subscribe to a project owned by a different tenant.
+
+    The post-auth entity-resolution read is scoped to the connection's tenant, so
+    a foreign-tenant project does not resolve -> subscription is denied (defense in
+    depth for the existing cross-tenant guard at api/app.py:_handle_ws_subscribe).
+    """
+    from api.app import app
+
+    os.environ.setdefault("JWT_SECRET", "test_secret_key")
+    os.environ.setdefault("GILJO_TENANT_GUARD_MODE", "enforce")
+
+    with _no_op_lifespan(app), TestClient(app) as client:
+        db_manager = client.portal.call(_build_portal_db_manager)
+        restore = _install_ws_app_state(db_manager)
+        caller = client.portal.call(_seed_tenant_with_project, db_manager)
+        other = client.portal.call(_seed_tenant_with_project, db_manager)
+        client_id = f"ws-xtenant-{uuid.uuid4().hex[:8]}"
+        try:
+            with client.websocket_connect(f"/ws/{client_id}?token={caller['token']}") as ws:
+                ws.send_json({"type": "subscribe", "entity_type": "project", "entity_id": other["project_id"]})
+                msg = ws.receive_json()
+                assert msg.get("type") == "error", msg
+                assert msg.get("error") == "subscription_denied", msg
+        finally:
+            client.portal.call(_cleanup_tenant, db_manager, caller["tenant_key"])
+            client.portal.call(_cleanup_tenant, db_manager, other["tenant_key"])
+            client.portal.call(db_manager.close_async)
+            restore()

@@ -1066,7 +1066,7 @@ USER_URL=postgresql://giljo_user:{self.user_password}@{self.host}:{self.port}/{s
 """
 
         # noqa: S105 — credentials file written with restricted permissions (0o600), required for installer handoff
-        self.credentials_file.write_text(content)
+        self.credentials_file.write_text(content, encoding="utf-8")
 
         # Set restrictive permissions on non-Windows
         if platform.system() != "Windows":
