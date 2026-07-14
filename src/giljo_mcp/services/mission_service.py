@@ -52,6 +52,7 @@ from giljo_mcp.services.mission_implementation_gate import (
 from giljo_mcp.services.mission_orchestration_service import MissionOrchestrationService
 from giljo_mcp.services.protocol_survival import finalize_mission_wire_fields
 from giljo_mcp.tenant import TenantManager
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -220,11 +221,11 @@ class MissionService:
                     self._logger.info(
                         "[JOB SIGNALING] Mission started via get_agent_mission",
                         extra={
-                            "job_id": job_id,
-                            "agent_id": execution.agent_id,
-                            "agent_display_name": execution.agent_display_name,
-                            "old_status": old_status,
-                            "new_status": execution.status,
+                            "job_id": sanitize(job_id),
+                            "agent_id": sanitize(execution.agent_id),
+                            "agent_display_name": sanitize(execution.agent_display_name),
+                            "old_status": sanitize(old_status),
+                            "new_status": sanitize(execution.status),
                         },
                     )
 
@@ -258,7 +259,7 @@ class MissionService:
 
                     self._logger.info(
                         "[WEBSOCKET] Emitted status change events for get_agent_mission",
-                        extra={"job_id": job_id, "agent_id": execution.agent_id},
+                        extra={"job_id": sanitize(job_id), "agent_id": sanitize(execution.agent_id)},
                     )
                 except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                     self._logger.warning(f"[WEBSOCKET] Failed to emit status events: {ws_error}")
@@ -773,8 +774,8 @@ class MissionService:
                             },
                         )
                         logger.info(
-                            f"[WEBSOCKET] Broadcasted job:mission_updated for {job_id}",
-                            extra={"job_id": job_id, "tenant_key": tenant_key},
+                            f"[WEBSOCKET] Broadcasted job:mission_updated for {sanitize(job_id)}",
+                            extra={"job_id": sanitize(job_id), "tenant_key": sanitize(tenant_key)},
                         )
                     except Exception as ws_error:  # noqa: BLE001 - WebSocket resilience: non-critical broadcast
                         logger.warning(f"[WEBSOCKET] Failed to broadcast job:mission_updated: {ws_error}")
@@ -813,12 +814,12 @@ class MissionService:
                 await self._mirror_chain_mission_for_conductor(session, job, tenant_key, mission)
 
                 logger.info(
-                    f"[UPDATE_AGENT_MISSION] Updated mission for job {job_id}",
+                    f"[UPDATE_AGENT_MISSION] Updated mission for job {sanitize(job_id)}",
                     extra={
-                        "job_id": job_id,
-                        "job_type": job.job_type,
+                        "job_id": sanitize(job_id),
+                        "job_type": sanitize(job.job_type),
                         "mission_length": len(mission),
-                        "tenant_key": tenant_key,
+                        "tenant_key": sanitize(tenant_key),
                     },
                 )
 

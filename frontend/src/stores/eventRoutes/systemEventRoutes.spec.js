@@ -63,6 +63,27 @@ describe('systemEventRoutes — FE-9121 vision:analysis_complete write-through',
     dispatchSpy.mockRestore()
   })
 
+  it('still fires the notification and dispatches the window event when the store refresh throws (FE-9166)', async () => {
+    const productStore = useProductStore()
+    productStore.fetchProducts = vi.fn(() => Promise.reject(new Error('boom')))
+    productStore.fetchProductById = vi.fn(() => Promise.reject(new Error('boom')))
+    const notificationStore = useNotificationStore()
+    const addSpy = vi.spyOn(notificationStore, 'addNotification')
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const dispatchSpy = vi.spyOn(window, 'dispatchEvent')
+
+    await SYSTEM_EVENT_ROUTES['vision:analysis_complete'].handler({ product_id: 'p-new' })
+
+    expect(addSpy).toHaveBeenCalledTimes(1)
+    const dispatched = dispatchSpy.mock.calls
+      .map((c) => c[0])
+      .find((e) => e.type === 'vision-analysis-complete')
+    expect(dispatched).toBeDefined()
+    expect(dispatched.detail).toMatchObject({ product_id: 'p-new' })
+    dispatchSpy.mockRestore()
+    warnSpy.mockRestore()
+  })
+
   it('no-ops the store refresh when payload has no product_id', async () => {
     await SYSTEM_EVENT_ROUTES['vision:analysis_complete'].handler({})
 

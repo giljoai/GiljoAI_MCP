@@ -36,6 +36,7 @@ from giljo_mcp.services._session_helpers import optional_tenant_session
 from giljo_mcp.services.project_helpers import _build_ws_project_data, mark_chain_member_status
 from giljo_mcp.services.project_lifecycle_service._orchestrator_fixture_mixin import OrchestratorFixtureMixin
 from giljo_mcp.tenant import TenantManager
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -152,7 +153,7 @@ class ProjectLifecycleService(OrchestratorFixtureMixin):
                 await session.commit()
                 await self._repo.refresh(session, project)
 
-                self._logger.info(f"Activated project {project_id}")
+                self._logger.info(f"Activated project {sanitize(project_id)}")
 
                 # Broadcast WebSocket event if manager provided
                 ws_mgr = websocket_manager or self._websocket_manager
@@ -247,7 +248,7 @@ class ProjectLifecycleService(OrchestratorFixtureMixin):
 
             self._logger.info(
                 "Deactivated project %s%s",
-                project_id,
+                sanitize(project_id),
                 f" ({len(removed)} never-run orchestrator row(s) deleted)" if removed else "",
             )
 
@@ -631,7 +632,7 @@ class ProjectLifecycleService(OrchestratorFixtureMixin):
     ) -> None:
         """Broadcast memory update via WebSocketManager (in-process)."""
         self._logger.info(
-            f"[WEBSOCKET DEBUG] Broadcasting memory update for project {project_id} (sequence: {sequence_number})"
+            f"[WEBSOCKET DEBUG] Broadcasting memory update for project {sanitize(project_id)} (sequence: {sequence_number})"
         )
 
         if not self._websocket_manager:

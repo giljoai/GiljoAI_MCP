@@ -400,7 +400,7 @@ async def get_deleted_projects(
     Raises:
         HTTPException 500: Failed to list deleted projects
     """
-    logger.debug(f"User {current_user.username} listing deleted projects (product={product_id})")
+    logger.debug(f"User {sanitize(current_user.username)} listing deleted projects (product={sanitize(product_id)})")
 
     # List deleted projects via ProjectService (raises exceptions on error)
     # SECURITY: Explicit tenant_key prevents cross-tenant data leak
@@ -505,7 +505,7 @@ async def get_project(
     # Get project via ProjectService (raises exceptions on error)
     proj = await project_service.get_project(project_id=project_id, tenant_key=current_user.tenant_key)
 
-    logger.info(f"Retrieved project {project_id} for tenant {current_user.tenant_key}")
+    logger.info(f"Retrieved project {sanitize(project_id)} for tenant {sanitize(current_user.tenant_key)}")
 
     # Production-grade: Use agents from service response (not hardcoded empty array)
     agents_from_service = proj.agents
@@ -602,6 +602,6 @@ async def update_project(
         proj = await project_service.update_project(project_id=project_id, updates=update_dict)
         response = _to_project_response(proj, agents=[], agent_count=0, message_count=0)
 
-    logger.info(f"Updated project {project_id}")
+    logger.info(f"Updated project {sanitize(project_id)}")
 
     return response

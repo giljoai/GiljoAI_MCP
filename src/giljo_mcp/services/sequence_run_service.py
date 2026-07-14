@@ -50,6 +50,7 @@ from giljo_mcp.services.sequence_run_validation import (
     validate_update_fields,
 )
 from giljo_mcp.tenant import TenantManager
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -177,7 +178,7 @@ class SequenceRunService(SequenceRunQueryMixin):
                 "Created sequence_run %s (tenant=%s, mode=%s, projects=%d, conductor_agent_id=%s)",
                 run_id,
                 effective_tenant_key,
-                execution_mode,
+                sanitize(execution_mode),
                 len(validated_project_ids),
                 conductor_agent_id,
             )
@@ -323,10 +324,10 @@ class SequenceRunService(SequenceRunQueryMixin):
             await self._broadcast_sequence_updated(run_id, effective_tenant_key)
             self._logger.info(
                 "Updated sequence_run %s (tenant=%s, status=%s, index=%s)",
-                run_id,
+                sanitize(run_id),
                 effective_tenant_key,
-                run.status,
-                run.current_index,
+                sanitize(run.status),
+                sanitize(run.current_index),
             )
             return serialized
         except (BaseGiljoError, ResourceNotFoundError, ValidationError):
@@ -343,7 +344,7 @@ class SequenceRunService(SequenceRunQueryMixin):
             event = {"type": "sequence:updated", "data": {"run_id": run_id}}
             await self._websocket_manager.broadcast_event_to_tenant(tenant_key, event)
         except Exception as exc:  # noqa: BLE001 — WS broadcast is a best-effort side-effect
-            self._logger.warning("sequence:updated broadcast failed for run %s: %s", run_id, exc)
+            self._logger.warning("sequence:updated broadcast failed for run %s: %s", sanitize(run_id), exc)
 
     async def release(
         self,
@@ -629,7 +630,7 @@ class SequenceRunService(SequenceRunQueryMixin):
                     serialized = _serialize(run)
                     self._logger.info(
                         "Dissolved sequence_run %s (reduced to lone project %s, tenant=%s; no auto-activate)",
-                        run_id,
+                        sanitize(run_id),
                         lone_project_id,
                         effective_tenant_key,
                     )
@@ -660,8 +661,8 @@ class SequenceRunService(SequenceRunQueryMixin):
 
             self._logger.info(
                 "Removed project %s from sequence_run %s (tenant=%s, remaining=%d)",
-                project_id,
-                run_id,
+                sanitize(project_id),
+                sanitize(run_id),
                 effective_tenant_key,
                 len(remaining),
             )
@@ -739,8 +740,8 @@ class SequenceRunService(SequenceRunQueryMixin):
             await self._broadcast_sequence_updated(run_id, effective_tenant_key)
             self._logger.info(
                 "Marked project %s reviewed in sequence_run %s (tenant=%s, reviewed=%d)",
-                project_id,
-                run_id,
+                sanitize(project_id),
+                sanitize(run_id),
                 effective_tenant_key,
                 len(current),
             )

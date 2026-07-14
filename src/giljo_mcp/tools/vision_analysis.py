@@ -68,6 +68,11 @@ FIELD RULES
   Use 'web' for browser-based apps (SPA, PWA, responsive). Use 'all' alone if cross-platform.
 - Do NOT pass product_name unless the product currently has no name -- the product name is
   user-owned.
+- project_path: set it to the absolute path of the repository folder you are operating from
+  (your working directory) -- this is the user's local codebase folder the orchestrator later
+  uses. OMIT it entirely if you are not running with filesystem access inside the user's
+  repository (never invent or guess a path). Like product_name it is user-owned -- the server
+  skips it when already set.
 
 HOW TO CALL
 Make ONE single update_product_context call covering EVERYTHING (per-doc summaries,
@@ -78,6 +83,7 @@ OBJECTS -- not flat top-level parameters and not strings. Example call shape:
   update_product_context(
       product_id="<id>",
       product_description="...",
+      project_path="...",
       core_features="...",
       tech_stack={"programming_languages": "...", "frontend_frameworks": "...",
                   "backend_frameworks": "...", "databases": "...",
@@ -101,6 +107,7 @@ VALID_TESTING_STRATEGIES = {"TDD", "BDD", "Integration-First", "E2E-First", "Man
 FIELD_MAP = {
     "product_name": ("products", "name"),
     "product_description": ("products", "description"),
+    "project_path": ("products", "project_path"),
     "core_features": ("products", "core_features"),
     "programming_languages": ("tech_stack", "programming_languages"),
     "frontend_frameworks": ("tech_stack", "frontend_frameworks"),
@@ -373,6 +380,35 @@ async def _apply_overwrite_protection(
         await product_service.update_product(product_id, force=force, **safe_kwargs)
 
 
+def _skip_user_owned_field(
+    field_key: str,
+    existing_value: str | None,
+    fields: dict[str, Any],
+    fields_skipped: list[dict[str, str]],
+    *,
+    label: str,
+) -> None:
+    """Drop a user-owned extraction field when it is already set (unless force).
+
+    product_name (the product's name) and project_path (the user's local codebase
+    folder) are both user-owned. When the product already carries a non-empty value
+    the incoming extracted value is dropped from the write and recorded in
+    ``fields_skipped`` so the agent sees what didn't land and why. Callers gate this
+    on ``force is False``; when the existing value is empty the field writes normally.
+    """
+    if field_key not in fields:
+        return
+    if (existing_value or "").strip():
+        fields.pop(field_key)
+        fields_skipped.append(
+            {
+                "field": field_key,
+                "reason": f"{label} is user-owned and already set",
+                "hint": "Pass force=True to overwrite.",
+            }
+        )
+
+
 async def update_product_fields(
     product_id: str,
     tenant_key: str,
@@ -489,20 +525,15 @@ async def update_product_fields(
                 context={"product_id": product_id},
             )
 
-        # BE-9164: the product name is user-owned. Skip an incoming product_name
-        # when the product already has a non-empty name, unless force=True. When
-        # the existing name is empty/None the extracted name writes normally.
-        if "product_name" in fields and not force:
-            existing_name = (product.name or "").strip()
-            if existing_name:
-                fields.pop("product_name")
-                fields_skipped.append(
-                    {
-                        "field": "product_name",
-                        "reason": "product name is user-owned and already set",
-                        "hint": "Pass force=True to overwrite.",
-                    }
-                )
+        # BE-9164 / BE-9167: product_name and project_path (the codebase folder) are
+        # user-owned. Skip each incoming value when the product already has a non-empty
+        # one, unless force=True. When the existing value is empty the extracted value
+        # writes normally.
+        if not force:
+            _skip_user_owned_field("product_name", product.name, fields, fields_skipped, label="product name")
+            _skip_user_owned_field(
+                "project_path", product.project_path, fields, fields_skipped, label="codebase folder"
+            )
 
         kwargs = _build_update_kwargs(fields, fields_written)
 

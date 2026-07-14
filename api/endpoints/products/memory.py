@@ -126,9 +126,9 @@ async def get_memory_entries(
     logger.info(
         f"Fetched {len(entry_responses)} memory entries for product {sanitize(product_id)}",
         extra={
-            "tenant_key": current_user.tenant_key,
-            "product_id": product_id,
-            "project_id": project_id,
+            "tenant_key": sanitize(current_user.tenant_key),
+            "product_id": sanitize(product_id),
+            "project_id": sanitize(project_id),
             "limit": limit,
             "filtered_count": len(entry_responses),
         },

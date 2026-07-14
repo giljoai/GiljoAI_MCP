@@ -44,6 +44,7 @@ from giljo_mcp.services.oauth_service import (
     ALLOWED_REDIRECT_URI_PATTERNS,
     BUILTIN_CLIENT_ID,
 )
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -154,7 +155,7 @@ async def register_client(request: Request, body: CeRegistrationRequest):
     logger.info(
         "ce_oauth_dcr client_id=%s name=%r redirect_uris=%d",
         BUILTIN_CLIENT_ID,
-        body.client_name,
+        sanitize(body.client_name),
         len(body.redirect_uris),
     )
 

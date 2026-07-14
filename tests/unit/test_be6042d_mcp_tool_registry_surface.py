@@ -336,6 +336,9 @@ EXPECTED_TOOL_SURFACE: dict[str, dict[str, object]] = {
     # dicts (tech_stack, architecture, quality, testing). Net 23 -> 11 params.
     # The wrapper unpacks the dicts to the SAME flat ProductService kwargs, so the
     # DB/service/columns are untouched — only the agent-facing param SHAPE changed.
+    # BE-9167: added project_path (11 -> 12) so the vision-analysis agent can fill
+    # the product card's "Codebase Folder"; user-owned skip, same style as
+    # product_name/product_description.
     "update_product_context": {
         "fn": "update_product_context",
         "params": [
@@ -346,6 +349,7 @@ EXPECTED_TOOL_SURFACE: dict[str, dict[str, object]] = {
             "product_description",
             "product_id",
             "product_name",
+            "project_path",
             "quality",
             "tech_stack",
             "testing",

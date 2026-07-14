@@ -38,6 +38,7 @@ from giljo_mcp.schemas.service_responses import (
 from giljo_mcp.services._error_helpers import not_found_or_wrong_state_error
 from giljo_mcp.services._session_helpers import optional_tenant_session
 from giljo_mcp.tenant import TenantManager
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 class OrchestrationAgentStateService:
@@ -357,7 +358,7 @@ class OrchestrationAgentStateService:
 
                 project_id = str(job.project_id) if job.project_id else None
 
-                self._logger.info("Job %s reactivated (#%d): %s", job_id, reactivation_count, reason)
+                self._logger.info("Job %s reactivated (#%d): %s", job_id, reactivation_count, sanitize(reason))
 
             # Broadcast status change (outside session)
             try:

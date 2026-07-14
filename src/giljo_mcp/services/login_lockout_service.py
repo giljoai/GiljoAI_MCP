@@ -36,6 +36,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from giljo_mcp.models.auth import LoginLockout
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 if TYPE_CHECKING:
@@ -155,8 +156,8 @@ class LoginLockoutService:
         if just_locked:
             logger.warning(
                 "login lockout triggered identifier=%s ip=%s until=%s",
-                ident,
-                ip,
+                sanitize(ident),
+                sanitize(ip),
                 row.locked_until,
             )
         return LockoutOutcome(failed_count=count, locked_until=row.locked_until, just_locked=just_locked)

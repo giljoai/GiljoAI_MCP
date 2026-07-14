@@ -92,7 +92,10 @@ async def get_job_messages(
         GET /api/agent-jobs/{job_id}/messages?limit=100
     """
     logger.debug(
-        "User %s retrieving messages for job %s (limit=%d)", sanitize(current_user.username), sanitize(job_id), limit
+        "User %s retrieving messages for job %s (limit=%s)",
+        sanitize(current_user.username),
+        sanitize(job_id),
+        sanitize(limit),
     )
 
     try:

@@ -16,6 +16,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from giljo_mcp.models.sequence_runs import CHAIN_TERMINAL_PROJECT_STATUSES
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -199,7 +200,7 @@ async def _wake_conductor_on_member_closeout(
         logger.info(
             "[CHAIN_CONDUCTOR_WAKE] conductor=%s event-woken on member=%s closeout (tenant=%s)",
             conductor_agent_id,
-            project_id,
+            sanitize(project_id),
             tenant_key,
         )
         return True
@@ -210,7 +211,7 @@ async def _wake_conductor_on_member_closeout(
         logger.info(
             "[CHAIN_CONDUCTOR_WAKE] non-fatal no-op: conductor=%s not event-woken on member=%s (%s): %s",
             conductor_agent_id,
-            project_id,
+            sanitize(project_id),
             type(exc).__name__,
             exc,
         )
@@ -286,7 +287,7 @@ async def mark_chain_member_status(
         logger.info(
             "[CHAIN_MEMBER_STATUS] run=%s project=%s -> %s (tenant=%s)",
             run["id"],
-            project_id,
+            sanitize(project_id),
             status,
             tenant_key,
         )
@@ -313,7 +314,7 @@ async def mark_chain_member_status(
     except Exception as exc:  # noqa: BLE001 — best-effort side-effect; never fail the caller
         logger.warning(
             "[CHAIN_MEMBER_STATUS] non-fatal: failed to set project=%s status=%s: %s",
-            project_id,
+            sanitize(project_id),
             status,
             exc,
         )
@@ -447,7 +448,7 @@ async def advance_chain_member_to_implementing(
     except Exception as exc:  # noqa: BLE001 — best-effort side-effect; never fail the caller
         logger.warning(
             "[CHAIN_ADVANCE] non-fatal: failed to advance project=%s to implementing: %s",
-            project_id,
+            sanitize(project_id),
             exc,
         )
         return False

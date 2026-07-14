@@ -22,6 +22,7 @@ from giljo_mcp.repositories.agent_operations_repository import AgentOperationsRe
 from giljo_mcp.schemas.service_responses import JobListResult
 from giljo_mcp.services._session_helpers import optional_tenant_session
 from giljo_mcp.tenant import TenantManager
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -160,7 +161,8 @@ class JobQueryService:
                     )
 
                 self._logger.info(
-                    f"Listed {len(job_dicts)} jobs (total={total}, project={project_id}, status={status_filter})"
+                    f"Listed {len(job_dicts)} jobs (total={total}, "
+                    f"project={sanitize(project_id)}, status={sanitize(status_filter)})"
                 )
 
                 return JobListResult(

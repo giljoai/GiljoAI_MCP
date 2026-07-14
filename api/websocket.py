@@ -22,6 +22,7 @@ from api.auth_utils import check_subscription_permission
 from api.broker.base import WebSocketBrokerMessage, WebSocketEventBroker
 from giljo_mcp.events.schemas import EventFactory
 from giljo_mcp.logging import ErrorCode
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -536,7 +537,7 @@ class WebSocketManager:
 
             tenant_key = TenantManager.get_current_tenant()
         if not tenant_key:
-            logger.warning("broadcast_project_update: no tenant_key available for project %s", project_id)
+            logger.warning("broadcast_project_update: no tenant_key available for project %s", sanitize(project_id))
             return
 
         await self.broadcast_to_tenant(

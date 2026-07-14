@@ -448,7 +448,7 @@ async def convert_task_to_project(
         AuthorizationError: User not authorized
         DatabaseError: Database operation failed
     """
-    logger.debug(f"User {current_user.username} converting task {task_id} to project")
+    logger.debug(f"User {sanitize(current_user.username)} converting task {sanitize(task_id)} to project")
 
     data = await task_service.convert_to_project(
         task_id=task_id,
@@ -458,7 +458,10 @@ async def convert_task_to_project(
         user_id=str(current_user.id),
     )
 
-    logger.info(f"Converted task {task_id} to project {data.project_id} (strategy: {conversion_request.strategy})")
+    logger.info(
+        f"Converted task {sanitize(task_id)} to project {sanitize(data.project_id)} "
+        f"(strategy: {sanitize(conversion_request.strategy)})"
+    )
 
     return ProjectConversionResponse(
         project_id=data.project_id,

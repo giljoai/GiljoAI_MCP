@@ -49,7 +49,7 @@ def _single_instance_lock(timeout: float = 20.0):
     locked = False
     try:
         lock_path.parent.mkdir(parents=True, exist_ok=True)
-        fd = os.open(str(lock_path), os.O_RDWR | os.O_CREAT, 0o644)
+        fd = os.open(str(lock_path), os.O_RDWR | os.O_CREAT, 0o600)
         deadline = time.monotonic() + timeout
         is_windows = platform.system() == "Windows"
         while True:

@@ -45,6 +45,7 @@ from giljo_mcp.repositories.task_repository import TaskRepository
 from giljo_mcp.schemas.service_responses import ConversionResult
 from giljo_mcp.services._session_helpers import optional_tenant_session
 from giljo_mcp.tenant import TenantManager
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -272,7 +273,9 @@ class TaskConversionService:
 
         # Delete the task after successful conversion
         await self._repo.delete_task(session, task)
-        self._logger.info(f"Deleted task {task_id} after successful conversion to project {new_project.id}")
+        self._logger.info(
+            f"Deleted task {sanitize(task_id)} after successful conversion to project {sanitize(new_project.id)}"
+        )
 
         # BE-6086: repository flushes; this conversion scope is the session
         # owner and commits the WHOLE conversion (project insert + task delete +
@@ -281,7 +284,9 @@ class TaskConversionService:
         await self._repo.flush(session)
         await self._repo.refresh(session, new_project)
 
-        self._logger.info(f"Converted task {task_id} to project {new_project.id} (strategy: {strategy})")
+        self._logger.info(
+            f"Converted task {sanitize(task_id)} to project {sanitize(new_project.id)} (strategy: {sanitize(strategy)})"
+        )
 
         return ConversionResult(
             task_id=str(task_id),

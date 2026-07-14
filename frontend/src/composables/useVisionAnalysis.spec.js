@@ -243,6 +243,105 @@ describe('useVisionAnalysis', () => {
     })
   })
 
+  // FE-9166: recovery paths for a lost 'vision-analysis-complete' event.
+  describe('FE-9166 recovery', () => {
+    const PRODUCT_ID = 'prod-123'
+
+    it('poll fallback clears flags and patches the form when no window event arrives', async () => {
+      const { stageAnalysis, analysisInProgress, analysisAgentConnected } =
+        useVisionAnalysis(patchProductForm)
+      const { useProductStore } = await import('@/stores/products')
+      const productStore = useProductStore()
+      productStore.updateProduct = vi.fn(() => Promise.resolve({}))
+      productStore.fetchProductById = vi.fn(() =>
+        Promise.resolve({
+          id: PRODUCT_ID,
+          name: 'Polled Product',
+          vision_analysis_complete: true,
+          tech_stack: {},
+          architecture: {},
+          test_config: {},
+        }),
+      )
+
+      await stageAnalysis({ name: 'My Product', extractionCustomInstructions: '' }, PRODUCT_ID)
+      analysisAgentConnected.value = true
+      expect(analysisInProgress.value).toBe(true)
+
+      // No 'vision-analysis-complete' window event is ever dispatched here.
+      await vi.advanceTimersByTimeAsync(10_000)
+
+      expect(productStore.fetchProductById).toHaveBeenCalledWith(PRODUCT_ID)
+      expect(patchProductForm).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'Polled Product' }),
+      )
+      expect(analysisInProgress.value).toBe(false)
+      expect(analysisAgentConnected.value).toBe(false)
+    })
+
+    it('poll fallback keeps polling until vision_analysis_complete flips true', async () => {
+      const { stageAnalysis, analysisInProgress } = useVisionAnalysis(patchProductForm)
+      const { useProductStore } = await import('@/stores/products')
+      const productStore = useProductStore()
+      productStore.updateProduct = vi.fn(() => Promise.resolve({}))
+      productStore.fetchProductById = vi
+        .fn()
+        .mockResolvedValueOnce({ id: PRODUCT_ID, vision_analysis_complete: false })
+        .mockResolvedValue({
+          id: PRODUCT_ID,
+          name: 'Eventually Done',
+          vision_analysis_complete: true,
+          tech_stack: {},
+          architecture: {},
+          test_config: {},
+        })
+
+      await stageAnalysis({ name: 'My Product', extractionCustomInstructions: '' }, PRODUCT_ID)
+
+      await vi.advanceTimersByTimeAsync(10_000)
+      expect(analysisInProgress.value).toBe(true) // first tick: not complete yet
+
+      await vi.advanceTimersByTimeAsync(10_000)
+      expect(analysisInProgress.value).toBe(false) // second tick: complete
+      expect(productStore.fetchProductById).toHaveBeenCalledTimes(2)
+    })
+
+    it('onVisionAnalysisComplete clears flags even if fetchProductById rejects', async () => {
+      const { onVisionAnalysisComplete, analysisInProgress, analysisAgentConnected } =
+        useVisionAnalysis(patchProductForm)
+      analysisInProgress.value = true
+      analysisAgentConnected.value = true
+
+      const { useProductStore } = await import('@/stores/products')
+      useProductStore().fetchProductById = vi.fn(() => Promise.reject(new Error('network down')))
+
+      const event = new CustomEvent('vision-analysis-complete', {
+        detail: { product_id: PRODUCT_ID },
+      })
+      // The event handler re-throws the rejection after the finally; a real
+      // window listener ignores it. The flags must be cleared regardless.
+      await onVisionAnalysisComplete(event, PRODUCT_ID).catch(() => {})
+
+      expect(analysisInProgress.value).toBe(false)
+      expect(analysisAgentConnected.value).toBe(false)
+    })
+
+    it('resetAnalysisState stops the poll interval (no further fetches)', async () => {
+      const { stageAnalysis, resetAnalysisState } = useVisionAnalysis(patchProductForm)
+      const { useProductStore } = await import('@/stores/products')
+      const productStore = useProductStore()
+      productStore.updateProduct = vi.fn(() => Promise.resolve({}))
+      productStore.fetchProductById = vi.fn(() => Promise.resolve(null))
+
+      await stageAnalysis({ name: 'My Product', extractionCustomInstructions: '' }, PRODUCT_ID)
+      resetAnalysisState()
+
+      await vi.advanceTimersByTimeAsync(30_000)
+
+      expect(productStore.fetchProductById).not.toHaveBeenCalled()
+    })
+  })
+
   it('onVisionAnalysisComplete clears analysis hint timer', async () => {
     const { onVisionAnalysisComplete, analysisHintVisible } = useVisionAnalysis(patchProductForm)
 

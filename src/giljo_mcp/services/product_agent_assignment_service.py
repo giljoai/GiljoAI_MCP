@@ -34,6 +34,7 @@ from giljo_mcp.repositories.product_agent_assignment_repository import (
     ProductAgentAssignmentRepository,
 )
 from giljo_mcp.services._session_helpers import tenant_scoped_session
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -149,7 +150,7 @@ class ProductAgentAssignmentService:
         except ValidationError:
             raise
         except Exception as e:
-            self._logger.exception("Failed to list assignments for product %s", product_id)
+            self._logger.exception("Failed to list assignments for product %s", sanitize(product_id))
             raise BaseGiljoError(
                 message=f"Failed to list assignments: {e!s}",
                 context={"product_id": product_id, "tenant_key": self._tenant_key},
@@ -246,9 +247,9 @@ class ProductAgentAssignmentService:
 
                 self._logger.info(
                     "Toggled assignment: product=%s template=%s is_active=%s",
-                    product_id,
-                    template_id,
-                    is_active,
+                    sanitize(product_id),
+                    sanitize(template_id),
+                    sanitize(is_active),
                 )
 
                 return {

@@ -44,6 +44,7 @@ from giljo_mcp.tools._memory_helpers import (
     provided_session,
     refuse_if_superseded,
 )
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -121,7 +122,7 @@ async def _handle_force_close(
     if decommissioned:
         logger.warning(
             "Force-closed project %s: auto-decommissioned %d agent(s): %s",
-            project_id,
+            sanitize(project_id),
             len(decommissioned),
             ", ".join(decommissioned),
         )
@@ -181,7 +182,7 @@ async def _resolve_git_commits(
         )
         logger.warning(
             "git_commits_missing_with_integration_enabled project_id=%s tenant_key=%s",
-            project_id,
+            sanitize(project_id),
             tenant_key,
         )
 
@@ -194,7 +195,7 @@ async def _resolve_git_commits(
         logger.info(
             "Using %d agent-supplied git commits for project %s",
             len(git_commits),
-            project_id,
+            sanitize(project_id),
         )
     elif os.environ.get("GILJO_MODE") == "saas":
         git_config = _get_git_config(product_memory)
@@ -210,7 +211,7 @@ async def _resolve_git_commits(
         git_commits = []
         logger.info(
             "No agent-supplied git commits for project %s (CE server is passive)",
-            project_id,
+            sanitize(project_id),
         )
 
     if git_commits is None:
@@ -229,7 +230,7 @@ async def _resolve_git_commits(
         )
         logger.info(
             "git_unavailable_in_closeout project_id=%s tenant_key=%s",
-            project_id,
+            sanitize(project_id),
             tenant_key,
         )
 

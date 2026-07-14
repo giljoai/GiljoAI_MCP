@@ -306,7 +306,7 @@ async def update_headless_launch(
     logger.info(
         "Admin %s setting headless-launch toggle to %s",
         sanitize(current_user.username),
-        request.allow_headless_launch,
+        sanitize(request.allow_headless_launch),
     )
 
     service = SettingsService(db, current_user.tenant_key)

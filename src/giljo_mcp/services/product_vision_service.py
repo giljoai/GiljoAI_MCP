@@ -46,6 +46,7 @@ from giljo_mcp.repositories.vision_document_repository import VisionDocumentRepo
 from giljo_mcp.schemas.service_responses import VisionUploadResult
 from giljo_mcp.services._session_helpers import tenant_scoped_session
 from giljo_mcp.tools.chunking import VISION_MAX_INGEST_TOKENS
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -153,7 +154,7 @@ class ProductVisionService:
 
                 await session.commit()
 
-                self._logger.info(f"Created vision document {doc.id} for product {product_id}")
+                self._logger.info(f"Created vision document {sanitize(doc.id)} for product {sanitize(product_id)}")
 
                 # Per-doc summaries are written by the AI agent via
                 # update_product_context. Documents are uploaded with
@@ -304,9 +305,9 @@ class ProductVisionService:
                 tenant_key=self.tenant_key,
                 force=True,
             )
-            self._logger.info(f"Auto-consolidated vision documents for product {product_id}")
+            self._logger.info(f"Auto-consolidated vision documents for product {sanitize(product_id)}")
         except (ValidationError, ResourceNotFoundError, ValueError, KeyError) as e:
-            self._logger.warning(f"Auto-consolidation failed for product {product_id}: {e}")
+            self._logger.warning(f"Auto-consolidation failed for product {sanitize(product_id)}: {sanitize(e)}")
 
     # ---- BE-5022b: Service wrappers for VisionDocumentRepository methods ----
 

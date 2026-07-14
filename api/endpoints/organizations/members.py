@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from giljo_mcp.models.auth import User
 from giljo_mcp.services.org_service import OrgService
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 from .models import MemberInvite, MemberResponse, MemberRoleUpdate, OwnershipTransfer
 
@@ -110,10 +111,10 @@ async def invite_member(
     logger.info(
         "Member invited via API",
         extra={
-            "org_id": org_id,
-            "invited_user_id": invite_data.user_id,
-            "role": invite_data.role,
-            "invited_by": current_user.id,
+            "org_id": sanitize(org_id),
+            "invited_user_id": sanitize(invite_data.user_id),
+            "role": sanitize(invite_data.role),
+            "invited_by": sanitize(current_user.id),
         },
     )
 
@@ -158,7 +159,12 @@ async def change_member_role(
 
     logger.info(
         "Member role changed via API",
-        extra={"org_id": org_id, "user_id": user_id, "new_role": role_data.role, "changed_by": current_user.id},
+        extra={
+            "org_id": sanitize(org_id),
+            "user_id": sanitize(user_id),
+            "new_role": sanitize(role_data.role),
+            "changed_by": sanitize(current_user.id),
+        },
     )
 
     return membership
@@ -196,7 +202,11 @@ async def remove_member(
 
     logger.info(
         "Member removed via API",
-        extra={"org_id": org_id, "removed_user_id": user_id, "removed_by": current_user.id},
+        extra={
+            "org_id": sanitize(org_id),
+            "removed_user_id": sanitize(user_id),
+            "removed_by": sanitize(current_user.id),
+        },
     )
 
 
@@ -241,7 +251,11 @@ async def transfer_ownership(
 
     logger.info(
         "Ownership transferred via API",
-        extra={"org_id": org_id, "previous_owner_id": current_user.id, "new_owner_id": transfer_data.new_owner_id},
+        extra={
+            "org_id": sanitize(org_id),
+            "previous_owner_id": sanitize(current_user.id),
+            "new_owner_id": sanitize(transfer_data.new_owner_id),
+        },
     )
 
     return {"message": "Ownership transferred"}

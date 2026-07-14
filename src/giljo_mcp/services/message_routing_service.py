@@ -32,6 +32,7 @@ from giljo_mcp.domain.project_status import IMMUTABLE_PROJECT_STATUSES
 from giljo_mcp.repositories.message_repository import MessageRepository
 from giljo_mcp.services._session_helpers import optional_tenant_session
 from giljo_mcp.tenant import TenantManager
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -142,8 +143,8 @@ class MessageRoutingService:
                     )
 
                 self._logger.info(
-                    f"[AUTO-BLOCK] Agent {recipient_execution.agent_display_name} "
-                    f"({recipient_id}) auto-blocked: message from {sender_display_name}"
+                    f"[AUTO-BLOCK] Agent {sanitize(recipient_execution.agent_display_name)} "
+                    f"({sanitize(recipient_id)}) auto-blocked: message from {sanitize(sender_display_name)}"
                 )
 
         if auto_blocked_ids:

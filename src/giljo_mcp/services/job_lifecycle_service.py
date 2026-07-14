@@ -43,6 +43,7 @@ from giljo_mcp.services.dto import BroadcastAgentCreatedContext
 from giljo_mcp.services.execution_mode_gate import require_execution_mode
 from giljo_mcp.services.protocol_survival import build_spawn_footer
 from giljo_mcp.tenant import TenantManager
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -385,7 +386,7 @@ class JobLifecycleService:
         self._logger.info(
             "chain sub-orch double-spawn prevented -- reusing existing orchestrator job %s for project %s",
             existing.job_id,
-            project_id,
+            sanitize(project_id),
         )
 
         return SpawnResult(
@@ -474,9 +475,9 @@ class JobLifecycleService:
             if candidate not in active_names:
                 self._logger.info(
                     "Auto-suffixed display name '%s' -> '%s' (collision in project %s)",
-                    agent_display_name,
-                    candidate,
-                    project_id,
+                    sanitize(agent_display_name),
+                    sanitize(candidate),
+                    sanitize(project_id),
                 )
                 return candidate
 
@@ -556,7 +557,7 @@ class JobLifecycleService:
                 if parent_job_id and parent_job_id == existing_orchestrator.agent_id:
                     self._logger.info(
                         "Handover: Allowing successor spawn from orchestrator %s",
-                        parent_job_id,
+                        sanitize(parent_job_id),
                     )
                 else:
                     raise AlreadyExistsError(
@@ -610,7 +611,7 @@ class JobLifecycleService:
             self._logger.info(
                 "[TEMPLATE_RESOLVE] Captured template_id for job",
                 extra={
-                    "agent_name": agent_name,
+                    "agent_name": sanitize(agent_name),
                     "template_id": template.id,
                     "execution_mode": project.execution_mode,
                 },

@@ -30,6 +30,7 @@ from giljo_mcp.models import User
 from giljo_mcp.services.product_agent_assignment_service import (
     ProductAgentAssignmentService,
 )
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -125,7 +126,7 @@ async def list_agent_assignments(
     except ResourceNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
     except BaseGiljoError as e:
-        logger.exception("Failed to list agent assignments for product %s", product_id)
+        logger.exception("Failed to list agent assignments for product %s", sanitize(product_id))
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 

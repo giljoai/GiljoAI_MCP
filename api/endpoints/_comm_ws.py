@@ -15,6 +15,8 @@ must NEVER surface as a 500 to the caller.
 import logging
 from typing import Any
 
+from giljo_mcp.utils.log_sanitizer import sanitize
+
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +58,7 @@ async def broadcast_thread_message(
     try:
         await ws_manager.broadcast_event_to_tenant(tenant_key, event)
     except Exception:  # noqa: BLE001 - WS failure must not affect the already-committed write
-        logger.warning("broadcast_thread_message failed for thread %s (non-fatal)", thread_id, exc_info=True)
+        logger.warning("broadcast_thread_message failed for thread %s (non-fatal)", sanitize(thread_id), exc_info=True)
 
 
 async def broadcast_thread_update(
@@ -87,4 +89,4 @@ async def broadcast_thread_update(
     try:
         await ws_manager.broadcast_event_to_tenant(tenant_key, event)
     except Exception:  # noqa: BLE001 - WS failure must not affect the already-committed write
-        logger.warning("broadcast_thread_update failed for thread %s (non-fatal)", thread_id, exc_info=True)
+        logger.warning("broadcast_thread_update failed for thread %s (non-fatal)", sanitize(thread_id), exc_info=True)

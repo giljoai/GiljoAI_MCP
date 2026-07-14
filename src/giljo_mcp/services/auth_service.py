@@ -61,6 +61,7 @@ from giljo_mcp.schemas.service_responses import (
     UserInfo,
 )
 from giljo_mcp.tenant import TenantManager
+from giljo_mcp.utils.log_sanitizer import sanitize
 from giljo_mcp.utils.password_helper import async_hash_password, async_verify_password
 
 
@@ -199,16 +200,16 @@ class AuthService:
         # user AND a passwordless one, mirroring the existing not-found path.
         if not user or user.password_hash is None or not await async_verify_password(password, user.password_hash):
             self._logger.warning(
-                f"Authentication failed for identifier: {username}",
-                extra={"identifier": username, "reason": "invalid_credentials"},
+                f"Authentication failed for identifier: {sanitize(username)}",
+                extra={"identifier": sanitize(username), "reason": "invalid_credentials"},
             )
             raise AuthenticationError(message="Invalid credentials", context={"identifier": username})
 
         # Check if user account is active
         if not user.is_active:
             self._logger.warning(
-                f"Authentication failed for identifier: {username} (inactive account)",
-                extra={"identifier": username, "user_id": user.id, "reason": "inactive_account"},
+                f"Authentication failed for identifier: {sanitize(username)} (inactive account)",
+                extra={"identifier": sanitize(username), "user_id": sanitize(user.id), "reason": "inactive_account"},
             )
             raise AuthorizationError(
                 message="User account is inactive", context={"identifier": username, "user_id": user.id}
@@ -224,8 +225,8 @@ class AuthService:
         )
 
         self._logger.info(
-            f"User authenticated successfully: {username}",
-            extra={"username": username, "user_id": user.id, "role": user.role},
+            f"User authenticated successfully: {sanitize(username)}",
+            extra={"username": sanitize(username), "user_id": sanitize(user.id), "role": sanitize(user.role)},
         )
 
         return AuthResult(
@@ -496,8 +497,8 @@ class AuthService:
         new_key = await self._repo.create_api_key(session, new_key)
 
         self._logger.info(
-            f"API key created: {name} (user: {user_id})",
-            extra={"user_id": user_id, "key_name": name, "key_prefix": key_prefix},
+            f"API key created: {sanitize(name)} (user: {sanitize(user_id)})",
+            extra={"user_id": sanitize(user_id), "key_name": sanitize(name), "key_prefix": sanitize(key_prefix)},
         )
 
         return ApiKeyCreateResult(
@@ -569,7 +570,7 @@ class AuthService:
 
         self._logger.info(
             f"API key revoked: {api_key.name} (user: {user_id})",
-            extra={"user_id": user_id, "key_id": key_id, "key_name": api_key.name},
+            extra={"user_id": sanitize(user_id), "key_id": sanitize(key_id), "key_name": sanitize(api_key.name)},
         )
 
         return tenant_key
@@ -751,8 +752,14 @@ class AuthService:
         await session.refresh(new_user)
 
         self._logger.info(
-            f"User registered: {username} (role: {role}, org_role: {org_role}, by admin: {requesting_admin_id})",
-            extra={"username": username, "role": role, "org_role": org_role, "admin_id": requesting_admin_id},
+            f"User registered: {sanitize(username)} (role: {sanitize(role)}, org_role: {sanitize(org_role)}, "
+            f"by admin: {sanitize(requesting_admin_id)})",
+            extra={
+                "username": sanitize(username),
+                "role": sanitize(role),
+                "org_role": sanitize(org_role),
+                "admin_id": sanitize(requesting_admin_id),
+            },
         )
 
         return UserInfo(
@@ -1004,7 +1011,8 @@ class AuthService:
         await session.commit()
 
         self._logger.info(
-            f"First administrator account created: {username}", extra={"username": username, "tenant_key": tenant_key}
+            f"First administrator account created: {sanitize(username)}",
+            extra={"username": sanitize(username), "tenant_key": sanitize(tenant_key)},
         )
 
         return AuthResult(
@@ -1060,7 +1068,8 @@ class AuthService:
 
         # No commit here - parent method handles it
         self._logger.info(
-            f"Organization created: {org_name}", extra={"tenant_key": tenant_key, "org_id": org.id, "slug": slug}
+            f"Organization created: {sanitize(org_name)}",
+            extra={"tenant_key": sanitize(tenant_key), "org_id": sanitize(org.id), "slug": sanitize(slug)},
         )
 
         return str(org.id)

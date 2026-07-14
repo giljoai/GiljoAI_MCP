@@ -91,6 +91,10 @@ class APIState:
         self.license: Any = None  # LicenseResult — set during lifespan startup
         self.pending_migration: bool = False
         self.update_available: dict | None = None  # {"commits_behind": int, "message": str}
+        # SEC-9168: full text of the last /health check failure per subsystem
+        # ("database"/"redis"). Anonymous /health returns only a generic
+        # marker; this detail is surfaced on the authenticated /api/system/status.
+        self.health_detail: dict[str, str] = {}
         self.update_checker_task: asyncio.Task | None = None
         # INF-3009c: SaaS cache-backend boot mode. "unset" = REDIS_URL not
         # configured, CE in-process backend in use (default, also CE's only value).

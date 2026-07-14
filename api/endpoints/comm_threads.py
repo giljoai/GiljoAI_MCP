@@ -29,6 +29,7 @@ from giljo_mcp.auth.dependencies import get_current_active_user
 from giljo_mcp.models import User
 from giljo_mcp.services.comm_thread_service import CommThreadService
 from giljo_mcp.services.message_routing_service import MessageRoutingService
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -285,7 +286,7 @@ async def post_to_thread(
             logger.warning(
                 "REST post_to_thread reactivation auto-block (D5) failed for message %s -> %s (non-fatal)",
                 result.get("message_id", ""),
-                body.to_participant,
+                sanitize(body.to_participant),
                 exc_info=True,
             )
     from api.app_state import state

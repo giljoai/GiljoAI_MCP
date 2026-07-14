@@ -31,6 +31,7 @@ from giljo_mcp.models import Product
 from giljo_mcp.repositories.product_repository import ProductRepository
 from giljo_mcp.schemas.service_responses import DeleteResult, PurgeResult
 from giljo_mcp.services._session_helpers import tenant_scoped_session
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -175,7 +176,9 @@ class ProductLifecycleService:
                 # expire_on_commit=False so the manually-set is_active/updated_at
                 # columns stay readable on the detached product. Dropping the
                 # refresh removes a redundant SELECT + 4 relation selectin loads.
-                self._logger.info(f"Activated product {product_id} (deactivated {len(products_to_deactivate)} others)")
+                self._logger.info(
+                    f"Activated product {sanitize(product_id)} (deactivated {len(products_to_deactivate)} others)"
+                )
 
                 # Auto-assign all active tenant templates to the newly activated product.
                 # This ensures every product starts with the full agent roster.
@@ -194,13 +197,13 @@ class ProductLifecycleService:
                         self._logger.info(
                             "Auto-assigned %d templates to product %s on activation",
                             len(new_assignments),
-                            product_id,
+                            sanitize(product_id),
                         )
                 except (OSError, RuntimeError, ValueError, TypeError, AttributeError) as exc:
                     # Non-fatal: product activation succeeded, assignment is best-effort
                     self._logger.warning(
                         "Failed to auto-assign templates on product activation (product_id=%s): %s",
-                        product_id,
+                        sanitize(product_id),
                         exc,
                     )
 
@@ -250,7 +253,7 @@ class ProductLifecycleService:
                 await session.commit()
                 await self._repo.refresh(session, product)
 
-                self._logger.info(f"Deactivated product {product_id} (cascaded to projects and jobs)")
+                self._logger.info(f"Deactivated product {sanitize(product_id)} (cascaded to projects and jobs)")
 
                 return product
 

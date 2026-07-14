@@ -28,6 +28,7 @@ from giljo_mcp.exceptions import (
 )
 from giljo_mcp.models import Task
 from giljo_mcp.schemas.service_responses import TaskUpdateResult
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 # Field allowlist for task updates — only these fields may be set via
@@ -276,7 +277,7 @@ class _TaskMutationMixin:
         if project:
             self._logger.info(f"Logged task {task_id} in project {project.id}")
         else:
-            self._logger.info(f"Logged task {task_id} for product {product_id}")
+            self._logger.info(f"Logged task {sanitize(task_id)} for product {sanitize(product_id)}")
 
         return task_id
 
@@ -493,7 +494,9 @@ class _TaskMutationMixin:
                 setattr(task, key, value)
                 updated_fields.append(key)
             else:
-                self._logger.warning(f"Rejected update to disallowed field '{key}' on task {task_id}")
+                self._logger.warning(
+                    f"Rejected update to disallowed field '{sanitize(key)}' on task {sanitize(task_id)}"
+                )
 
         # Auto-update timestamps based on status changes (Handover 0324)
         if "status" in kwargs:
@@ -503,12 +506,12 @@ class _TaskMutationMixin:
             if new_status == "in_progress" and not task.started_at:
                 task.started_at = now
                 updated_fields.append("started_at")
-                self._logger.debug(f"Auto-set started_at for task {task_id}")
+                self._logger.debug(f"Auto-set started_at for task {sanitize(task_id)}")
 
             elif new_status in ("completed", "cancelled") and not task.completed_at:
                 task.completed_at = now
                 updated_fields.append("completed_at")
-                self._logger.debug(f"Auto-set completed_at for task {task_id}")
+                self._logger.debug(f"Auto-set completed_at for task {sanitize(task_id)}")
 
         # BE-6086: the repository now flushes; this entry point is the session
         # owner, so it commits EXPLICITLY here (Shape B) -- the task:updated
@@ -516,7 +519,7 @@ class _TaskMutationMixin:
         # before, or a failed commit would leave phantom dashboard state.
         await session.commit()
 
-        self._logger.info(f"Updated task {task_id}: {updated_fields}")
+        self._logger.info(f"Updated task {sanitize(task_id)}: {sanitize(updated_fields)}")
 
         # FE-5046: broadcast WS event so subscribed clients (FE task list)
         # see the change without a refresh. Non-critical: failures are logged
@@ -617,7 +620,7 @@ class _TaskMutationMixin:
         task.deleted_at = datetime.now(UTC)
         await self._repo.flush(session)
 
-        self._logger.info(f"Soft-deleted task {task_id} by user {user_id}")
+        self._logger.info(f"Soft-deleted task {sanitize(task_id)} by user {sanitize(user_id)}")
 
     async def restore_task(self, task_id: str) -> Task:
         """Restore a soft-deleted (trashed) task.
@@ -675,7 +678,7 @@ class _TaskMutationMixin:
 
         task.deleted_at = None
         await self._repo.flush_and_refresh(session, task)
-        self._logger.info(f"Restored task {task_id}")
+        self._logger.info(f"Restored task {sanitize(task_id)}")
         return task
 
     async def purge_expired_deleted_tasks(self, tenant_key: str | None = None) -> int:

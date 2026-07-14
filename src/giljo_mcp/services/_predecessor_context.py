@@ -56,6 +56,7 @@ from giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
 # here so existing importers keep resolving the name).
 from giljo_mcp.platform_registry import SUBAGENT_EXECUTION_MODES
 from giljo_mcp.repositories.agent_completion_repository import AgentCompletionRepository
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 # AgentJob.status values on the predecessor that indicate explicit failure /
@@ -238,9 +239,9 @@ async def build_predecessor_context(
         logger.info(
             "[PREDECESSOR_CONTEXT] Skipped: subagent mode, orchestrator splices inline",
             extra={
-                "predecessor_job_id": predecessor_job_id,
-                "execution_mode": execution_mode,
-                "successor_display_name": agent_display_name,
+                "predecessor_job_id": sanitize(predecessor_job_id),
+                "execution_mode": sanitize(execution_mode),
+                "successor_display_name": sanitize(agent_display_name),
             },
         )
         return mission
@@ -288,12 +289,12 @@ async def build_predecessor_context(
     logger.info(
         "[PREDECESSOR_CONTEXT] Injected predecessor preamble",
         extra={
-            "predecessor_job_id": predecessor_job_id,
-            "execution_mode": execution_mode,
+            "predecessor_job_id": sanitize(predecessor_job_id),
+            "execution_mode": sanitize(execution_mode),
             "preamble_kind": "replacement" if is_replacement else "chain",
             "isolated_pr_handoff": bool(base_branch_block),
-            "successor_display_name": agent_display_name,
-            "predecessor_display_name": pred_display_name,
+            "successor_display_name": sanitize(agent_display_name),
+            "predecessor_display_name": sanitize(pred_display_name),
         },
     )
     return mission

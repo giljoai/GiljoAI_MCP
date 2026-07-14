@@ -536,12 +536,12 @@ class ThinClientPromptGenerator(ThinClientLifecycleMixin):
                 await self.db.commit()
 
             logger.info(
-                f"[ThinPromptGenerator] Reusing existing orchestrator {orchestrator_id} "
-                f"for project {project_id} - metadata updated"
+                f"[ThinPromptGenerator] Reusing existing orchestrator {sanitize(orchestrator_id)} "
+                f"for project {sanitize(project_id)} - metadata updated"
             )
         else:
             logger.info(
-                f"[ThinPromptGenerator] Creating NEW orchestrator for project {project_id} "
+                f"[ThinPromptGenerator] Creating NEW orchestrator for project {sanitize(project_id)} "
                 f"(no active orchestrator found)"
             )
 

@@ -81,15 +81,15 @@ async def trigger_consolidation(product_id: str, tenant_key: str, db_session: As
 
         # 0731d: ConsolidatedVisionService returns ConsolidationResult typed model
         logger.info(
-            f"vision_documents_consolidated: product_id={product_id}, "
+            f"vision_documents_consolidated: product_id={sanitize(product_id)}, "
             f"light_tokens={result.light.tokens}, medium_tokens={result.medium.tokens}"
         )
     except ValidationError as e:
         # Not an error - "no_changes" is expected behavior
-        logger.debug(f"consolidation_skipped: product_id={product_id}, reason={e.error_code}")
+        logger.debug(f"consolidation_skipped: product_id={sanitize(product_id)}, reason={sanitize(e.error_code)}")
     except (SQLAlchemyError, ValueError, KeyError, ResourceNotFoundError):
         # Don't fail the main operation if consolidation fails
-        logger.exception(f"consolidation_failed: product_id={product_id}")
+        logger.exception(f"consolidation_failed: product_id={sanitize(product_id)}")
 
 
 async def get_db():

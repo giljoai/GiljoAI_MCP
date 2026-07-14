@@ -26,6 +26,7 @@ from giljo_mcp.exceptions import (
 )
 from giljo_mcp.models import Task
 from giljo_mcp.schemas.service_responses import ConversionResult
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 class _TaskLifecycleMixin:
@@ -66,7 +67,7 @@ class _TaskLifecycleMixin:
             # Re-raise our custom exceptions without wrapping
             raise
         except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
-            self._logger.exception("Failed to change task {task_id} status")
+            self._logger.exception(f"Failed to change task {sanitize(task_id)} status")
             raise BaseGiljoError(message=str(e), context={"operation": "change_status", "task_id": task_id}) from e
 
     async def _change_status_impl(self, session: AsyncSession, task_id: str, new_status: str) -> Task:
@@ -104,7 +105,7 @@ class _TaskLifecycleMixin:
 
         await self._repo.flush_and_refresh(session, task)
 
-        self._logger.info(f"Changed task {task_id} status to {new_status}")
+        self._logger.info(f"Changed task {sanitize(task_id)} status to {sanitize(new_status)}")
 
         return task
 

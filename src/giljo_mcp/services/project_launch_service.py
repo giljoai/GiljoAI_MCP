@@ -42,6 +42,7 @@ from giljo_mcp.schemas.service_responses import ProjectLaunchResult
 from giljo_mcp.services._session_helpers import optional_tenant_session
 from giljo_mcp.services.project_helpers import _build_ws_project_data
 from giljo_mcp.tenant import TenantManager
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -358,7 +359,9 @@ class ProjectLaunchService:
 
         await session.commit()
 
-        self._logger.info(f"Launched project {project_id} with orchestrator job {orchestrator_job_id}")
+        self._logger.info(
+            f"Launched project {sanitize(project_id)} with orchestrator job {sanitize(orchestrator_job_id)}"
+        )
 
         # Broadcast WebSocket event
         if websocket_manager:

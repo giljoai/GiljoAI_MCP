@@ -26,6 +26,7 @@ from giljo_mcp.schemas.service_responses import ProjectData
 from giljo_mcp.services._session_helpers import optional_tenant_session
 from giljo_mcp.services.project_helpers import _build_ws_project_data, advance_chain_member_to_implementing
 from giljo_mcp.tenant import TenantManager
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -520,7 +521,7 @@ class ProjectStagingService:
 
             self._logger.info(
                 "[LAUNCH_IMPL] Project %s implementation launched (already_launched=%s) by %s",
-                project_id,
+                sanitize(project_id),
                 already_launched,
                 launched_by or "unknown",
             )

@@ -62,6 +62,7 @@ from giljo_mcp.services._session_helpers import optional_tenant_session
 from giljo_mcp.system_roles import SYSTEM_MANAGED_ROLES
 from giljo_mcp.template_validation import get_role_color, slugify_name
 from giljo_mcp.tenant import TenantManager
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -438,7 +439,7 @@ class TemplateService:
             await session.commit()
             await session.refresh(template)
 
-        self._logger.info("Updated template %s", template_id)
+        self._logger.info("Updated template %s", sanitize(template_id))
 
         return template, list(update_data.keys())
 
@@ -719,12 +720,12 @@ class TemplateService:
                 template.deleted_at = datetime.now(UTC)
                 await self._repo.flush(_session)
 
-            self._logger.info("Soft-deleted template %s (tenant %s)", template_id, tenant_key)
+            self._logger.info("Soft-deleted template %s (tenant %s)", sanitize(template_id), tenant_key)
             return True
         except BaseGiljoError:
             raise
         except Exception as e:
-            self._logger.exception("Failed to soft-delete template %s", template_id)
+            self._logger.exception("Failed to soft-delete template %s", sanitize(template_id))
             raise BaseGiljoError(
                 message=str(e),
                 context={"operation": "delete_template", "template_id": template_id},
@@ -783,12 +784,12 @@ class TemplateService:
                 template.deleted_at = None
                 await self._repo.flush_and_refresh(session, template)
 
-            self._logger.info("Restored template %s (tenant %s)", template_id, tenant_key)
+            self._logger.info("Restored template %s (tenant %s)", sanitize(template_id), tenant_key)
             return template
         except (BaseGiljoError, ResourceNotFoundError, ValidationError):
             raise
         except Exception as e:
-            self._logger.exception("Failed to restore template %s", template_id)
+            self._logger.exception("Failed to restore template %s", sanitize(template_id))
             raise BaseGiljoError(
                 message=str(e),
                 context={"operation": "restore_template", "template_id": template_id},

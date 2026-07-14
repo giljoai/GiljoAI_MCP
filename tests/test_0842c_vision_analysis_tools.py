@@ -768,6 +768,117 @@ async def test_product_name_force_overwrites(
     assert product_a.name == "Forced Name"
 
 
+# ---------------------------------------------------------------------------
+# BE-9167: project_path (the user's local codebase folder) is filled by the
+# vision-analysis agent, and is user-owned exactly like product_name.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_project_path_written_when_blank(
+    db_session: AsyncSession,
+    db_manager,
+    tenant_a: str,
+    product_a: Product,
+):
+    """project_path writes to the products column when currently empty."""
+    from giljo_mcp.tools.vision_analysis import update_product_fields
+
+    result = await update_product_fields(
+        product_id=product_a.id,
+        tenant_key=tenant_a,
+        _test_session=db_session,
+        project_path="/home/user/acme-repo",
+    )
+
+    assert "project_path" in result["fields"]
+    await db_session.refresh(product_a)
+    assert product_a.project_path == "/home/user/acme-repo"
+
+
+@pytest.mark.asyncio
+async def test_project_path_skipped_when_already_set(
+    db_session: AsyncSession,
+    db_manager,
+    tenant_a: str,
+):
+    """project_path is user-owned: skipped with a fields_skipped entry when already set."""
+    from giljo_mcp.tools.vision_analysis import update_product_fields
+
+    product = Product(
+        id=str(uuid.uuid4()),
+        name="Has Path",
+        tenant_key=tenant_a,
+        is_active=True,
+        product_memory={},
+        project_path="/existing/codebase",
+    )
+    db_session.add(product)
+    await db_session.flush()
+
+    result = await update_product_fields(
+        product_id=product.id,
+        tenant_key=tenant_a,
+        _test_session=db_session,
+        project_path="/agent/guessed/path",
+    )
+
+    assert "project_path" not in result["fields"]
+    skipped = {s["field"]: s for s in result["fields_skipped"]}
+    assert "project_path" in skipped
+    assert skipped["project_path"]["reason"] == "codebase folder is user-owned and already set"
+    assert "force=True" in skipped["project_path"]["hint"]
+
+    await db_session.refresh(product)
+    assert product.project_path == "/existing/codebase"
+
+
+@pytest.mark.asyncio
+async def test_project_path_force_overwrites(
+    db_session: AsyncSession,
+    db_manager,
+    tenant_a: str,
+):
+    """force=True overwrites an existing user-owned project_path."""
+    from giljo_mcp.tools.vision_analysis import update_product_fields
+
+    product = Product(
+        id=str(uuid.uuid4()),
+        name="Has Path",
+        tenant_key=tenant_a,
+        is_active=True,
+        product_memory={},
+        project_path="/old/path",
+    )
+    db_session.add(product)
+    await db_session.flush()
+
+    result = await update_product_fields(
+        product_id=product.id,
+        tenant_key=tenant_a,
+        _test_session=db_session,
+        force=True,
+        project_path="/forced/path",
+    )
+
+    assert "project_path" in result["fields"]
+    await db_session.refresh(product)
+    assert product.project_path == "/forced/path"
+
+
+def test_vision_extraction_prompt_has_project_path_omit_guard():
+    """VISION_EXTRACTION_PROMPT teaches project_path as a top-level param with the
+    omit-if-no-filesystem-access guard (BE-9167)."""
+    from giljo_mcp.tools.vision_analysis import VISION_EXTRACTION_PROMPT
+
+    assert "project_path" in VISION_EXTRACTION_PROMPT
+    # Named as a top-level param in the example call shape.
+    assert 'project_path="..."' in VISION_EXTRACTION_PROMPT
+    # The omit-guard wording is present.
+    assert "OMIT it" in VISION_EXTRACTION_PROMPT
+    assert "never invent or guess a path" in VISION_EXTRACTION_PROMPT
+
+
 def test_validate_vision_summaries_bound():
     """Bound raised to 500K (BE-9164): 60K accepted, 500_001 rejected."""
     from giljo_mcp.schemas.jsonb_validators import validate_vision_summaries

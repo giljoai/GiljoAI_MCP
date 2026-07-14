@@ -38,6 +38,7 @@ from giljo_mcp.services.oauth_service import (
     OAUTH_GRANTABLE_SCOPES,
     OAuthService,
 )
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -282,7 +283,7 @@ async def authorize(
     logger.info(
         "Authorization code issued for user_id=%s client_id=%s",
         current_user.id,
-        body.client_id,
+        sanitize(body.client_id),
     )
 
     return {"redirect_uri": redirect_target}

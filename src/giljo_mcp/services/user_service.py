@@ -36,6 +36,7 @@ from giljo_mcp.repositories.user_repository import UserRepository
 from giljo_mcp.services._session_helpers import tenant_context_session
 from giljo_mcp.services.session_eviction import close_live_user_sockets, evict_user_tokens
 from giljo_mcp.services.user_auth_service import UserAuthService
+from giljo_mcp.utils.log_sanitizer import sanitize
 from giljo_mcp.utils.password_helper import async_hash_password
 
 
@@ -160,7 +161,7 @@ class UserService:
         if not user:
             raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
 
-        self._logger.info("Fetched user", extra={"user_id": user_id})
+        self._logger.info("Fetched user", extra={"user_id": sanitize(user_id)})
 
         return user
 
@@ -375,13 +376,14 @@ class UserService:
         if updates.get("password") or deactivating:
             revoked = await evict_user_tokens(session, user)
             self._logger.info(
-                f"Sessions evicted for user {user_id} (epoch->{user.token_revocation_epoch}, {revoked} revoked)"
+                f"Sessions evicted for user {sanitize(user_id)} "
+                f"(epoch->{user.token_revocation_epoch}, {revoked} revoked)"
             )
 
         await session.commit()
         await session.refresh(user)
 
-        self._logger.info(f"Updated user {user_id}")
+        self._logger.info(f"Updated user {sanitize(user_id)}")
 
         # TSK-9006: close the deactivated account's live sockets (post-commit).
         if deactivating:
@@ -456,7 +458,7 @@ class UserService:
         # TSK-9006: soft delete IS deactivation — evict sessions in the same txn.
         await evict_user_tokens(session, user)
 
-        self._logger.info(f"Soft deleted user {user_id}")
+        self._logger.info(f"Soft deleted user {sanitize(user_id)}")
 
     # ============================================================================
     # Configuration Management
@@ -545,7 +547,7 @@ class UserService:
                 user.recovery_pin_hash = await async_hash_password(recovery_pin)
                 await session.commit()
 
-                self._logger.info("Recovery PIN updated for user %s", user_id)
+                self._logger.info("Recovery PIN updated for user %s", sanitize(user_id))
 
         except (ResourceNotFoundError, ValidationError, BaseGiljoError):
             raise

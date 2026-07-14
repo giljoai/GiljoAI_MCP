@@ -258,6 +258,10 @@ async def get_vision_doc(
         "(testing_strategy, testing_frameworks, test_coverage_target). "
         "Pass vision_summaries=[{doc_id, light, medium}] for per-document summaries and "
         "consolidated_vision={light, medium} for the product-level aggregate. "
+        "project_path is the absolute path of the user's local codebase folder you are "
+        "operating from (your working directory); OMIT it if you have no filesystem access "
+        "inside the user's repository — never guess. Like product_name it is user-owned and "
+        "skipped when already set. "
         "target_platforms (inside tech_stack) must be from: windows, linux, macos, "
         "android, ios, web, all."
     ),
@@ -267,6 +271,7 @@ async def update_product_context(
     product_name: Annotated[str, _PRODUCT_LABEL] = "",
     product_description: Annotated[str, _PRODUCT_PROSE] = "",
     core_features: Annotated[str, _PRODUCT_PROSE] = "",
+    project_path: Annotated[str, _PRODUCT_PROSE] = "",
     tech_stack: Annotated[
         _TechStackContext | None,
         Field(
@@ -308,6 +313,7 @@ async def update_product_context(
                 ("product_name", product_name),
                 ("product_description", product_description),
                 ("core_features", core_features),
+                ("project_path", project_path),
             )
             if value
         }

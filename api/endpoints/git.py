@@ -102,7 +102,7 @@ async def toggle_git_integration(
                 sanitize(tenant_key),
             )
 
-    logger.info("Git integration toggled to %s by user %s", request.enabled, sanitize(current_user.username))
+    logger.info("Git integration toggled to %s by user %s", sanitize(request.enabled), sanitize(current_user.username))
 
     # Emit WebSocket event for real-time UI updates
     try:

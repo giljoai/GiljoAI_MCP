@@ -2,6 +2,25 @@
 
 All notable changes to this project are recorded here. This changelog follows the [Keep a Changelog](https://keepachangelog.com/) convention — entries are grouped by change type (Added / Changed / Fixed / Removed / Security). Internal project IDs appear in parentheses for traceability. Versions follow `MAJOR.MINOR.PATCH[.HOTFIX]` and tags live on the public repository (`giljoai/GiljoAI_MCP`).
 
+## [2.0.0.2] — 2026-07-14
+
+### Security
+
+- **Log-forging protection completed across the backend.** Every place where user- or agent-supplied text reaches a log line now strips newline and control characters, so nobody can forge fake log entries. This finishes a convention already present in about half the codebase and closes the CodeQL log-injection findings from the public security audit. (SEC-9168)
+- **The public health endpoint no longer reveals internal error details.** During a database or cache outage, anonymous callers of `/health` now see a generic status; full diagnostic detail moved to the server logs and the authenticated system-status endpoint. (SEC-9168)
+- **Startup lock file is now readable by its owner only**, preventing other local users on a shared machine from interfering with startup coordination. (SEC-9168)
+
+### Fixed
+
+- **Vision-document import tuned for accuracy.** Rewritten extraction prompting and roundtrip fixes make importing a vision document produce cleaner, more faithful results. (BE-9164)
+- **Vision-analysis wizard no longer gets stuck on "Analyzing".** A polling fallback and a hardened completion path keep the wizard moving even if a realtime update is missed. (FE-9166)
+- **Vision analysis now fills in the Codebase Folder automatically** when it can determine the project path, with a user-visible way to skip it. (BE-9167)
+- **Quieter dev server output.** Dropped a harmless "config.yaml not found" log line that appeared on every normal start.
+
+### Removed
+
+- **Operator-only dev tools no longer ship in Community Edition.** The `dev_tools/` utilities (internal control panel and reset scripts) were operator tooling, not product features. (SEC-9168)
+
 ## [2.0.0.1] — 2026-07-13
 
 ### Fixed

@@ -67,9 +67,17 @@ export const SYSTEM_EVENT_ROUTES = {
       const productStore = useProductStore()
       const notificationStore = useNotificationStore()
 
+      // FE-9166: the store refresh must never swallow the notification or the
+      // window-event dispatch below — if a fetch rejects, the wizard's
+      // 'vision-analysis-complete' listener would never fire and it would stay
+      // stuck on "Analyzing". Warn and press on.
       if (payload?.product_id) {
-        await productStore.fetchProducts()
-        await productStore.fetchProductById(payload.product_id)
+        try {
+          await productStore.fetchProducts()
+          await productStore.fetchProductById(payload.product_id)
+        } catch (err) {
+          console.warn('[systemEventRoutes] vision:analysis_complete store refresh failed:', err)
+        }
       }
 
       notificationStore.addNotification({

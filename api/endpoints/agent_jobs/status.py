@@ -130,13 +130,13 @@ async def list_jobs(
         GET /api/agent-jobs/?project_id=abc123&status=active&limit=50
     """
     logger.debug(
-        "User %s listing jobs (project=%s, status=%s, type=%s, limit=%d, offset=%d)",
+        "User %s listing jobs (project=%s, status=%s, type=%s, limit=%s, offset=%s)",
         sanitize(current_user.username),
         sanitize(project_id) if project_id else None,
         sanitize(status) if status else None,
         sanitize(agent_display_name) if agent_display_name else None,
-        limit,
-        offset,
+        sanitize(limit),
+        sanitize(offset),
     )
 
     # Service raises OrchestrationError on failure, caught by global exception handler
@@ -151,11 +151,11 @@ async def list_jobs(
 
     # 0731d: OrchestrationService returns JobListResult typed model
     logger.info(
-        "Found %d jobs for user %s (total=%d, offset=%d)",
+        "Found %d jobs for user %s (total=%d, offset=%s)",
         len(result.jobs),
         sanitize(current_user.username),
         result.total,
-        offset,
+        sanitize(offset),
     )
 
     # Convert job dicts to JobResponse models

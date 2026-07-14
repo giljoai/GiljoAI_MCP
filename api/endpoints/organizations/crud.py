@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from giljo_mcp.models.auth import User
 from giljo_mcp.services.org_service import OrgService
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 from .models import (
     OrganizationCreate,
@@ -142,9 +143,9 @@ async def get_organization(
     logger.debug(
         "Organization access check",
         extra={
-            "org_id": org_id,
-            "user_id": current_user.id,
-            "user_org_id": str(current_user.org_id),
+            "org_id": sanitize(org_id),
+            "user_id": sanitize(current_user.id),
+            "user_org_id": sanitize(str(current_user.org_id)),
             "org_id_match": str(current_user.org_id) == str(org_id),
         },
     )
@@ -190,7 +191,10 @@ async def update_organization(
 
     org = await org_service.update_organization(org_id=org_id, name=org_data.name, settings=org_data.settings)
 
-    logger.info("Organization updated via API", extra={"org_id": org_id, "updated_by": current_user.id})
+    logger.info(
+        "Organization updated via API",
+        extra={"org_id": sanitize(org_id), "updated_by": sanitize(current_user.id)},
+    )
 
     return _serialize_organization(org)
 
@@ -222,4 +226,7 @@ async def delete_organization(
 
     await org_service.delete_organization(org_id)
 
-    logger.info("Organization deleted via API", extra={"org_id": org_id, "deleted_by": current_user.id})
+    logger.info(
+        "Organization deleted via API",
+        extra={"org_id": sanitize(org_id), "deleted_by": sanitize(current_user.id)},
+    )

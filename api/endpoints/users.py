@@ -578,7 +578,9 @@ async def change_user_role(
         ResourceNotFoundError: User not found (404)
         BaseGiljoError: Database operation failed (500)
     """
-    logger.debug(f"Admin {current_user.username} changing role for user {user_id} to {role_data.role}")
+    logger.debug(
+        f"Admin {sanitize(current_user.username)} changing role for user {sanitize(user_id)} to {sanitize(role_data.role)}"
+    )
 
     # Prevent self-demotion (admin cannot change their own role)
     if str(user_id) == str(current_user.id):
@@ -630,7 +632,7 @@ async def force_logout_user(
         ResourceNotFoundError: User not found in this tenant (404).
         BaseGiljoError: Database operation failed (500).
     """
-    logger.info(f"Admin {current_user.username} force-logging-out user {user_id}")
+    logger.info(f"Admin {sanitize(current_user.username)} force-logging-out user {sanitize(user_id)}")
 
     user = await user_service.auth.force_logout(str(user_id))
 
@@ -673,11 +675,13 @@ async def change_password(
         ResourceNotFoundError: User not found (404)
         BaseGiljoError: Database operation failed (500)
     """
-    logger.debug(f"User {current_user.username} changing password for user {user_id}")
+    logger.debug(f"User {sanitize(current_user.username)} changing password for user {sanitize(user_id)}")
 
     # Authorization: admin can change any password, non-admin can only change own
     if current_user.role != "admin" and str(user_id) != str(current_user.id):
-        logger.warning(f"Non-admin {current_user.username} tried to change password for user {user_id}")
+        logger.warning(
+            f"Non-admin {sanitize(current_user.username)} tried to change password for user {sanitize(user_id)}"
+        )
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot change other users' passwords")
 
     # Determine if admin is bypassing old password check
@@ -703,7 +707,7 @@ async def change_password(
 
             await revoke_dashboard_access_jwt(db, token=access_token)
 
-    logger.info(f"Password changed for user: {user_id}")
+    logger.info(f"Password changed for user: {sanitize(user_id)}")
     return PasswordChangeResponse(message="Password changed successfully")
 
 
@@ -786,11 +790,11 @@ async def update_field_priority_config(
         BaseGiljoError: Database operation failed (500)
     """
     logger.debug(
-        f"User {current_user.username} updating field toggle config to v{config.version}",
+        f"User {sanitize(current_user.username)} updating field toggle config to v{sanitize(config.version)}",
         extra={
-            "user_id": str(current_user.id),
-            "tenant_key": current_user.tenant_key,
-            "config_version": config.version,
+            "user_id": sanitize(str(current_user.id)),
+            "tenant_key": sanitize(current_user.tenant_key),
+            "config_version": sanitize(config.version),
         },
     )
 
@@ -814,11 +818,11 @@ async def update_field_priority_config(
     await user_service.update_field_priority_config(str(current_user.id), config.model_dump())
 
     logger.info(
-        f"Updated field toggle config for user: {current_user.username}",
+        f"Updated field toggle config for user: {sanitize(current_user.username)}",
         extra={
-            "user_id": str(current_user.id),
-            "tenant_key": current_user.tenant_key,
-            "toggles": config.priorities,
+            "user_id": sanitize(str(current_user.id)),
+            "tenant_key": sanitize(current_user.tenant_key),
+            "toggles": sanitize(config.priorities),
         },
     )
 

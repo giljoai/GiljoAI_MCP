@@ -45,6 +45,7 @@ from giljo_mcp.services._session_helpers import tenant_context_session
 from giljo_mcp.services.product_field_map import assemble_update_kwargs
 from giljo_mcp.services.product_lifecycle_service import ProductLifecycleService
 from giljo_mcp.services.product_memory_service import ProductMemoryService
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -427,7 +428,7 @@ class ProductService:
                 await session.commit()
                 await self._repo.refresh(session, product)
 
-                self._logger.info(f"Updated product {product_id}")
+                self._logger.info(f"Updated product {sanitize(product_id)}")
 
                 # Handover 0139a: Emit WebSocket event if product_memory was updated
                 # Handover 0390b: Build product_memory from table for WebSocket event

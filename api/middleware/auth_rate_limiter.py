@@ -49,6 +49,7 @@ from giljo_mcp.services.cache_backends import (
     AUTH_RATE_LIMIT_BACKEND_NAME,
     get_cache_backend,
 )
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 from ._proxy_aware_ip import TRUSTED_PROXIES_ENV, ProxyAwareIpResolver
 from .auth_rate_limits import is_exempt_ip, limit_for
@@ -165,7 +166,8 @@ class RateLimiter:
 
         endpoint = request.url.path if hasattr(request.url, "path") else "unknown"
         logger.warning(
-            f"Rate limit exceeded - IP: {ip}, Endpoint: {endpoint}, Limit: {limit}/{window}s, Count: {count}"
+            f"Rate limit exceeded - IP: {sanitize(ip)}, Endpoint: {sanitize(endpoint)}, "
+            f"Limit: {limit}/{window}s, Count: {count}"
         )
 
         now = time.time()

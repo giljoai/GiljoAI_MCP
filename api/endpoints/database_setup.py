@@ -23,6 +23,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from giljo_mcp._config_io import get_config_path, read_config, write_config
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 router = APIRouter()
@@ -200,7 +201,7 @@ async def setup_database(request: DatabaseSetupRequest) -> dict:
         db_installer = DatabaseInstaller(settings)
 
         # Run database setup
-        logger.info(f"Setting up database {request.database_name}...")
+        logger.info(f"Setting up database {sanitize(request.database_name)}...")
         setup_result = db_installer.setup()
 
         if not setup_result.get("success"):

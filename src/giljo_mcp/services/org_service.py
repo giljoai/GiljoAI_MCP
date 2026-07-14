@@ -40,6 +40,7 @@ from giljo_mcp.exceptions import (
 from giljo_mcp.models.organizations import Organization, OrgMembership
 from giljo_mcp.repositories.org_repository import OrgRepository
 from giljo_mcp.schemas.jsonb_validators import OrganizationSettings
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 # Timezone format guard applied at the service boundary. Matches IANA-style
@@ -112,7 +113,10 @@ class OrgService:
             await self.session.commit()
             await self._repo.refresh_with_members(self.session, org)
 
-            logger.info("Organization created", extra={"org_id": org.id, "slug": slug, "owner_id": owner_id})
+            logger.info(
+                "Organization created",
+                extra={"org_id": sanitize(org.id), "slug": sanitize(slug), "owner_id": sanitize(owner_id)},
+            )
 
             # Emit WebSocket event (if available)
             if self._websocket_manager:
@@ -238,7 +242,7 @@ class OrgService:
 
             await self.session.commit()
 
-            logger.info("Organization updated", extra={"org_id": org_id})
+            logger.info("Organization updated", extra={"org_id": sanitize(org_id)})
 
             # Re-query with members to ensure relationships are loaded
             return await self.get_organization(org_id)
@@ -389,7 +393,7 @@ class OrgService:
 
             await self.session.commit()
 
-            logger.info("Organization deleted (soft)", extra={"org_id": org_id})
+            logger.info("Organization deleted (soft)", extra={"org_id": sanitize(org_id)})
 
         except ResourceNotFoundError:
             raise
@@ -449,7 +453,12 @@ class OrgService:
 
             logger.info(
                 "Member invited to organization",
-                extra={"org_id": org_id, "user_id": user_id, "role": role, "invited_by": invited_by},
+                extra={
+                    "org_id": sanitize(org_id),
+                    "user_id": sanitize(user_id),
+                    "role": sanitize(role),
+                    "invited_by": sanitize(invited_by),
+                },
             )
 
             # Emit WebSocket event (if available)
@@ -500,7 +509,10 @@ class OrgService:
             await self._repo.delete_membership(self.session, membership)
             await self.session.commit()
 
-            logger.info("Member removed from organization", extra={"org_id": org_id, "user_id": user_id})
+            logger.info(
+                "Member removed from organization",
+                extra={"org_id": sanitize(org_id), "user_id": sanitize(user_id)},
+            )
 
         except (ResourceNotFoundError, AuthorizationError):
             await self._repo.rollback(self.session)
@@ -553,7 +565,10 @@ class OrgService:
             membership.role = new_role
             await self.session.commit()
 
-            logger.info("Member role changed", extra={"org_id": org_id, "user_id": user_id, "new_role": new_role})
+            logger.info(
+                "Member role changed",
+                extra={"org_id": sanitize(org_id), "user_id": sanitize(user_id), "new_role": sanitize(new_role)},
+            )
 
             return membership
 
@@ -602,7 +617,14 @@ class OrgService:
 
             await self.session.commit()
 
-            logger.info("Ownership transferred", extra={"org_id": org_id, "from": current_owner_id, "to": new_owner_id})
+            logger.info(
+                "Ownership transferred",
+                extra={
+                    "org_id": sanitize(org_id),
+                    "from": sanitize(current_owner_id),
+                    "to": sanitize(new_owner_id),
+                },
+            )
 
         except (AuthorizationError, ResourceNotFoundError):
             await self._repo.rollback(self.session)

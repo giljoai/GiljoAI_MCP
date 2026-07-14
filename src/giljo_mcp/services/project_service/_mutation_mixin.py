@@ -37,6 +37,7 @@ from giljo_mcp.schemas.service_responses import (
 )
 from giljo_mcp.services.project_helpers import _build_ws_project_data
 from giljo_mcp.services.protocol_survival import build_mission_update_footer
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 # Fields that are always writable regardless of project status.
@@ -163,7 +164,10 @@ class MutationMixin:
                 if project.project_type_id:
                     project = await self._repo.get_with_project_type(session, tenant_key, project.id)
 
-                self._logger.info(f"Created project {project.id} with status '{status}' and tenant key {tenant_key}")
+                self._logger.info(
+                    f"Created project {sanitize(project.id)} with status '{sanitize(status)}' "
+                    f"and tenant key {sanitize(tenant_key)}"
+                )
 
                 # Broadcast WebSocket event so all browsers refresh the project list
                 if self._websocket_manager:
@@ -606,7 +610,7 @@ class MutationMixin:
                     session, self.tenant_manager.get_current_tenant(), project.id
                 )
 
-            self._logger.info(f"Updated project {project_id}")
+            self._logger.info(f"Updated project {sanitize(project_id)}")
 
             # Broadcast WebSocket event (use constructor-injected manager, not method param)
             ws = self._websocket_manager

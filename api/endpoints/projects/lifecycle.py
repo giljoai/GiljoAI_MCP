@@ -114,7 +114,10 @@ async def activate_project(
         HTTPException 400: Activation failed
     """
     logger.info(
-        "User %s activating project %s (force=%s)", sanitize(current_user.username), sanitize(project_id), force
+        "User %s activating project %s (force=%s)",
+        sanitize(current_user.username),
+        sanitize(project_id),
+        sanitize(force),
     )
 
     # Activate via ProjectService (raises exceptions on error - Handover 0730b)
@@ -313,7 +316,9 @@ async def restage_project(
         HTTPException 404: Project not found
         HTTPException 409: Invalid state for restage
     """
-    logger.info("Restage requested", extra={"user": str(current_user.username), "project_id": str(project_id)})
+    logger.info(
+        "Restage requested", extra={"user": sanitize(current_user.username), "project_id": sanitize(project_id)}
+    )
 
     try:
         result = await project_service.lifecycle.restage(project_id=project_id)
@@ -328,7 +333,7 @@ async def restage_project(
             detail=str(e),
         ) from e
 
-    logger.info("Restage completed", extra={"project_id": str(project_id)})
+    logger.info("Restage completed", extra={"project_id": sanitize(project_id)})
 
     return {"message": result["message"], "project_id": result["project_id"]}
 
@@ -347,7 +352,7 @@ async def reset_project(
     Terminate is the audit-preserving graceful exit). Works on a launched project
     where /restage refuses. Idempotent. 404 if the project is not found.
     """
-    logger.info("Reset requested", extra={"user": str(current_user.username), "project_id": str(project_id)})
+    logger.info("Reset requested", extra={"user": sanitize(current_user.username), "project_id": sanitize(project_id)})
     try:
         result = await project_service.lifecycle.reset_to_prestage(
             project_id=project_id, tenant_key=current_user.tenant_key
@@ -355,7 +360,7 @@ async def reset_project(
     except ResourceNotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
 
-    logger.info("Reset completed", extra={"project_id": str(project_id), "deleted": result.get("deleted")})
+    logger.info("Reset completed", extra={"project_id": sanitize(project_id), "deleted": result.get("deleted")})
     return {"message": result["message"], "project_id": result["project_id"], "deleted": result.get("deleted")}
 
 
@@ -375,7 +380,9 @@ async def unstage_project(
     Clears mission (BE-6047), releasing the execution_mode lock so the user can
     re-pick the orchestration mode after unstaging.
     """
-    logger.info("Unstage requested", extra={"user": str(current_user.username), "project_id": str(project_id)})
+    logger.info(
+        "Unstage requested", extra={"user": sanitize(current_user.username), "project_id": sanitize(project_id)}
+    )
 
     try:
         result = await project_service.lifecycle.unstage(project_id=project_id)
@@ -384,7 +391,7 @@ async def unstage_project(
     except ProjectStateError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e)) from e
 
-    logger.info("Unstage completed", extra={"project_id": str(project_id)})
+    logger.info("Unstage completed", extra={"project_id": sanitize(project_id)})
 
     return {"message": result["message"], "project_id": result["project_id"]}
 
@@ -399,7 +406,11 @@ async def purge_all_deleted_projects(
     Permanently delete all soft-deleted projects for the current tenant,
     optionally scoped to a product.
     """
-    logger.info("User %s purging all deleted projects (product=%s)", current_user.username, product_id)
+    logger.info(
+        "User %s purging all deleted projects (product=%s)",
+        sanitize(current_user.username),
+        sanitize(product_id),
+    )
 
     # Service raises exceptions on error
     result = await project_service.deletion.purge_all_deleted_projects(product_id=product_id)
@@ -426,7 +437,11 @@ async def purge_deleted_project(
     This is triggered when user clicks the trash icon next to a deleted project.
     Performs complete removal of project and ALL associated data immediately.
     """
-    logger.info("User %s performing NUCLEAR PURGE on deleted project %s", current_user.username, project_id)
+    logger.info(
+        "User %s performing NUCLEAR PURGE on deleted project %s",
+        sanitize(current_user.username),
+        sanitize(project_id),
+    )
 
     # Use nuclear delete for immediate permanent deletion (raises exceptions on error)
     result = await project_service.deletion.nuclear_delete_project(project_id)

@@ -15,12 +15,85 @@ export function useVisionAnalysis(patchProductForm) {
   const analysisHintVisible = ref(false)
   let analysisHintTimer = null
 
+  // FE-9166: polling fallback. The 'vision-analysis-complete' window-event chain
+  // (backend WS -> systemEventRoutes -> dispatchWindowEvent -> onVisionAnalysisComplete)
+  // is lost forever if the tab's WebSocket is disconnected at emit time, leaving
+  // the wizard stuck on "Analyzing". This interval polls the product row directly
+  // and runs the SAME completion routine so the two paths cannot drift.
+  const ANALYSIS_POLL_INTERVAL_MS = 10_000
+  let analysisPollTimer = null
+  let analysisPollInFlight = false
+
+  function clearHintTimer() {
+    clearTimeout(analysisHintTimer)
+    analysisHintTimer = null
+  }
+
+  function stopPolling() {
+    if (analysisPollTimer) {
+      clearInterval(analysisPollTimer)
+      analysisPollTimer = null
+    }
+    analysisPollInFlight = false
+  }
+
   function resetAnalysisState() {
     analysisInProgress.value = false
     analysisAgentConnected.value = false
     analysisHintVisible.value = false
-    clearTimeout(analysisHintTimer)
-    analysisHintTimer = null
+    clearHintTimer()
+    stopPolling()
+  }
+
+  // Maps a freshly-fetched product row onto the wizard form. Single source of
+  // truth for both the event path and the poll path (FE-9166).
+  function patchFormFromProduct(updated) {
+    const ts = updated.tech_stack || {}
+    const arch = updated.architecture || {}
+    const tc = updated.test_config || {}
+
+    patchProductForm({
+      name: updated.name || '',
+      description: updated.description || '',
+      projectPath: updated.project_path || '',
+      targetPlatforms: updated.target_platforms || ['all'],
+      techStack: {
+        programming_languages: ts.programming_languages || '',
+        frontend_frameworks: ts.frontend_frameworks || '',
+        backend_frameworks: ts.backend_frameworks || '',
+        databases_storage: ts.databases_storage || '',
+        infrastructure: ts.infrastructure || '',
+      },
+      architecture: {
+        primary_pattern: arch.primary_pattern || '',
+        design_patterns: arch.design_patterns || '',
+        api_style: arch.api_style || '',
+        architecture_notes: arch.architecture_notes || '',
+        coding_conventions: arch.coding_conventions || '',
+      },
+      coreFeatures: updated.core_features || '',
+      brandGuidelines: updated.brand_guidelines || '',
+      testConfig: {
+        quality_standards: tc.quality_standards || '',
+        test_strategy: tc.test_strategy || 'TDD',
+        coverage_target: tc.coverage_target || 80,
+        testing_frameworks: tc.testing_frameworks || '',
+      },
+      extractionCustomInstructions: updated.extraction_custom_instructions || '',
+    })
+  }
+
+  // Shared completion routine — patch the form (when a product came back), then
+  // tear down all in-flight timers and clear the two "in progress" flags. Called
+  // by BOTH the window-event path (onVisionAnalysisComplete) and the poll path.
+  function completeAnalysis(updated) {
+    if (updated) {
+      patchFormFromProduct(updated)
+    }
+    clearHintTimer()
+    stopPolling()
+    analysisInProgress.value = false
+    analysisAgentConnected.value = false
   }
 
   async function stageAnalysis(productForm, productId) {
@@ -75,6 +148,31 @@ export function useVisionAnalysis(patchProductForm) {
     analysisHintVisible.value = false
     clearTimeout(analysisHintTimer)
     analysisHintTimer = setTimeout(() => { analysisHintVisible.value = true }, 60000)
+
+    startPolling(productId)
+  }
+
+  // FE-9166: recovery fallback for a lost 'vision-analysis-complete' event.
+  // Polls the product row every ANALYSIS_POLL_INTERVAL_MS; when the backend has
+  // flipped vision_analysis_complete, runs the shared completion routine (which
+  // also clears this interval). Overlapping ticks are skipped while a fetch is
+  // in flight; the interval is torn down by completeAnalysis / resetAnalysisState.
+  function startPolling(productId) {
+    stopPolling()
+    analysisPollTimer = setInterval(async () => {
+      if (analysisPollInFlight) return
+      analysisPollInFlight = true
+      try {
+        const updated = await productStore.fetchProductById(productId)
+        if (updated && updated.vision_analysis_complete === true) {
+          completeAnalysis(updated)
+        }
+      } catch (err) {
+        console.warn('[useVisionAnalysis] poll fetch failed:', err)
+      } finally {
+        analysisPollInFlight = false
+      }
+    }, ANALYSIS_POLL_INTERVAL_MS)
   }
 
   function onVisionAnalysisStarted(event, currentProductId) {
@@ -89,48 +187,20 @@ export function useVisionAnalysis(patchProductForm) {
     if (!productId || productId !== currentProductId) return
 
     analysisHintVisible.value = false
-    clearTimeout(analysisHintTimer)
-    analysisHintTimer = null
 
-    const updated = await productStore.fetchProductById(productId)
-    if (updated) {
-      const ts = updated.tech_stack || {}
-      const arch = updated.architecture || {}
-      const tc = updated.test_config || {}
-
-      patchProductForm({
-        name: updated.name || '',
-        description: updated.description || '',
-        projectPath: updated.project_path || '',
-        targetPlatforms: updated.target_platforms || ['all'],
-        techStack: {
-          programming_languages: ts.programming_languages || '',
-          frontend_frameworks: ts.frontend_frameworks || '',
-          backend_frameworks: ts.backend_frameworks || '',
-          databases_storage: ts.databases_storage || '',
-          infrastructure: ts.infrastructure || '',
-        },
-        architecture: {
-          primary_pattern: arch.primary_pattern || '',
-          design_patterns: arch.design_patterns || '',
-          api_style: arch.api_style || '',
-          architecture_notes: arch.architecture_notes || '',
-          coding_conventions: arch.coding_conventions || '',
-        },
-        coreFeatures: updated.core_features || '',
-        brandGuidelines: updated.brand_guidelines || '',
-        testConfig: {
-          quality_standards: tc.quality_standards || '',
-          test_strategy: tc.test_strategy || 'TDD',
-          coverage_target: tc.coverage_target || 80,
-          testing_frameworks: tc.testing_frameworks || '',
-        },
-        extractionCustomInstructions: updated.extraction_custom_instructions || '',
-      })
+    // FE-9166: try/finally guarantees the two flags reset once a matching event
+    // arrives even if fetchProductById rejects — otherwise the wizard stays
+    // stuck on "Analyzing". completeAnalysis handles the happy path (patch +
+    // teardown); the finally is the safety net for a failed fetch.
+    try {
+      const updated = await productStore.fetchProductById(productId)
+      completeAnalysis(updated)
+    } finally {
+      clearHintTimer()
+      stopPolling()
+      analysisInProgress.value = false
+      analysisAgentConnected.value = false
     }
-
-    analysisInProgress.value = false
-    analysisAgentConnected.value = false
   }
 
   return {

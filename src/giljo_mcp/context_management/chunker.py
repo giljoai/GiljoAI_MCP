@@ -25,6 +25,7 @@ import tiktoken
 
 from giljo_mcp.exceptions import ContextError
 from giljo_mcp.tools.chunking import VISION_DELIVERY_BUDGET, EnhancedChunker
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -295,7 +296,7 @@ class VisionDocumentChunker:
         doc = await vision_repo.get_by_id(session, tenant_key, vision_document_id)
         if not doc:
             error_msg = f"Vision document {vision_document_id} not found for tenant {tenant_key}"
-            logger.error(error_msg)
+            logger.error(sanitize(error_msg))
             raise ContextError(error_msg)
 
         # BE-5115: storage_type is always 'inline'; content lives in the DB column.

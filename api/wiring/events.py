@@ -67,8 +67,14 @@ def register_event_handlers(app: FastAPI) -> None:
                 async with state.db_manager.get_session_async() as session:
                     await session.execute(text("SELECT 1"))
                     checks["database"] = "healthy"
+                    state.health_detail.pop("database", None)
             except (ConnectionError, TimeoutError, RuntimeError, OSError) as e:
-                checks["database"] = f"unhealthy: {e!s}"
+                # SEC-9168: /health is unauthenticated — exception text can
+                # carry internal hostnames/ports, so only the generic marker
+                # goes out here. Full detail: logs + authed /api/system/status.
+                checks["database"] = "unhealthy: database"
+                state.health_detail["database"] = str(e)
+                logger.warning("Health check: database unhealthy: %s", sanitize(str(e)))
 
         if state.websocket_manager:
             checks["websocket"] = "healthy"
@@ -87,8 +93,13 @@ def register_event_handlers(app: FastAPI) -> None:
                 try:
                     pong = await state.redis_client.ping()
                     checks["redis"] = "healthy" if pong else "unhealthy: ping returned falsy"
+                    if pong:
+                        state.health_detail.pop("redis", None)
                 except (RedisError, ConnectionError, TimeoutError, OSError) as e:
-                    checks["redis"] = f"unhealthy: {e!s}"
+                    # SEC-9168: same anonymous-surface rule as the database check.
+                    checks["redis"] = "unhealthy: redis"
+                    state.health_detail["redis"] = str(e)
+                    logger.warning("Health check: redis unhealthy: %s", sanitize(str(e)))
             else:
                 checks["redis"] = "in-process"
 
@@ -121,6 +132,9 @@ def register_event_handlers(app: FastAPI) -> None:
         return {
             "pending_migration": state.pending_migration,
             "update_available": state.update_available,
+            # SEC-9168: full health-failure detail lives here (authenticated),
+            # never on the anonymous /health surface.
+            "health_detail": dict(state.health_detail),
         }
 
     @app.websocket("/ws/{client_id}")

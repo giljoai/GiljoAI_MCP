@@ -225,7 +225,7 @@ async def download_agent_templates(
             "Generating agent templates ZIP for user: %s (tenant: %s, active_only: %s)",
             sanitize(current_user.username),
             sanitize(current_user.tenant_key),
-            active_only,
+            sanitize(active_only),
         )
 
         # Query templates with multi-tenant isolation
@@ -243,7 +243,9 @@ async def download_agent_templates(
 
         if not templates:
             logger.warning(
-                "No templates found for tenant: %s (active_only: %s)", sanitize(current_user.tenant_key), active_only
+                "No templates found for tenant: %s (active_only: %s)",
+                sanitize(current_user.tenant_key),
+                sanitize(active_only),
             )
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -566,7 +568,7 @@ async def get_bootstrap_prompt(
     token_data = await token_manager.get_token_info(token, tenant_key)
     expires_at = token_data["expires_at"] if token_data else None
 
-    logger.info(f"Bootstrap prompt generated: platform={platform}, token={mask_token(token)}")
+    logger.info(f"Bootstrap prompt generated: platform={sanitize(platform)}, token={mask_token(token)}")
 
     return {
         "prompt": prompt,
@@ -770,7 +772,8 @@ async def download_temp_file(
         # Check if staging is ready
         if token_info.get("staging_status") != "ready":
             logger.warning(
-                f"Token validation failed: token={mask_token(token)}, reason=not_ready, status={token_info.get('staging_status')}"
+                f"Token validation failed: token={mask_token(token)}, reason=not_ready, "
+                f"status={sanitize(token_info.get('staging_status'))}"
             )
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Token invalid or not ready")
 

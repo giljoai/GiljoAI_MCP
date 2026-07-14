@@ -59,6 +59,7 @@ from giljo_mcp.services.roadmap_validation import (
     validate_reorder,
 )
 from giljo_mcp.tenant import TenantManager
+from giljo_mcp.utils.log_sanitizer import sanitize
 
 
 logger = logging.getLogger(__name__)
@@ -490,7 +491,7 @@ class RoadmapService:
         if repointed:
             self._logger.info(
                 "Re-pointed roadmap item(s) for converted task %s -> project %s (tenant=%s)",
-                task_id,
+                sanitize(task_id),
                 new_project_id,
                 tenant_key,
             )
@@ -554,7 +555,7 @@ class RoadmapService:
 
             self._logger.info(
                 "Removed roadmap item %s for product %s (tenant=%s)",
-                item_id,
+                sanitize(item_id),
                 product_id,
                 effective_tenant_key,
             )

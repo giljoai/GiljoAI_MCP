@@ -234,7 +234,7 @@ async def get_cascade_impact(
 
     Uses ProductService.get_cascade_impact() for database operations.
     """
-    logger.debug(f"User {current_user.username} checking cascade impact for product {product_id}")
+    logger.debug(f"User {sanitize(current_user.username)} checking cascade impact for product {sanitize(product_id)}")
 
     impact = await service.memory.get_cascade_impact(product_id)
 

@@ -18,9 +18,13 @@ _CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f]")
 
 def sanitize(value: str) -> str:
     """Remove control characters (newlines, tabs, etc.) from a log value."""
-    if not isinstance(value, str):
-        return str(value)
-    return _CONTROL_CHARS.sub("", value)
+    text = value if isinstance(value, str) else str(value)
+    # CodeQL models only literal str.replace() chains as CWE-117 barriers
+    # (not re.sub), so newlines are stripped explicitly before the regex
+    # pass. Every return path must flow through this chain -- do not
+    # re-add a str(value) early-return above it.
+    text = text.replace("\r\n", "").replace("\r", "").replace("\n", "")
+    return _CONTROL_CHARS.sub("", text)
 
 
 def mask_token(token: str) -> str:
