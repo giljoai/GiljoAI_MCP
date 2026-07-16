@@ -30,7 +30,7 @@ from giljo_mcp.tools.context_tools.get_360_memory import get_360_memory
 from giljo_mcp.tools.context_tools.get_agent_templates import get_agent_templates
 from giljo_mcp.tools.context_tools.get_architecture import get_architecture
 from giljo_mcp.tools.context_tools.get_chain_context import get_chain_context
-from giljo_mcp.tools.context_tools.get_git_history import get_git_history
+from giljo_mcp.tools.context_tools.get_git_history import get_git_history, parse_git_history_depth
 
 # Internal tools (NOT exposed via MCP)
 from giljo_mcp.tools.context_tools.get_product_context import get_product_context
@@ -763,8 +763,9 @@ async def _fetch_category(
     elif category == "git_history":
         kwargs["product_id"] = product_id
         kwargs["tenant_key"] = tenant_key
-        if depth:
-            kwargs["commits"] = int(depth)
+        # TSK-9159: tolerant parse — the boundary advertises string tokens.
+        if (commits := parse_git_history_depth(depth)) is not None:
+            kwargs["commits"] = commits
 
     elif category == "tech_stack" or category in ("architecture", "testing"):
         kwargs["product_id"] = product_id

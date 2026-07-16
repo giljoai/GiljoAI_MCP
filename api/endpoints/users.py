@@ -30,8 +30,10 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.endpoints.auth_models import BoundedPassword
 from api.endpoints.dependencies import get_db_manager, get_user_service
 from giljo_mcp.auth.dependencies import (
+    enforce_sensitive_account_field_guard,
     get_current_active_user,
     get_db_session,
     require_admin,
@@ -45,8 +47,6 @@ from giljo_mcp.utils.log_sanitizer import sanitize
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# Pydantic Models for Request/Response
-
 
 class UserCreate(BaseModel):
     """Request model for creating a new user"""
@@ -55,7 +55,7 @@ class UserCreate(BaseModel):
     email: EmailStr | None = Field(None, description="User email address")
     first_name: str | None = Field(None, min_length=1, max_length=255, description="Given name")
     last_name: str | None = Field(None, max_length=255, description="Family name (optional)")
-    password: str = Field(..., min_length=8, description="User password (min 8 characters)")
+    password: BoundedPassword = Field(..., description="User password (min 8 characters)")
     role: str = Field("developer", description="User role: admin, developer, viewer")
     is_active: bool = Field(default=True, description="Whether user account is active")
 
@@ -77,7 +77,7 @@ class UserUpdate(BaseModel):
     first_name: str | None = Field(None, min_length=1, max_length=255)
     last_name: str | None = Field(None, max_length=255)
     is_active: bool | None = None
-    password: str | None = Field(None, min_length=8, description="New password (min 8 chars)")
+    password: BoundedPassword | None = Field(None, description="New password (min 8 chars)")
     recovery_pin: str | None = Field(
         None, min_length=4, max_length=4, pattern="^[0-9]{4}$", description="4-digit recovery PIN"
     )
@@ -104,7 +104,7 @@ class PasswordChange(BaseModel):
     """Request model for password change"""
 
     old_password: str | None = Field(None, min_length=8, description="Current password (required for non-admin)")
-    new_password: str = Field(..., min_length=8, description="New password (min 8 characters)")
+    new_password: BoundedPassword = Field(..., description="New password (min 8 characters)")
 
 
 class RoleChange(BaseModel):
@@ -459,6 +459,7 @@ async def get_user(
 async def update_user(
     user_id: UUID,
     user_data: UserUpdate,
+    request: Request,
     current_user: User = Depends(get_current_active_user),
     user_service: UserService = Depends(get_user_service),
 ) -> UserResponse:
@@ -483,6 +484,11 @@ async def update_user(
         BaseGiljoError: Database operation failed (500)
     """
     logger.debug("User %s updating user %s", sanitize(current_user.username), sanitize(str(user_id)))
+
+    # SEC-9170: a leaked API key / OAuth Bearer must not mutate account-security
+    # fields (password/email/is_active/recovery_pin); require a browser session.
+    # recovery_pin is additionally refused in hosted SaaS (CE-only boundary).
+    enforce_sensitive_account_field_guard(request, user_data)
 
     # Tenant-scoped update: admins can manage users only within their own tenant (SEC-0005a)
     is_admin = current_user.role == "admin"

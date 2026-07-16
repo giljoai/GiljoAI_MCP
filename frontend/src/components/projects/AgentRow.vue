@@ -112,6 +112,18 @@
       <span v-else>—</span>
     </td>
 
+    <!-- Messages (waiting count) — tinted badge (0870j) -->
+    <td class="messages-waiting-cell text-center hide-mobile">
+      <button
+        type="button"
+        class="message-count-button"
+        aria-label="View messages"
+        @click="emit('messages', agent)"
+      >
+        <span class="msg-badge" :class="getMessagesWaiting(agent) > 0 ? 'has-msgs' : 'zero'">{{ getMessagesWaiting(agent) }}</span>
+      </button>
+    </td>
+
     <!-- Actions: inline icons on wide screens, three-dot menu on narrow -->
     <td class="actions-cell">
       <!-- Inline icons (hidden on narrow/portrait screens) -->
@@ -384,6 +396,10 @@ function getAgentAbbr(displayName) {
   return displayName.substring(0, 2).toUpperCase()
 }
 
+function getMessagesWaiting(agent) {
+  return agent?.messages_waiting_count ?? 0
+}
+
 /**
  * formatDuration — pure function that takes the agent and a nowMs timestamp.
  * No closure over refs; receives `now` via the prop so AgentRow has no timer.
@@ -616,6 +632,34 @@ tbody td {
   .steps-skipped {
     color: $color-status-blocked;
     font-weight: 600;
+  }
+
+  .message-count-button {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    color: inherit;
+  }
+
+  .msg-badge {
+    display: inline-grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    font-size: 0.62rem;
+    font-weight: 600;
+
+    &.zero {
+      background: rgba($color-status-complete, 0.12);
+      color: $color-status-complete;
+    }
+
+    &.has-msgs {
+      background: rgba($color-status-blocked, 0.15);
+      color: $color-status-blocked;
+    }
   }
 
   &.actions-cell {

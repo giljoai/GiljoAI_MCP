@@ -292,19 +292,21 @@ class WebSocketManager:
 
     async def connect(self, websocket: WebSocket, client_id: str, auth_context: dict[str, Any] | None = None):
         """Accept and track a new WebSocket connection (accept() runs in the endpoint)."""
-        # Evict any pre-existing socket registered under this client_id: a reconnect
-        # that reuses an id would otherwise leave two live sockets on one key, and
-        # the stale socket's teardown would orphan the live one from broadcasts. The
-        # frontend mints a fresh id per socket; this is defense-in-depth for clients
-        # (CLI, API-key consumer) that reuse one.
+        # Evict any pre-existing socket on this client_id: a reused id would otherwise
+        # leave two live sockets on one key (frontend mints fresh ids; CLI/API-key clients may reuse one).
         existing = self.active_connections.get(client_id)
+
+        # SEC-9171 (#24): a reused id switching TENANTS must leave the old tenant's
+        # fan-out bucket, or tenant A's broadcasts keep reaching tenant B's socket.
+        old_tenant = self.auth_contexts.get(client_id, {}).get("tenant_key")
+        if old_tenant and old_tenant != (auth_context or {}).get("tenant_key"):
+            self._deindex_tenant_connection(client_id, old_tenant)
 
         self.active_connections[client_id] = websocket
         self.auth_contexts[client_id] = auth_context or {}  # Store auth context
         self.subscriptions[client_id] = set()
 
-        # BE-3008b: register the socket in the tenant fan-out index. A reconnect
-        # under the same client_id keeps the same set entry (idempotent add).
+        # BE-3008b: tenant fan-out index (same-id reconnect = idempotent set add).
         self._index_tenant_connection(client_id, (auth_context or {}).get("tenant_key"))
 
         if existing is not None and self._unwrap_websocket_connection(existing) is not websocket:
@@ -316,10 +318,8 @@ class WebSocketManager:
             except (RuntimeError, OSError):
                 logger.debug("Failed closing superseded WebSocket for client_id=%s", client_id, exc_info=True)
 
-        logger.info(
-            f"WebSocket connected: {client_id} "
-            f"(auth_type: {auth_context.get('auth_type', 'none') if auth_context else 'none'})"
-        )
+        auth_type = auth_context.get("auth_type", "none") if auth_context else "none"
+        logger.info(f"WebSocket connected: {client_id} (auth_type: {auth_type})")
 
     def disconnect(self, client_id: str, websocket: WebSocket | None = None):
         """Remove WebSocket connection and clean up subscriptions.

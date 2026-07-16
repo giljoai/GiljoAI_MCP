@@ -1,57 +1,59 @@
-# ADR-009 — Teams-readiness tenancy invariant
+# ADR-009 — Single-user tenancy isolation invariant
 
-**Status:** Accepted (2026-06-19)
+**Status:** Amended (2026-07-14; supersedes the 2026-06-19 Teams-readiness decision)
 **Scope:** Backend architecture / tenancy / edition isolation. Read **before** writing code that touches auth, billing/subscriptions, rate limiting, realtime fan-out, quotas, tenancy, or migrations.
 
 ## Context
 
-Teams (multi-user-per-account) is an **intentionally postponed** product expansion (operator directive, 2026-06-19). We keep building **every other** project — but nothing we build may **block** a future Teams architecture.
+Teams (multi-user-per-account or multi-user-per-tenant) is **permanently cancelled** for both CE and SaaS (operator directive, 2026-07-14). Neither edition will ship invitations, member administration, shared customer accounts, or an org-scoped tenant model.
 
 A read-only audit (2026-06-19) established the ground truth:
 
-- **`tenant_key` is assigned 1:1 PER-USER today.** Each registration mints a fresh `tenant_key` (`auth_service.create_first_admin` / `saas/provisioning/service.py` via `TenantManager.generate_tenant_key`).
+- **`tenant_key` is assigned 1:1 PER-USER.** Each registration mints a fresh `tenant_key` (`auth_service.create_first_admin` / `saas/provisioning/service.py` via `TenantManager.generate_tenant_key`). This is now the permanent model.
 - **The org boundary is DORMANT but POPULATED.** `organizations`, `OrgMembership`, `users.org_id`, `products.org_id` exist and are *written* at registration (a 1-user org per user) — but **zero resource queries scope on `org_id`**. Every product/project/task query filters by `tenant_key` only.
-- So today **`tenant_key` == user identity**, and the org scaffolding is forward-looking structure, not load-bearing logic.
-- Flipping to "tenant = org" (mint one `tenant_key` per org, members inherit it) is ~60-100 files. **That flip IS the postponed Teams migration** — we do NOT do it now.
+- **`tenant_key` == the single user account's isolation boundary.** In hosted SaaS it separates one customer account from every other customer account. In CE it identifies the single local account.
+- Existing organization and membership rows are compatibility data from the retired multi-user direction. They are not a commitment to a future product tier and are not the authorization or isolation boundary.
 
-Key realization: because all resources already scope by `tenant_key`, **when the flip later redefines `tenant_key` from "user" to "org," those queries become org-correct for free.** The only things that would *block* the flip are NEW per-user assumptions for account-level concerns. So a guardrail invariant — not a skeleton build — is sufficient.
+Cancellation of Teams does **not** weaken tenant isolation. A SaaS tenant is still a customer-security boundary even though it contains exactly one user.
 
 ## Decision
 
-**`tenant_key` is the isolation boundary. It is per-USER today and BECOMES per-ORG at the postponed Teams flip. `user` is an actor WITHIN a tenant (via `users.org_id` + `OrgMembership`). Never collapse `user == tenant` in NEW code.**
+**`tenant_key` is permanently per-user and remains the isolation boundary. CE and SaaS are permanently single-user-per-tenant products.**
 
 All new work MUST:
 
-1. **Scope every query by `tenant_key`** (already the rule) — makes it org-correct after the flip, for free.
-2. **Treat account-level concerns as TENANT-scoped, never per-user** (a future Team = one tenant, many users):
+1. **Scope every tenant-owned query and mutation by authenticated `tenant_key`.** IDs that appear globally unique do not replace the tenant predicate. Tenant identity never comes from untrusted REST or MCP input.
+2. **Treat account-level concerns as TENANT-scoped.** In the permanent single-user model the tenant and account owner are 1:1, but the tenant boundary must stay explicit because it separates SaaS customers and scopes CE data consistently:
 
-   | Area | Trap (blocks Teams) | Required |
+   | Area | Unsafe pattern | Required |
    |---|---|---|
-   | Billing / subscription (BE-6060d, BE-3005c) | gate per-`user_id` | gate per-`tenant_key`/org (`OrganizationPlan`) — one sub covers all members |
+   | Billing / subscription (BE-6060d, BE-3005c) | trust a request-supplied user or org identifier | gate the authenticated account's `tenant_key`/subscription row |
    | Rate limits / shared cache (INF-3009d) | key on `user_id` | key on `tenant_key` (optionally + `user_id`) |
-   | Realtime fan-out (BE-3008b) | 1 socket per tenant | registry = `tenant_key -> SET of connections`; broadcast to all |
-   | Auth (BE-6027) | assume `user == tenant` | OAuth client stays **global + grant-carries-tenant** (do NOT re-scope); API keys stay `user_id + tenant_key` |
-   | Quotas / counters | per-user | per-tenant |
+   | Realtime fan-out (BE-3008b) | a connection indexed under the wrong tenant | registry and every envelope are keyed and validated by `tenant_key` |
+   | Auth (BE-6027) | accept a credential without its tenant/purpose boundary | grants and API keys carry and enforce `tenant_key`; browser, OAuth, and API-key purposes remain distinct |
+   | Quotas / counters | use an unscoped global counter | scope counters by `tenant_key` |
 
-3. **Keep populating `org_id` + `OrgMembership` at registration, and NEVER delete the org scaffolding** even though Solo doesn't use it for scoping — it is the dormant Teams foundation. A migration squash (INF-5060) MUST preserve it.
-4. **Support both tenant-level AND user-level granularity** where cheap (e.g. security kill-switches SEC-3001a — revoke a member OR a whole account).
+3. **Do not build or preserve behavior solely for a future Teams tier.** No invitations, member-management APIs/UI, shared-tenant memberships, role-management product surfaces, seat management, or per-org `tenant_key` flip.
+4. **Treat existing `org_id`, `OrgMembership`, role, and organization data as compatibility state.** Do not delete, reinterpret, or stop populating it incidentally. Any simplification requires a dedicated schema/data decision with an idempotent migration or legacy tolerance so existing installations converge safely.
+5. **Keep security controls account-complete.** Password/session revocation, API-key revocation, deletion, export, billing, realtime, and quota operations must affect the authenticated tenant account without relying on hypothetical additional members.
 
-Every project's Definition of Done includes a **Teams-readiness check**.
+Every project's Definition of Done includes a **tenant-isolation check**.
 
-## Out of scope (HELD — do NOT build)
+## Permanently out of scope
 
-Team *features*: invitations, roles/permissions UI, member management, social-login, the per-org `tenant_key` flip itself. This ADR keeps the door open; it does not walk through it.
+Team features: invitations, multi-user accounts, member/seat administration, shared-tenant role management, ownership transfer between users, and the per-org `tenant_key` flip. Social login and OAuth are separate authentication capabilities and are not Team features.
 
 ## DoD line (paste into every project)
 
-> **Teams-readiness:** Does this gate/scope per-`user_id` where it should be account/tenant-level? Assume 1-user-per-tenant or 1-socket-per-tenant? Preserve `org_id`/`OrgMembership`? If any — fix the dimension to `tenant_key`. (ADR-009)
+> **Tenant isolation:** Does every tenant-owned read, write, event, credential, cache key, rate limit, and lifecycle operation derive and enforce the authenticated `tenant_key`? Does any path trust a client-supplied tenant or create a cross-tenant relationship? If so, fix it at the owning boundary. Teams is permanently cancelled; do not add multi-user scaffolding. (ADR-009)
 
 ## Consequences
 
-- **Positive:** non-Team work proceeds at full speed; nothing reworks when Teams ships (the flip just redefines `tenant_key`; resources are already tenant-scoped).
-- **Cost:** a small standing discipline (the DoD check) on account-level features.
-- **Risk if ignored:** one per-user subscription gate or a 1-socket-per-tenant registry forces a rewrite when Teams lands.
+- **Positive:** product and authorization design can target the permanent single-user model without speculative Team-tier complexity.
+- **Positive:** strict `tenant_key` enforcement continues to protect SaaS customers from one another and keeps CE data consistently scoped.
+- **Cost:** existing org/membership compatibility data remains until a dedicated simplification project proves a safe migration path.
+- **Risk if ignored:** cancellation of Teams could be misread as permission to weaken cross-tenant isolation, exposing one hosted customer's data or events to another.
 
 ## Evidence (audit 2026-06-19)
 
-`auth_service.py:893` (per-user tenant mint) - `saas/provisioning/service.py:104` - `product_repository.py:190` (tenant_key-only scope) - `models/auth.py` (org_id nullable, tenant_key non-null) - `api/endpoints/organizations/crud.py:154` (1:1 user->org assumption) - `handovers/completed/0424f_codex_project_review-C.md` (Option A "org==tenant_key" documented as the future refactor). Supersedes the aspirational "use organizations for tenant key discovery" reading of `CLAUDE.md` and the "single implicit org" note in `EDITION_ISOLATION_GUIDE.md` — both reconciled to point here.
+`auth_service.py:893` (per-user tenant mint) - `saas/provisioning/service.py:104` - `product_repository.py:190` (tenant_key-only scope) - `models/auth.py` (org_id nullable, tenant_key non-null) - `api/endpoints/organizations/crud.py:154` (1:1 user->org assumption) - `handovers/completed/0424f_codex_project_review-C.md` (historical future-org direction, now superseded by the 2026-07-14 cancellation directive).

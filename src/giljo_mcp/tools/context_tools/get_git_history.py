@@ -43,6 +43,34 @@ def estimate_tokens(data: Any) -> int:
     return len(text) // 4
 
 
+# TSK-9159: the get_context boundary advertises string depth tokens for
+# git_history (e.g. {'git_history': 'summary'}), so the depth parser must
+# accept them alongside ints/numeric strings. Named tokens map to the
+# documented commit-count buckets above.
+_DEPTH_TOKENS = {"summary": 10}
+
+
+def parse_git_history_depth(depth: Any) -> int | None:
+    """Tolerant git_history depth parser: int, numeric string, or named token.
+
+    Returns None (= use the default commit count) for empty or unrecognized
+    values — with a warning for the unrecognized case, never an error: a bad
+    depth override must not fail the whole category.
+    """
+    if not depth:
+        return None
+    try:
+        return int(depth)
+    except (TypeError, ValueError):
+        pass
+    if isinstance(depth, str):
+        token = _DEPTH_TOKENS.get(depth.strip().lower())
+        if token is not None:
+            return token
+    logger.warning("git_history_depth_unrecognized depth=%r fallback=default", depth)
+    return None
+
+
 async def get_git_history(
     product_id: str,
     tenant_key: str,

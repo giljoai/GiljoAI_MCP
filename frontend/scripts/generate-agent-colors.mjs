@@ -1,9 +1,14 @@
-#!/usr/bin/env node
 /**
  * Generates the agent-color managed regions in agent-colors.scss and
  * design-tokens.scss from agentColors.js — the single source of truth.
  *
  * Run via: npm run codegen:colors
+ *
+ * No shebang line: this module is also imported by
+ * tests/unit/styles/agentColorCodegen.spec.js, and Vite's hashbang-strip
+ * regex (/^#!.*\n/) misses a CRLF-terminated shebang on Windows checkouts,
+ * so import-analysis injects hoisted code BEFORE the shebang and the parse
+ * fails (RolldownError). Invoke with `node scripts/generate-agent-colors.mjs`.
  *
  * Rewrites ONLY the text strictly between the `giljo:agent-colors:generated`
  * marker comments (sass-stripped `//` comments — zero bytes in compiled

@@ -274,6 +274,37 @@ class TestAuthenticateUser:
         with pytest.raises(AuthenticationError):
             await auth_service.authenticate_user(shared, pw_email_owner)
 
+    # ------------------------------------------------------------------
+    # SEC-9174 #6 — bcrypt >72-byte enumeration fail-close
+    # ------------------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_authenticate_user_overlong_password_known_account_fails_closed(
+        self, auth_service, auth_user_with_password
+    ):
+        """SEC-9174 #6: a password over 72 UTF-8 bytes for a KNOWN account must
+        raise the same generic ``AuthenticationError`` as any wrong password.
+        bcrypt >= 4 raises ``ValueError`` on >72-byte input; pre-fix that
+        propagated out of the verify and the service boundary wrapped it into a
+        500 ``BaseGiljoError`` — while an UNKNOWN account short-circuits before
+        the bcrypt call and returns a 401. The 500-vs-401 split is an
+        unauthenticated username-enumeration oracle."""
+        user, _ = auth_user_with_password
+
+        with pytest.raises(AuthenticationError) as exc_info:
+            await auth_service.authenticate_user(user.username, "A" * 100)
+
+        assert "Invalid credentials" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_authenticate_user_overlong_password_unknown_account_identical_response(self, auth_service):
+        """SEC-9174 #6: the unknown-account half of the oracle — the response
+        for an overlong password must be the identical generic error."""
+        with pytest.raises(AuthenticationError) as exc_info:
+            await auth_service.authenticate_user(f"ghost_{uuid4().hex[:8]}", "A" * 100)
+
+        assert "Invalid credentials" in str(exc_info.value)
+
 
 class TestUpdateLastLogin:
     """Tests for update_last_login method"""

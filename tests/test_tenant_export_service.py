@@ -40,7 +40,10 @@ from api.exception_handlers import register_exception_handlers
 from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from giljo_mcp.database import tenant_session_context
 from giljo_mcp.models import (
+    CommParticipant,
+    CommThread,
     Configuration,
+    Message,
     Product,
     ProductArchitecture,
     ProductMemoryEntry,
@@ -50,8 +53,8 @@ from giljo_mcp.models import (
     VisionDocument,
 )
 from giljo_mcp.models.organizations import Organization
+from giljo_mcp.services.capture_tables import capture_models
 from giljo_mcp.services.tenant_export_service import (
-    EXPORT_MODELS,
     TenantExportService,
     _fidelity_restore_order,
     _to_json_safe,
@@ -676,6 +679,34 @@ async def _seed_fidelity_graph(db_session: AsyncSession, tenant_key: str) -> Use
             category="diagnostics",
         )
     )
+    # Message Hub graph (BE-9187): a thread, a cursor-carrying participant, and
+    # an anchored message — so the generic fidelity round-trip tests exercise
+    # the comm tables the restore engine depends on.
+    thread_id = str(uuid4())
+    message_id = str(uuid4())
+    db_session.add(
+        CommThread(
+            id=thread_id,
+            tenant_key=tenant_key,
+            serial=1,
+            subject="fidelity hub thread",
+            status="active",
+            next_action_owner="BE-1",
+            product_id=product.id,
+        )
+    )
+    db_session.add(
+        CommParticipant(
+            id=str(uuid4()),
+            tenant_key=tenant_key,
+            thread_id=thread_id,
+            participant_id="BE-1",
+            participant_type="agent",
+            last_read_message_id=message_id,
+            last_read_at=datetime.now(UTC),
+        )
+    )
+    db_session.add(Message(id=message_id, tenant_key=tenant_key, thread_id=thread_id, content="anchored hub post"))
     await db_session.commit()
     return user
 
@@ -729,7 +760,7 @@ async def test_fidelity_retains_tenant_key_pk_and_fk_for_every_model(db_session:
     zip_path, _ = await service.export(tenant_key=tenant_key, fidelity=True)
     model_rows, _ = _read_fidelity_dump(zip_path)
 
-    by_name = {m.__name__: m for m in EXPORT_MODELS}
+    by_name = {m.__name__: m for m in capture_models()}
     seen_models = 0
     for name, rows in model_rows.items():
         if not rows:
@@ -789,7 +820,7 @@ async def test_fidelity_roundtrips_losslessly_for_every_model(db_session: AsyncS
     zip_path, _ = await service.export(tenant_key=tenant_key, fidelity=True)
     model_rows, _ = _read_fidelity_dump(zip_path)
 
-    by_name = {m.__name__: m for m in EXPORT_MODELS}
+    by_name = {m.__name__: m for m in capture_models()}
     checked = 0
     for name, rows in model_rows.items():
         if not rows:
@@ -851,3 +882,62 @@ async def test_portability_mode_is_unchanged_default(db_session: AsyncSession) -
     assert "restore_order" not in manifest
     for row in user_rows:
         assert "tenant_key" not in row, "portability must still strip tenant_key"
+
+
+def test_restore_order_symmetry_covers_every_fk_both_directions() -> None:
+    """Purge order == reversed(insert order) must be FK-valid BOTH ways (BE-9187).
+
+    The restore engine deletes ``reversed(restore_order)`` and reloads
+    ``restore_order``; for every FK whose endpoints are both in the export set,
+    the parent must precede the child on insert AND the child must precede the
+    parent on purge.
+    """
+    order = _fidelity_restore_order()
+    tables = {m.__tablename__: m.__table__ for m in capture_models()}
+    assert set(order) == set(tables), "restore_order must cover exactly the discovered capture set"
+
+    pos = {name: i for i, name in enumerate(order)}
+    purge_pos = {name: i for i, name in enumerate(reversed(order))}
+    checked = 0
+    for name, table in tables.items():
+        for fk in table.foreign_keys:
+            parent = fk.column.table.name
+            if parent == name or parent not in pos:
+                continue
+            checked += 1
+            assert pos[parent] < pos[name], f"insert direction: {parent} must precede {name}"
+            assert purge_pos[name] < purge_pos[parent], f"purge direction: {name} must be deleted before {parent}"
+    assert checked >= 10, f"expected to check >=10 in-set FK edges, got {checked}"
+
+    # BE-9187 anchors: the hub thread table is a parent of messages AND of the
+    # participant directory — the exact edges whose absence caused F1.
+    assert pos["comm_threads"] < pos["comm_participants"]
+    assert pos["comm_threads"] < pos["messages"]
+
+
+async def test_portability_export_includes_hub_thread_context(db_session: AsyncSession) -> None:
+    """GDPR portability picks up the hub tables from the shared allowlist (BE-9187).
+
+    Pre-fix, ``data/Message.json`` referenced thread UUIDs that resolved to
+    nothing in the archive (audit IMP-9186, F4). The thread containers and the
+    participant directory must now ship — with tenant_key stripped like every
+    portability row.
+    """
+    tenant_key = TenantManager.generate_tenant_key()
+    await _seed_fidelity_graph(db_session, tenant_key)
+
+    service = TenantExportService(db_session=db_session)
+    zip_path, _ = await service.export(tenant_key=tenant_key)  # default = portability
+
+    with zipfile.ZipFile(zip_path, "r") as zf:
+        threads = json.loads(zf.read("data/CommThread.json"))
+        participants = json.loads(zf.read("data/CommParticipant.json"))
+        messages = json.loads(zf.read("data/Message.json"))
+    assert len(threads) == 1 and threads[0]["subject"] == "fidelity hub thread"
+    assert len(participants) == 1 and participants[0]["participant_id"] == "BE-1"
+    thread_ids = {t["id"] for t in threads}
+    assert all(m["thread_id"] in thread_ids for m in messages if m.get("thread_id")), (
+        "every exported message anchor must resolve inside the archive"
+    )
+    for row in threads + participants:
+        assert "tenant_key" not in row, "portability must strip tenant_key from hub rows too"

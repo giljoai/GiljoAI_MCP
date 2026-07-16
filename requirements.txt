@@ -17,7 +17,7 @@
 # completes it: route-introspection tests now flatten _IncludedRouter via tests/helpers/route_surface
 # and the frozen surface baselines are reproduced byte-for-byte. starlette 1.3.1 clears 4 CVEs
 # (CVE-2026-48818/48817/54283/54282) that 1.0.1 carried. Keep these two pinned in lockstep.
-fastapi==0.137.1           # REST API and WebSockets
+fastapi==0.139.0           # REST API and WebSockets
 starlette==1.3.1           # Pinned with fastapi (clears CVE-2026-48818/48817/54283/54282; needs >=1.3.1)
 uvicorn[standard]>=0.23.0   # ASGI server with production extras (includes websockets, httptools, watchfiles)
 pydantic>=2.0.0             # Data validation and serialization
@@ -37,7 +37,7 @@ PyJWT>=2.8.0                      # JWT token handling (using PyJWT instead of p
 email-validator>=2.1.0            # Required by Pydantic EmailStr (auth.py, users.py)
 
 # MCP SDK (Model Context Protocol)
-mcp>=1.27.1,<1.28           # MCP SDK — upper bound: minor bumps require re-running tests/integration/test_mcp_wire_contract_dict_serialization.py (wire contract). Patch bumps allowed. CVE-2025-66416 DNS rebinding fix required >=1.27.1.
+mcp>=1.27.1,<1.29           # MCP SDK — upper bound: minor bumps require re-running tests/integration/test_mcp_wire_contract_dict_serialization.py (wire contract). Patch bumps allowed. CVE-2025-66416 DNS rebinding fix required >=1.27.1.
 
 # Core Utilities
 python-dotenv>=1.0.0        # Environment variable loading

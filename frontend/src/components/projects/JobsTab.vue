@@ -26,6 +26,7 @@
             <th class="col-center">Agent Status</th>
             <th class="col-center hide-mobile">Duration</th>
             <th class="col-center hide-mobile">Steps</th>
+            <th class="col-center hide-mobile">Messages Waiting</th>
             <th class="col-actions"></th>
           </tr>
         </thead>

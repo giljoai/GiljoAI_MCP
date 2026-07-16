@@ -28,7 +28,7 @@ export function useJobActions(getJob) {
    * handleMessages — FE-9012c (D3): open the agent's PROJECT-BOUND Hub thread as a
    * live view (waiting/read/sent is now a filter inside that thread), replacing the
    * retired MessageAuditModal. Resolves the bound thread by project_id and deep-links
-   * to the Hub with the Project comms tab active.
+   * to the Hub with the Project threads tab active.
    *
    * Resolves THE bound thread deterministically via the shared
    * useProjectBoundThread resolver precedence (exactly-one candidate -> it;
@@ -42,9 +42,9 @@ export function useJobActions(getJob) {
     const projectId = projectIdOverride || agent.project_id || null
     const bound = projectId ? await resolveExistingProjectThread(projectId) : null
     if (!bound) {
-      // No bound thread yet — land on the Project comms tab so the list is visible.
+      // No bound thread yet — land on the Project threads tab so the list is visible.
       router?.push({ name: 'Hub', query: { tab: 'project' } })
-      showToast({ message: 'No project comms thread yet for this agent.', type: 'info', timeout: 4000 })
+      showToast({ message: 'No project thread yet for this agent.', type: 'info', timeout: 4000 })
       return
     }
     router?.push({ name: 'Hub', query: { thread: bound.thread_id, tab: 'project' } })

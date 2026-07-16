@@ -39,6 +39,20 @@ from giljo_mcp.platform_registry import (
 # thin_prompt_generator's builders dict so the token never drifts between the two.
 SUBAGENT_EXECUTION_PROMPT_TYPE = "subagent_execution"
 
+# BE-9165 (wall 3): the closeout-only guidance returned when every specialist has
+# already completed — there is nothing left to implement, so the misleading
+# "No agent jobs spawned yet" 400 must never surface for this state.
+_READY_TO_CLOSE_PROMPT = (
+    "All specialist agents for this project have already completed their work — "
+    "there is nothing left to implement. The project is ready to close.\n\n"
+    "As the orchestrator: 1) review the recorded results (get_workflow_status), "
+    "2) if your own orchestrator job is still open, finish it with complete_job, "
+    "then 3) close the project with write_project_closeout(project_id=..., "
+    "summary=..., key_outcomes=..., decisions_made=..., git_commits=[...]). "
+    "If closeout reports CLOSEOUT_BLOCKED on a leftover 'waiting' orchestrator, "
+    "pass force=true to auto-decommission it."
+)
+
 # tool_type (harness token) -> generate_implementation_prompt type. Antigravity reuses
 # gemini's builder (BE-6041b D1-B). BE-9099: the ``generic`` floor and ``opencode`` (a
 # detectable harness with no dedicated CLI builder) route to the harness-neutral
@@ -407,6 +421,35 @@ class ThinClientLifecycleMixin:
             )
             agent_executions = (await self.db.execute(fallback_stmt)).scalars().all()
         if not agent_executions:
+            # BE-9165 (wall 3): both queries above filter status IN
+            # ('waiting','working'), so specialists whose work is already DONE
+            # match neither. Distinguish "nothing ever spawned" (the 400 below
+            # stays) from "all specialists terminal" — the latter is a valid
+            # lifecycle state (work executed outside a staged session) and gets
+            # a ready-to-close response instead of the misleading dead end.
+            from giljo_mcp.repositories.mission_repository import TERMINAL_AGENT_STATUSES
+
+            any_status_stmt = (
+                select(AgentExecution)
+                .where(
+                    AgentExecution.tenant_key == self.tenant_key,
+                    AgentExecution.agent_display_name != "orchestrator",
+                )
+                .join(
+                    AgentJob,
+                    (AgentJob.job_id == AgentExecution.job_id) & (AgentJob.tenant_key == AgentExecution.tenant_key),
+                )
+                .where(AgentJob.project_id == project_id)
+            )
+            all_specialists = (await self.db.execute(any_status_stmt)).scalars().all()
+            if all_specialists and all(e.status in TERMINAL_AGENT_STATUSES for e in all_specialists):
+                return {
+                    "ready_to_close": True,
+                    "prompt": _READY_TO_CLOSE_PROMPT,
+                    "orchestrator_job_id": orchestrator_execution.job_id,
+                    "agent_count": len(all_specialists),
+                    "launch_commands": [],
+                }
             raise ValidationError("No agent jobs spawned yet. Please run staging first to create agent jobs.")
 
         # 6. BE-9103: the orchestrator closeout-commit gate reads the canonical master

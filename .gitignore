@@ -95,7 +95,6 @@ CLAUDE.md
 .claude.json
 .codex/
 CODEX.md
-AGENTS.md
 .gemini/
 GEMINI.md
 .cursor/
@@ -120,6 +119,9 @@ logs/
 .env
 .env.local
 .env.*.local
+.env*.bak*
+config.yaml*.bak*
+/backup_storage/
 
 # Node.js
 node_modules/

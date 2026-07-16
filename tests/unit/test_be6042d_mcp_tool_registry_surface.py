@@ -309,7 +309,10 @@ EXPECTED_TOOL_SURFACE: dict[str, dict[str, object]] = {
     },
     "write_project_closeout": {
         "fn": "write_project_closeout",
-        "params": ["decisions_made", "git_commits", "key_outcomes", "project_id", "summary", "tags"],
+        # BE-9165: force added — previously hardcoded False inside the wrapper,
+        # making the CLOSEOUT_BLOCKED "pass force=true" hint unwirable from the
+        # transport.
+        "params": ["decisions_made", "force", "git_commits", "key_outcomes", "project_id", "summary", "tags"],
         "scope": "mcp:agent",
     },
     "write_memory_entry": {

@@ -193,6 +193,7 @@ async def get_current_user(
         try:
             principal = await validate_principal(db, jwt_token=access_token, prefetched_user=prefetched)
             logger.debug("[AUTH] JWT cookie SUCCESS - User: %s, Tenant: %s", principal.username, principal.tenant_key)
+            _stamp_auth_credential(request, "cookie")
             return principal.user
         except PrincipalValidationError as exc:
             logger.warning("[AUTH] JWT cookie rejected (%s)", exc.reason.value)
@@ -201,6 +202,7 @@ async def get_current_user(
         try:
             principal = await validate_principal(db, jwt_token=bearer_token, prefetched_user=prefetched)
             logger.debug("[AUTH] Bearer JWT SUCCESS - User: %s, Tenant: %s", principal.username, principal.tenant_key)
+            _stamp_auth_credential(request, "bearer")
             return principal.user
         except PrincipalValidationError as exc:
             logger.warning("[AUTH] Bearer JWT rejected (%s)", exc.reason.value)
@@ -221,6 +223,7 @@ async def get_current_user(
         else:
             await _record_api_key_usage(db, request, principal.api_key_id)
             logger.debug("[AUTH] API key SUCCESS - User: %s, Tenant: %s", principal.username, principal.tenant_key)
+            _stamp_auth_credential(request, "api_key")
             return principal.user
 
     # No valid authentication found. Two cases — log them at different levels
@@ -342,6 +345,80 @@ async def require_ce_mode() -> None:
 
     if GILJO_MODE not in ("", "ce"):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
+
+# ── Credential-purpose gate (SEC-9170) ──────────────────────────────────────
+# A leaked data-plane credential (an API key or an MCP OAuth Bearer) must not be
+# able to mutate account-security fields or mint a new key — those require an
+# interactive browser session. The signal is the credential type get_current_user
+# already resolves by priority (cookie → bearer → api_key); it is surfaced on
+# request.state.auth_method, mirroring the MCP transport's scope-state stamp.
+
+# Account-security fields that only a browser session may write. Names match
+# UserUpdate on PUT /api/v1/users/{id}.
+SENSITIVE_ACCOUNT_FIELDS: frozenset[str] = frozenset({"password", "email", "is_active", "recovery_pin"})
+
+
+def _stamp_auth_credential(request: Request, credential: str) -> None:
+    """Record which credential authenticated the request on request.state.
+
+    ``credential`` is ``"cookie"`` (browser session), ``"bearer"`` (an
+    Authorization: Bearer / MCP OAuth token) or ``"api_key"``. Surfaces the
+    priority-branch decision get_current_user already makes so the browser-session
+    guards can read it, mirroring ``scope["state"]["auth_method"]`` on the MCP
+    transport. Nothing else depends on it. Best-effort: a real Starlette request
+    always has ``.state``; a bare stub (direct-call unit tests) may not, and a
+    missing stamp simply fails the browser-session check closed.
+    """
+    if request is not None and hasattr(request, "state"):
+        request.state.auth_method = credential
+
+
+def is_browser_session(request: Request) -> bool:
+    """True only when the access_token cookie authenticated the request.
+
+    Fail-closed: an absent/unknown stamp is treated as non-browser.
+    """
+    return getattr(getattr(request, "state", None), "auth_method", None) == "cookie"
+
+
+async def require_browser_session(request: Request, _user: User = Depends(get_current_active_user)) -> None:
+    """Dependency: reject any non-cookie credential (SEC-9170 / SEC-9171 #3).
+
+    Depends on get_current_active_user so the credential is validated and stamped
+    before this reads it. Use on routes an API key / OAuth Bearer must never reach
+    (e.g. minting a new API key).
+    """
+    if not is_browser_session(request):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This action requires an interactive browser session; API keys and OAuth tokens cannot perform it.",
+        )
+
+
+def enforce_sensitive_account_field_guard(request: Request, payload: object) -> None:
+    """Guard a user-update payload (SEC-9170 + recovery_pin CE boundary).
+
+    ``payload`` exposes the UserUpdate fields. If any account-security field is
+    written (non-None) and the caller is not a browser session → 403. The
+    recovery_pin write is additionally refused in hosted SaaS, which must never
+    accept or persist a recovery PIN (2026-07-14 product boundary).
+    """
+    writing_sensitive = any(getattr(payload, field, None) is not None for field in SENSITIVE_ACCOUNT_FIELDS)
+    if writing_sensitive and not is_browser_session(request):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Password, email, and account-status changes require an interactive browser session; "
+            "API keys and OAuth tokens cannot perform them.",
+        )
+    if getattr(payload, "recovery_pin", None) is not None:
+        from api.app_state import GILJO_MODE
+
+        if GILJO_MODE not in ("", "ce"):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Recovery PIN is not available in hosted mode.",
+            )
 
 
 async def get_current_user_optional(

@@ -596,11 +596,9 @@ async def get_implementation_prompt(
         sanitize(current_user.username),
     )
 
-    return ImplementationPromptResponse(
-        prompt=payload["prompt"],
-        orchestrator_job_id=payload["orchestrator_job_id"],
-        agent_count=payload["agent_count"],
-    )
+    # BE-9165: model_validate picks up ready_to_close when implement() returns the
+    # all-specialists-complete state and ignores payload keys the schema doesn't carry.
+    return ImplementationPromptResponse.model_validate(payload)
 
 
 @router.get("/termination/{project_id}", response_model=TerminationPromptResponse)

@@ -53,6 +53,40 @@ class _McpHeartbeatAccessFilter(logging.Filter):
         return not (method == "GET" and path == "/mcp")
 
 
+# Query params whose values are secrets by design: lifecycle links (password
+# reset / account deletion / email change) deliver ?token=<plaintext>, and the
+# social OAuth callbacks carry ?code=/?state=. Match is exact param name,
+# case-insensitive.
+_SENSITIVE_QUERY_PARAMS = frozenset({"token", "code", "state"})
+
+
+class _SensitiveQueryAccessFilter(logging.Filter):
+    """Redact secret-bearing query-param VALUES in uvicorn.access lines (SEC-9174 #34).
+
+    The access log writes the full request line to captured stdout (Railway
+    log drain in SaaS, logs/giljo_mcp.log in CE), so a clicked reset link
+    lands its plaintext token in every log sink. Rewrites the path element of
+    uvicorn's access args tuple (client_addr, method, full_path, http_version,
+    status_code); keeps the param name so the line stays debuggable, and never
+    drops the record.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        args = record.args
+        if not (isinstance(args, tuple) and len(args) >= 3 and isinstance(args[2], str) and "?" in args[2]):
+            return True
+        path, _, query = args[2].partition("?")
+        redacted = []
+        for pair in query.split("&"):
+            name, sep, _value = pair.partition("=")
+            if sep and name.lower() in _SENSITIVE_QUERY_PARAMS:
+                redacted.append(f"{name}=[REDACTED]")
+            else:
+                redacted.append(pair)
+        record.args = (*args[:2], f"{path}?{'&'.join(redacted)}", *args[3:])
+        return True
+
+
 class _SafeRotatingFileHandler(_BaseRotatingFileHandler):
     """RotatingFileHandler that survives Windows file-lock errors.
 
@@ -165,7 +199,13 @@ def configure_logging(
 
     # Drop uvicorn access lines for GET /mcp polls only. Keeps all other
     # request logging (including MCP POSTs, which are real tool calls).
-    logging.getLogger("uvicorn.access").addFilter(_McpHeartbeatAccessFilter())
+    # Then redact secret-bearing query-param values (SEC-9174 #34) — dictConfig
+    # (uvicorn's own logging setup) replaces handlers but keeps logger filters,
+    # so these survive regardless of whether uvicorn configures logging before
+    # (CLI `uvicorn api.app:app`) or after (`uvicorn.run` in startup) import.
+    access_logger = logging.getLogger("uvicorn.access")
+    access_logger.addFilter(_McpHeartbeatAccessFilter())
+    access_logger.addFilter(_SensitiveQueryAccessFilter())
 
     # Shared processors for all configurations
     shared_processors = [

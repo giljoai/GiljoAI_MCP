@@ -98,7 +98,22 @@ async def _handle_force_close(
     orch_result = await session.execute(orch_stmt)
     active_orchestrator = orch_result.scalar_one_or_none()
 
-    if active_orchestrator:
+    # BE-9165: a 'waiting' orchestrator with zero in-flight specialists is not a
+    # live calling session — it is the auto-created (never staged) or
+    # staging-parked row of a project whose work happened outside a staged
+    # implementation session. force=true may decommission it, which is exactly
+    # what the CLOSEOUT_BLOCKED hint promises. A 'working' orchestrator or any
+    # in-flight specialist still trips the self-decommission guard below.
+    orchestrator_is_idle_leftover = False
+    if active_orchestrator is not None and active_orchestrator.status == "waiting":
+        from giljo_mcp.repositories.mission_repository import MissionRepository
+
+        _total, in_flight = await MissionRepository().count_non_orchestrator_agents_by_liveness(
+            session, tenant_key, project_id
+        )
+        orchestrator_is_idle_leftover = in_flight == 0
+
+    if active_orchestrator and not orchestrator_is_idle_leftover:
         raise ProjectStateError(
             "Cannot force-close: orchestrator is still active and would be decommissioned",
             context={

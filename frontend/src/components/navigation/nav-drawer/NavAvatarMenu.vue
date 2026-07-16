@@ -70,9 +70,13 @@
         <v-list-item-subtitle v-if="orgName" class="text-body-small mt-1">
           {{ orgName }}
         </v-list-item-subtitle>
+        <!-- Role/Owner badges: CE-only display (FE-9172). Hosted SaaS is
+             single-user/account-owner — no admin chrome. role="admin" logic
+             (isAdmin, guards) is unchanged; only the chips hide. -->
         <v-list-item-subtitle
-          v-if="currentUser.role"
+          v-if="currentUser.role && isCeEdition"
           class="d-flex align-center mt-2 gap-2"
+          data-test="user-role-badges"
         >
           <v-chip
             :color="getRoleColor(currentUser.role)"

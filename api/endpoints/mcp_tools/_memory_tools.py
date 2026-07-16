@@ -107,14 +107,29 @@ async def write_project_closeout(
             )
         ),
     ] = None,
+    force: Annotated[
+        bool,
+        Field(
+            description=(
+                "Force-close: auto-decommission remaining agents before closing. "
+                "Use when the CLOSEOUT_BLOCKED hint says so — e.g. a leftover "
+                "'waiting' orchestrator after work was executed outside a staged "
+                "session. Refused while any specialist is still in flight or the "
+                "orchestrator is actively working (complete that work first)."
+            )
+        ),
+    ] = False,
     ctx: Context = None,
 ) -> dict[str, Any]:
+    # BE-9165 (wall 1): force was hardcoded False here, so the CLOSEOUT_BLOCKED
+    # hint "pass force=true" was unwirable from the transport. It is now a real
+    # boundary parameter.
     kwargs: dict[str, Any] = {
         "project_id": project_id,
         "summary": summary,
         "key_outcomes": key_outcomes,
         "decisions_made": decisions_made,
-        "force": False,
+        "force": force,
     }
     if git_commits is not None:
         kwargs["git_commits"] = git_commits

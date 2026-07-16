@@ -103,6 +103,28 @@ def _should_drop_event(event: dict[str, Any]) -> bool:
     return False
 
 
+def _scrub_request_pii(event: dict[str, Any]) -> None:
+    """Strip body, cookies, query string, and PII headers from ``event["request"]`` in place.
+
+    Query strings are dropped wholesale (SEC-9174 #35): lifecycle links carry
+    ``?token=<plaintext>`` and the social OAuth callbacks carry ``?code=&state=``;
+    no Sentry triage flow needs the raw query, so removal beats a param allowlist.
+    """
+    request = event.get("request")
+    if not isinstance(request, dict):
+        return
+    request.pop("data", None)
+    request.pop("cookies", None)
+    if "query_string" in request:
+        request["query_string"] = ""
+    url = request.get("url")
+    if isinstance(url, str):
+        request["url"] = url.partition("?")[0]
+    headers = request.get("headers")
+    if isinstance(headers, dict):
+        request["headers"] = {k: v for k, v in headers.items() if k.lower() not in _PII_HEADERS_LOWER}
+
+
 def _scrub_event(event: dict[str, Any], _hint: dict[str, Any]) -> dict[str, Any] | None:
     """Drop request body + PII headers, and suppress known-noisy log events.
 
@@ -112,13 +134,18 @@ def _scrub_event(event: dict[str, Any], _hint: dict[str, Any]) -> dict[str, Any]
     """
     if _should_drop_event(event):
         return None
-    request = event.get("request")
-    if isinstance(request, dict):
-        request.pop("data", None)
-        headers = request.get("headers")
-        if isinstance(headers, dict):
-            scrubbed = {k: v for k, v in headers.items() if k.lower() not in _PII_HEADERS_LOWER}
-            request["headers"] = scrubbed
+    _scrub_request_pii(event)
+    return event
+
+
+def _scrub_transaction(event: dict[str, Any], _hint: dict[str, Any]) -> dict[str, Any] | None:
+    """``before_send_transaction`` hook (SEC-9174 #35).
+
+    ``before_send`` only runs for error events — sampled transaction envelopes
+    shipped ``request.query_string`` intact. Same PII scrub, no drop rules
+    (the noise-suppression prefixes are log-event concepts).
+    """
+    _scrub_request_pii(event)
     return event
 
 
@@ -155,8 +182,12 @@ def init_sentry(mode: str | None = None) -> bool:
         traces_sample_rate=0.1,
         sample_rate=1.0,
         send_default_pii=False,
+        # SEC-9174 #35: exception frames must not capture local variables —
+        # reset/verification flows hold plaintext tokens and secrets in locals.
+        include_local_variables=False,
         integrations=[FastApiIntegration()],
         before_send=_scrub_event,
+        before_send_transaction=_scrub_transaction,
     )
     logger.info("Sentry initialized (environment=%s)", resolved_mode)
     return True

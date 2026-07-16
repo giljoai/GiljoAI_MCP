@@ -20,7 +20,9 @@ storage_type filter in _collect_vision_files matches zero rows.
 
 Strip filter is applied per-field at serialize time (mission spec, narrow):
     ALWAYS_STRIP, CREDENTIAL_STRIP, PLATFORM_METADATA_STRIP    — field-level
-    EPHEMERAL_EXCLUDE_MODELS, OPS_EXCLUDE_TABLES               — entire-table
+Entire-table selection is schema-DISCOVERED (BE-9188): see
+``giljo_mcp/services/capture_tables.py`` (tenant-keyed models minus the
+justified EXPORT_EXCLUDE).
 
 The full export is wrapped in REPEATABLE READ so the snapshot is consistent
 across all model queries.
@@ -48,35 +50,10 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.events.schemas import EventFactory
-from giljo_mcp.models import (
-    AgentExecution,
-    AgentJob,
-    AgentTemplate,
-    AgentTodoItem,
-    Configuration,
-    MCPContextIndex,
-    Message,
-    MessageAcknowledgment,
-    MessageCompletion,
-    MessageRecipient,
-    Organization,
-    OrgMembership,
-    Product,
-    ProductAgentAssignment,
-    ProductArchitecture,
-    ProductMemoryEntry,
-    ProductTechStack,
-    ProductTestConfig,
-    Project,
-    Settings,
-    SetupState,
-    Task,
-    TaxonomyType,
-    TemplateArchive,
-    User,
-    UserApproval,
-    UserFieldPriority,
-    VisionDocument,
+from giljo_mcp.services.capture_tables import (
+    ARTIFACT_SCHEMA_VERSION,
+    capture_models,
+    capture_table_names,
 )
 
 
@@ -110,68 +87,18 @@ PLATFORM_METADATA_STRIP: frozenset[str] = frozenset(
     }
 )
 
-OPS_EXCLUDE_TABLES: frozenset[str] = frozenset({"ops_audit_log", "ops_billing_links"})
-
-EPHEMERAL_EXCLUDE_MODELS: frozenset[str] = frozenset(
-    {
-        "APIKey",
-        "ApiKeyIpLog",
-        "DownloadToken",
-        "ApiMetrics",
-        "OAuthAuthorizationCode",
-        "MCPSession",
-        "OptimizationMetric",
-    }
-)
-
 _ALL_STRIP_FIELDS: frozenset[str] = ALWAYS_STRIP | CREDENTIAL_STRIP | PLATFORM_METADATA_STRIP
 
 
 # --------------------------------------------------------------------------- #
-# Model registry — verified against live src/giljo_mcp/models/ on 2026-05-14.
-# Drift vs 0844a snapshot is documented in the complete_job result.
+# Table selection (BE-9188): the capture set is DISCOVERED, not listed here.
+# ``capture_tables.capture_models()`` derives it from ``Base.metadata`` (every
+# tenant-keyed model minus the justified ``EXPORT_EXCLUDE``), so adding a new
+# product table never requires touching this service. The old hand-maintained
+# EXPORT_MODELS allowlist is gone — it drifted twice (BE-6113 on the deletion
+# side, IMP-9186 here) and the second drift was a confirmed restore data-loss
+# defect (BE-9187).
 # --------------------------------------------------------------------------- #
-
-EXPORT_MODELS: tuple[type, ...] = (
-    # Identity / org
-    Organization,
-    OrgMembership,
-    User,
-    UserFieldPriority,
-    Settings,
-    SetupState,
-    # Configuration (now tenant-scoped post-SEC-0005b)
-    Configuration,
-    # Products
-    Product,
-    ProductTechStack,
-    ProductArchitecture,
-    ProductTestConfig,
-    # Vision
-    VisionDocument,
-    # Projects
-    TaxonomyType,
-    Project,
-    # Memory
-    ProductMemoryEntry,
-    MCPContextIndex,
-    # Tasks / messages
-    Task,
-    Message,
-    MessageRecipient,
-    MessageAcknowledgment,
-    MessageCompletion,
-    # Agent templates
-    AgentTemplate,
-    TemplateArchive,
-    ProductAgentAssignment,
-    # Agent jobs
-    AgentJob,
-    AgentExecution,
-    AgentTodoItem,
-    # User approvals (BE-5029)
-    UserApproval,
-)
 
 
 _REDACTION_NOTICE = (
@@ -215,23 +142,15 @@ _FIDELITY_NOTICE = (
 
 
 def _fidelity_restore_order() -> list[str]:
-    """Return EXPORT_MODELS table names in FK-correct INSERT order (parents first).
+    """Capture-set table names in FK-correct INSERT order (parents first).
 
-    Edition isolation (MANDATORY): ``TenantExportService`` is [CE]. It must NOT
-    import ``saas/deletion/tenant_tables.py`` for the FK order even though the WO
-    cites it — that module is [SaaS] and pulls SaaS models, which would break the
-    Deletion Test (CE must start with every ``saas/`` dir deleted). We derive the
-    same ordering CE-natively instead: ``Base.metadata.sorted_tables`` already
-    yields *dependency* order (a table appears after everything it depends on),
-    which is exactly the insert order a restore needs. We restrict it to the
-    EXPORT_MODELS table set. The restore path (chain step f) reverses this list
-    for FK-safe deletes. ``Base.metadata`` is already populated because every
-    EXPORT_MODELS class is imported at module load — no SaaS import is triggered.
+    Delegates to the discovery module (BE-9188) — ``capture_table_names()`` is
+    the one source of truth for both the table set and its topological order.
+    The restore path (chain step f) reverses this list for FK-safe deletes.
+    Kept as a named seam because the manifest builder and the round-trip tests
+    reference it.
     """
-    from giljo_mcp.models.base import Base
-
-    export_tables = {model.__tablename__ for model in EXPORT_MODELS}
-    return [table.name for table in Base.metadata.sorted_tables if table.name in export_tables]
+    return capture_table_names()
 
 
 class TenantExportService:
@@ -272,23 +191,22 @@ class TenantExportService:
           The manifest records ``mode="fidelity"`` plus an FK-correct
           ``restore_order`` so the restore path (chain step f) re-inserts
           parents before children. Same REPEATABLE READ snapshot, same
-          :data:`EXPORT_MODELS` registry as portability mode.
+          discovered capture set as portability mode.
         """
         if not tenant_key:
             raise ValueError("tenant_key is required")
 
         await self._set_repeatable_read()
 
+        # Discovered per call (BE-9188): every tenant-keyed model registered in
+        # this runtime, minus the justified EXPORT_EXCLUDE, parents-first.
+        models = capture_models()
         model_data: dict[str, list[dict[str, Any]]] = {}
         model_counts: dict[str, int] = {}
-        total = len(EXPORT_MODELS)
+        total = len(models)
 
-        for idx, model in enumerate(EXPORT_MODELS, start=1):
+        for idx, model in enumerate(models, start=1):
             name = model.__name__
-            if name in EPHEMERAL_EXCLUDE_MODELS:
-                continue
-            if model.__tablename__ in OPS_EXCLUDE_TABLES:
-                continue
             rows = await self._query_model_rows(model, tenant_key, fidelity=fidelity)
             model_data[name] = rows
             model_counts[name] = len(rows)
@@ -514,7 +432,8 @@ class TenantExportService:
             head = "unknown"
 
         manifest: dict[str, Any] = {
-            "schema_version": "1.0",
+            # "2.0" = discovery-era capture set (BE-9188); "1.0" = allowlist era.
+            "schema_version": ARTIFACT_SCHEMA_VERSION,
             "mode": "fidelity" if fidelity else "portability",
             "exported_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             "tenant_key": tenant_key,
@@ -526,7 +445,7 @@ class TenantExportService:
         }
         if fidelity:
             # The restore path (chain step f) re-inserts parents before children;
-            # this is the FK-correct INSERT order for the EXPORT_MODELS tables.
+            # this is the FK-correct INSERT order for the captured tables.
             manifest["restore_order"] = _fidelity_restore_order()
         return manifest
 
@@ -634,6 +553,8 @@ _TABLE_DESCRIPTIONS: dict[str, str] = {
     "Project": "Projects (work orders for agents).",
     "ProductMemoryEntry": "360 memory entries scoped to a product.",
     "MCPContextIndex": "Chunked context index for RAG. searchable_vector excluded.",
+    "CommThread": "Message Hub threads (subject, status, baton, resolution).",
+    "CommParticipant": "Message Hub participant directory + per-thread read cursors.",
     "Task": "Tasks (work items, may be lifted from agent TODOs).",
     "Message": "Inter-agent messages.",
     "MessageRecipient": "Junction: messages -> recipient agents.",
@@ -646,4 +567,9 @@ _TABLE_DESCRIPTIONS: dict[str, str] = {
     "AgentExecution": "Per-job execution traces.",
     "AgentTodoItem": "Per-job TODO list items (the product feature, not source markers).",
     "UserApproval": "User approval gate records (BE-5029 awaiting_user flow).",
+    "Roadmap": "Product roadmaps.",
+    "RoadmapItem": "Roadmap entries (may link projects/tasks).",
+    "SequenceRun": "Chain runs (linked multi-project executions).",
+    "Notification": "In-app notifications.",
+    "TenantSkillsAck": "Skills-onboarding acknowledgment state (one row per tenant).",
 }

@@ -31,16 +31,23 @@ def mask_token(token: str) -> str:
     """Mask a token/secret for safe log output, showing only the first 8 chars.
 
     Returns the first 8 characters followed by '...' so the token can be
-    correlated in logs without exposing the full credential.
+    correlated in logs without exposing the full credential. The masked
+    form is passed through sanitize() before returning: tokens are
+    user-supplied (URL path segments), and both the short-token
+    passthrough and the raw slice would otherwise carry newlines and
+    control characters straight into the log line (CWE-117). Masking
+    happens on the RAW token first so at most 8 raw characters are ever
+    exposed; sanitizing first would let control chars widen the window.
 
     Args:
         token: The token string to mask.
 
     Returns:
-        Masked string, e.g. 'a1b2c3d4...' or the original if <= 8 chars.
+        Masked, control-char-free string, e.g. 'a1b2c3d4...', or the
+        sanitized original if <= 8 chars.
     """
     if not isinstance(token, str):
-        return str(token)
-    if len(token) <= 8:
-        return token
-    return token[:8] + "..."
+        token = str(token)
+    if len(token) > 8:
+        token = token[:8] + "..."
+    return sanitize(token)

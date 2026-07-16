@@ -54,7 +54,7 @@ The 5 legacy tokens live in prod + CE self-hoster DBs **forever**. They are neve
 - **UI shrinks** to two pills; the per-CLI picker is gone. The Template Manager `cli_tool` picker is a **separate per-agent axis** and is untouched. A read-only "detected: &lt;harness&gt;" chip exposes the resolved harness.
 - **Registry** splits `PLATFORMS` → `MODES` (2) + `HARNESSES` (5, incl. opencode as a first-class row using the BE-9015 verified `cmd /k opencode --prompt` launch). Export vocabulary (`EXPORT_*`) is untouched. `Platform` remains only for the harness PRESET rows.
 - **Golden re-baseline** (owner-blessed): the S1–S4 render golden moves to a `mode×harness` key scheme. `multi_terminal` renders stay byte-identical (the collapse never touches the human-driven path); the `_be6209f_golden_multi_terminal.txt` fixture is byte-stable.
-- **Teams-readiness (ADR-009):** unaffected — no per-user assumption is introduced; `execution_mode` is a project attribute scoped by `tenant_key` as before.
+- **Tenant isolation (ADR-009):** unaffected — `execution_mode` remains a project attribute scoped by the permanent per-user `tenant_key`; no multi-user or cross-tenant behavior is introduced.
 
 ## Fallback
 
