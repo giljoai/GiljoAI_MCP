@@ -21,6 +21,12 @@ import asyncio
 import bcrypt
 
 
+# bcrypt's hard input limit. Anything longer makes bcrypt >= 4 raise ValueError
+# instead of silently truncating like older versions did. Public: the password-set
+# schemas cap at this same limit (BE-9176, api/endpoints/auth_models.py).
+BCRYPT_MAX_PASSWORD_BYTES = 72
+
+
 async def async_hash_password(plaintext: str) -> str:
     """Hash a password / PIN with bcrypt, off the event loop.
 
@@ -37,6 +43,12 @@ async def async_hash_password(plaintext: str) -> str:
 async def async_verify_password(plaintext: str, password_hash: str) -> bool:
     """Constant-time-verify a password / PIN against its bcrypt hash, off the loop.
 
+    Fails CLOSED (SEC-9174 #6): a plaintext over bcrypt's 72-UTF-8-byte limit or
+    a malformed stored hash makes bcrypt raise ``ValueError``; both return
+    ``False`` here instead of propagating. Pre-fix, the raise surfaced as a 500
+    at login for a known account while an unknown account got a 401 — an
+    unauthenticated username-enumeration oracle.
+
     Args:
         plaintext: The clear-text password or PIN presented by the caller.
         password_hash: The stored bcrypt hash to compare against.
@@ -44,4 +56,10 @@ async def async_verify_password(plaintext: str, password_hash: str) -> bool:
     Returns:
         ``True`` if the plaintext matches the hash, ``False`` otherwise.
     """
-    return await asyncio.to_thread(bcrypt.checkpw, plaintext.encode("utf-8"), password_hash.encode("utf-8"))
+    plaintext_bytes = plaintext.encode("utf-8")
+    if len(plaintext_bytes) > BCRYPT_MAX_PASSWORD_BYTES:
+        return False
+    try:
+        return await asyncio.to_thread(bcrypt.checkpw, plaintext_bytes, password_hash.encode("utf-8"))
+    except ValueError:
+        return False

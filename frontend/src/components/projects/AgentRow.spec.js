@@ -218,6 +218,44 @@ describe('AgentRow — play button visibility', () => {
 })
 
 // ---------------------------------------------------------------------------
+// Message badge: zero vs has-msgs (FE-9184 restore of the 0870j column)
+// ---------------------------------------------------------------------------
+
+describe('AgentRow — message badge', () => {
+  it('renders zero-class badge when messages_waiting_count=0', async () => {
+    const wrapper = await mountRow({
+      agent: makeAgent({ messages_waiting_count: 0 }),
+      now: NOW_MS,
+    })
+    const badge = wrapper.find('.msg-badge')
+    expect(badge.exists()).toBe(true)
+    expect(badge.classes()).toContain('zero')
+    expect(badge.classes()).not.toContain('has-msgs')
+    expect(badge.text()).toBe('0')
+  })
+
+  it('renders has-msgs-class badge when messages_waiting_count > 0', async () => {
+    const wrapper = await mountRow({
+      agent: makeAgent({ messages_waiting_count: 3 }),
+      now: NOW_MS,
+    })
+    const badge = wrapper.find('.msg-badge')
+    expect(badge.classes()).toContain('has-msgs')
+    expect(badge.classes()).not.toContain('zero')
+    expect(badge.text()).toBe('3')
+  })
+
+  it('emits messages event when the count badge is clicked', async () => {
+    const wrapper = await mountRow({
+      agent: makeAgent({ messages_waiting_count: 3 }),
+      now: NOW_MS,
+    })
+    await wrapper.find('.message-count-button').trigger('click')
+    expect(wrapper.findComponent(AgentRow).emitted('messages')).toHaveLength(1)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // Duration formatting via now prop (pure, no timer in AgentRow)
 // ---------------------------------------------------------------------------
 

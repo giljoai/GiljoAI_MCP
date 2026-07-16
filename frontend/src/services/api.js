@@ -2,6 +2,7 @@ import axios from 'axios'
 import { API_CONFIG, getDefaultTenantKey } from '@/config/api'
 import { parseErrorResponse, getErrorMessage } from '@/utils/errorMessages'
 import { sequenceRunsApi } from './sequenceRunsApi.js'
+import { handleAuthFailure, normalizeRejection } from './apiFailureHandling.js'
 
 // Create axios instance with default config
 const apiClient = axios.create({
@@ -34,17 +35,27 @@ export function setTenantKey(tenantKey) {
   currentTenantKey = tenantKey
 }
 
-// Token refresh state (prevents concurrent refresh races)
+// Token refresh state (prevents concurrent refresh races).
+// FE-9175: subscribers carry BOTH settlement paths. The old shape stored only
+// a success callback, so a failed refresh cleared the list without settling
+// the parked promises and every awaiting caller hung forever.
 let isRefreshing = false
-let refreshSubscribers = []
+let refreshSubscribers = [] // { onSuccess, onFailure } pairs
 
 function onRefreshed() {
-  refreshSubscribers.forEach((cb) => cb())
+  const subscribers = refreshSubscribers
   refreshSubscribers = []
+  subscribers.forEach((s) => s.onSuccess())
 }
 
-function addRefreshSubscriber(callback) {
-  refreshSubscribers.push(callback)
+function onRefreshFailed() {
+  const subscribers = refreshSubscribers
+  refreshSubscribers = []
+  subscribers.forEach((s) => s.onFailure())
+}
+
+function addRefreshSubscriber(subscriber) {
+  refreshSubscribers.push(subscriber)
 }
 
 async function silentRefresh() {
@@ -56,48 +67,15 @@ async function silentRefresh() {
     // Silent failure -- will be caught by 401 interceptor if token actually expired
   } finally {
     isRefreshing = false
+    // FE-9175: requests that 401'd while this silent refresh was in flight are
+    // parked in refreshSubscribers; flush them so none hang. If the refresh
+    // actually failed, the retry re-401s and rejects normally (_retry is set).
+    onRefreshed()
   }
 }
 
-async function handleAuthFailure(error) {
-  const { default: router } = await import('@/router')
-
-  // Route-meta-aware: honor the target route's `meta.requiresAuth`. Public
-  // routes (SaaS /landing, /register, /reset-password; CE /welcome,
-  // /login, /server-down) all declare `requiresAuth: false` and must never
-  // be redirected to /login on a background 401 (e.g. a pre-auth GET
-  // /api/auth/me fired by DefaultLayout during initial bootstrap before
-  // the router has settled on the real route).
-  //
-  // We resolve against window.location.pathname because router.currentRoute
-  // still points at START_LOCATION during the very first navigation, when
-  // this race fires. The URL bar is the authoritative signal at that point.
-  try {
-    const resolved = router.resolve(window.location.pathname + window.location.search)
-    if (resolved?.meta?.requiresAuth === false) {
-      return Promise.reject(error)
-    }
-  } catch {
-    // Resolution failed -- fall through to legacy path-based handling.
-  }
-
-  try {
-    const { default: setupService } = await import('@/services/setupService')
-    const setupData = await setupService.checkEnhancedStatus()
-    if (setupData.is_fresh_install) {
-      router.push('/welcome')
-      return Promise.reject(error)
-    }
-  } catch {
-    // Secure fallback to login
-  }
-
-  const currentPath = window.location.pathname + window.location.search
-  if (!currentPath.includes('/login') && !currentPath.includes('/welcome')) {
-    router.push({ path: '/login', query: { redirect: currentPath } })
-  }
-  return Promise.reject(error)
-}
+// handleAuthFailure + normalizeRejection live in apiFailureHandling.js
+// (FE-9175 extraction, 800-line guardrail -- see that module's header).
 
 // Read CSRF token from cookie (double-submit cookie pattern)
 function getCsrfToken() {
@@ -139,7 +117,16 @@ apiClient.interceptors.response.use(
     }
     return response
   },
-  async (error) => {
+  async (rejection) => {
+    const error = normalizeRejection(rejection)
+
+    // Cancellation is a caller decision, not a failure: pass it through
+    // untouched so axios.isCancel() keeps working at call sites and no
+    // logging/auth path runs on it.
+    if (axios.isCancel(error)) {
+      return Promise.reject(error)
+    }
+
     const originalRequest = error.config
 
     // Parse error response (handles both structured and legacy errors)
@@ -189,11 +176,17 @@ apiClient.interceptors.response.use(
       }
 
       if (isRefreshing) {
-        // Another request is already refreshing -- queue this one for retry
-        return new Promise((resolve, _reject) => {
-          addRefreshSubscriber(() => {
-            originalRequest._retry = true
-            resolve(apiClient(originalRequest))
+        // Another request is already refreshing -- park this one until the
+        // refresh settles. FE-9175: wire BOTH outcomes; a failed refresh must
+        // reject the parked promise (with this caller's own 401), never
+        // strand it.
+        return new Promise((resolve, reject) => {
+          addRefreshSubscriber({
+            onSuccess: () => {
+              originalRequest._retry = true
+              resolve(apiClient(originalRequest))
+            },
+            onFailure: () => reject(error),
           })
         })
       }
@@ -208,7 +201,10 @@ apiClient.interceptors.response.use(
         return apiClient(originalRequest)
       } catch {
         isRefreshing = false
-        refreshSubscribers = []
+        // FE-9175: settle every parked request BEFORE redirecting -- each
+        // rejects with its own original 401 so callers surface an error
+        // instead of hanging on a promise nobody will ever settle.
+        onRefreshFailed()
         return handleAuthFailure(error)
       }
     }

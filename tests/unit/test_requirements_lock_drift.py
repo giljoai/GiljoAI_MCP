@@ -54,7 +54,7 @@ HASH_PREFIX = "# requirements-txt-hash: sha256:"
 # starlette CVEs (CVE-2026-48818/48817/54283/54282, fixed >=1.3.1) regress. The
 # fastapi 0.137 _IncludedRouter route-surface change is handled by flattening in
 # tests/helpers/route_surface.py.
-PINNED_EXACT = {"fastapi": "0.137.1", "starlette": "1.3.1"}
+PINNED_EXACT = {"fastapi": "0.139.0", "starlette": "1.3.1"}
 
 
 pytestmark = pytest.mark.skipif(

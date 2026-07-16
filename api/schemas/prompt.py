@@ -233,6 +233,13 @@ class ImplementationPromptResponse(BaseModel):
     prompt: str = Field(..., description="Implementation prompt for orchestrator to spawn agents")
     orchestrator_job_id: str = Field(..., description="Orchestrator job UUID")
     agent_count: int = Field(..., description="Number of spawned agents ready to execute")
+    # BE-9165 (wall 3): every specialist already completed — nothing left to
+    # implement. prompt carries closeout guidance and the dashboard can render a
+    # Close action instead of the implementation launch flow.
+    ready_to_close: bool = Field(
+        default=False,
+        description="True when all specialist agents are already complete and the project is ready to close",
+    )
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -85,3 +85,34 @@ class TestMaskTokenPinnedBehavior:
 
     def test_non_str_token(self):
         assert mask_token(12345) == "12345"
+
+
+class TestMaskTokenStripsControlChars:
+    """SEC-9173 regression: mask_token() output is control-char free.
+
+    Class of bug this catches:
+        Pre-SEC-9173, mask_token() returned tokens of 8 chars or fewer
+        verbatim and long tokens as a raw slice -- so a token like
+        ``"ab\\ncd"`` (a user-supplied URL path segment) carried its
+        newline straight into the log line, forging entries (CWE-117).
+        The slice/passthrough also propagated CodeQL taint, keeping the
+        9 straggler log-injection alerts open despite the SEC-9168
+        sanitize() wraps around them. mask_token() must route every
+        return through the sanitize() barrier.
+    """
+
+    def test_short_token_newline_stripped(self):
+        assert mask_token("ab\ncd") == "abcd"
+
+    def test_forged_line_token_neutralized(self):
+        assert mask_token("x\n2026-07-14 INFO fake") == "x2026-0..."
+
+    def test_long_token_control_chars_in_prefix_stripped(self):
+        # Mask applies to the RAW token (first 8 raw chars), then the
+        # masked form is sanitized -- exposure never exceeds 8 raw chars.
+        assert mask_token("a\rb\nc\td4e5f6g7h8") == "abcd4..."
+
+    def test_masking_applies_before_stripping(self):
+        # 9 chars raw -> masked as first-8 + "...", THEN control chars
+        # removed from the masked form (never unmask by strip-then-slice).
+        assert mask_token("\x00abcdefgh") == "abcdefg..."

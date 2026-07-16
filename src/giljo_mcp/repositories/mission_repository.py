@@ -27,6 +27,14 @@ from giljo_mcp.models.templates import AgentTemplate
 
 logger = logging.getLogger(__name__)
 
+# BE-9165: agent-execution statuses that mean the agent's work has ENDED
+# (deliverables recorded or the agent was taken out of service). Anything else
+# ('waiting', 'working', 'blocked', 'silent', 'awaiting_user', ...) counts as
+# in flight — unknown statuses deliberately fall on the in-flight side so the
+# closeout gates stay conservative. Mirrors the orchestrator active-set in
+# thin_prompt_lifecycle.implement() step 4 and the closeout decommission set.
+TERMINAL_AGENT_STATUSES: tuple[str, ...] = ("complete", "closed", "decommissioned", "failed")
+
 
 class MissionRepository:
     """
@@ -191,6 +199,36 @@ class MissionRepository:
             )
         )
         return result.scalar() or 0
+
+    async def count_non_orchestrator_agents_by_liveness(
+        self,
+        session: AsyncSession,
+        tenant_key: str,
+        project_id: str,
+    ) -> tuple[int, int]:
+        """Count a project's specialist (non-orchestrator) executions as
+        ``(total, in_flight)`` (BE-9165).
+
+        ``in_flight`` counts executions whose status is NOT in
+        :data:`TERMINAL_AGENT_STATUSES`. ``total >= 1 and in_flight == 0`` is the
+        "all deliverables already recorded" predicate shared by the force-close
+        orchestrator-decommission guard and the staging-finale closeout reroute.
+        """
+        result = await session.execute(
+            select(
+                func.count(),
+                func.count().filter(AgentExecution.status.not_in(TERMINAL_AGENT_STATUSES)),
+            )
+            .select_from(AgentExecution)
+            .join(AgentJob, AgentExecution.job_id == AgentJob.job_id)
+            .where(
+                AgentJob.project_id == project_id,
+                AgentJob.tenant_key == tenant_key,
+                AgentExecution.agent_display_name != "orchestrator",
+            )
+        )
+        total, in_flight = result.one()
+        return int(total or 0), int(in_flight or 0)
 
     # ============================================================================
     # Reads — MissionOrchestrationService

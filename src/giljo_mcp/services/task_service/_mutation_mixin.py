@@ -232,6 +232,17 @@ class _TaskMutationMixin:
                     context={"project_id": project_id, "product_id": product_id, "tenant_key": tenant_key},
                 )
 
+        # SEC-9171 (#15): a parent-task reference must belong to the caller's
+        # tenant — mirrors the project_id belonging check above. Without it a
+        # tenant-A row could persist a cross-tenant FK to a tenant-B task.
+        if parent_task_id:
+            parent = await self._repo.get_task_by_id(session, parent_task_id, tenant_key)
+            if not parent:
+                raise ResourceNotFoundError(
+                    message=f"Parent task {parent_task_id} not found or access denied",
+                    context={"parent_task_id": parent_task_id, "tenant_key": tenant_key},
+                )
+
         # Use title/description if provided, fall back to content for backwards compat
         task_title = title or content
         task_description = description or content
@@ -485,6 +496,24 @@ class _TaskMutationMixin:
             raise ResourceNotFoundError(
                 message="Task not found or access denied",
                 context={"task_id": task_id, "tenant_key": tenant_key},
+            )
+
+        # SEC-9171 (#15): re-validate cross-entity FK refs against the tenant
+        # BEFORE applying them — the allowlist gates field NAMES, not row
+        # OWNERSHIP, so a tenant-B UUID would otherwise land via setattr.
+        new_parent_id = kwargs.get("parent_task_id")
+        if new_parent_id and not await self._repo.get_task_by_id(session, new_parent_id, tenant_key):
+            raise ResourceNotFoundError(
+                message=f"Parent task {new_parent_id} not found or access denied",
+                context={"parent_task_id": new_parent_id, "tenant_key": tenant_key},
+            )
+        new_project_id = kwargs.get("project_id")
+        if new_project_id and not await self._repo.get_project_by_id(
+            session, new_project_id, task.product_id, tenant_key
+        ):
+            raise ResourceNotFoundError(
+                message=f"Project {new_project_id} not found or access denied",
+                context={"project_id": new_project_id, "tenant_key": tenant_key},
             )
 
         # Update fields (allowlist-gated — see _ALLOWED_TASK_UPDATE_FIELDS)

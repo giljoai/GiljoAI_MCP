@@ -250,10 +250,10 @@
             </v-expansion-panels>
           </div>
 
-          <!-- Section: Project Comms — the project's bound Hub thread, read-only -->
+          <!-- Section: Project Threads — the project's bound Hub thread, read-only -->
           <div class="mb-6">
             <div class="d-flex align-center mb-2">
-              <h3 class="text-title-large">Project Comms</h3>
+              <h3 class="text-title-large">Project Threads</h3>
               <v-spacer />
               <v-btn
                 v-if="boundThread"
@@ -274,7 +274,7 @@
               <ThreadTimeline :thread-id="boundThread.thread_id" readonly />
             </v-card>
             <p v-else class="text-body-small text-muted-a11y" data-testid="project-comms-empty">
-              No project comms thread yet.
+              No project thread yet.
             </p>
           </div>
 
@@ -572,7 +572,7 @@ async function loadBoundThread() {
   }
 }
 
-// Deep-link into the Hub (Project comms tab, this thread) for interaction —
+// Deep-link into the Hub (Project threads tab, this thread) for interaction —
 // the pane itself is read-only.
 function openInHub() {
   if (!boundThread.value) return

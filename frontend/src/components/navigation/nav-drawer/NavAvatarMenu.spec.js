@@ -44,7 +44,7 @@ const globalStubs = {
   'v-card-text': { template: '<div class="v-card-text"><slot /></div>' },
   'v-btn': { template: '<button class="v-btn" v-bind="$attrs" @click="$emit(\'click\')"><slot /></button>' },
   'v-chip': { template: '<span class="v-chip"><slot /></span>' },
-  'RoleBadge': { template: '<span />' },
+  'RoleBadge': { template: '<span data-test="role-badge" />' },
   'BaseDialog': { template: '<div />' },
   'ConnectionDebugDialog': { template: '<div />' },
 }
@@ -103,6 +103,29 @@ describe('NavAvatarMenu', () => {
   it('hides Admin Settings item in SaaS mode', () => {
     const wrapper = mountMenu({ isAdmin: true, giljoMode: 'saas' })
     expect(wrapper.text()).not.toContain('Admin Settings')
+  })
+
+  // FE-9172: the Admin role chip + Owner org-role badge are CE-only display.
+  // Hosted SaaS is single-user/account-owner — the badges are meaningless
+  // chrome there. role="admin" logic (isAdmin prop, guards) is unchanged.
+  describe('role/owner badges edition visibility (FE-9172)', () => {
+    it('shows the role chip and org-role badge in CE mode', () => {
+      const wrapper = mountMenu({ giljoMode: 'ce', orgRole: 'owner' })
+      expect(wrapper.find('.v-chip').exists()).toBe(true)
+      expect(wrapper.find('.v-chip').text()).toBe('admin')
+      expect(wrapper.find('[data-test="role-badge"]').exists()).toBe(true)
+    })
+
+    it('hides the role chip and org-role badge in SaaS mode', () => {
+      const wrapper = mountMenu({ giljoMode: 'saas', orgRole: 'owner' })
+      expect(wrapper.find('.v-chip').exists()).toBe(false)
+      expect(wrapper.find('[data-test="role-badge"]').exists()).toBe(false)
+    })
+
+    it('still shows the username in SaaS mode (only badges hide)', () => {
+      const wrapper = mountMenu({ giljoMode: 'saas', orgRole: 'owner' })
+      expect(wrapper.text()).toContain('patrik')
+    })
   })
 
   it('emits logout when Logout item is clicked', async () => {

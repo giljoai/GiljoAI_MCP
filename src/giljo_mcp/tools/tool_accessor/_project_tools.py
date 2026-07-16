@@ -211,6 +211,22 @@ class ProjectToolsMixin:
             except ImplementationNotReadyError as e:
                 return self._implementation_gate_error(e, project_id)
 
+        # BE-9165 (wall 3): every specialist already completed — steer the caller
+        # to closeout instead of telling it to launch agents that no longer exist.
+        if payload.get("ready_to_close"):
+            return {
+                "status": "ready_to_close",
+                **payload,
+                "next_action": build_next_action(
+                    tool="write_project_closeout",
+                    why=(
+                        "All specialist agents have already completed their work — nothing left to "
+                        "implement. Close the project (write_project_closeout; pass force=true if a "
+                        "leftover 'waiting' orchestrator blocks it)."
+                    ),
+                ),
+            }
+
         return {
             "status": "ready",
             **payload,

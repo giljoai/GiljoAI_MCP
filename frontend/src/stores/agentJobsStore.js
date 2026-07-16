@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import isEqual from 'lodash-es/isEqual'
 import debounce from 'lodash-es/debounce'
+import api from '@/services/api'
 import { AGENT_STATUS_PRIORITY } from '@/utils/constants'
 
 function ensureArray(value) {
@@ -273,6 +274,48 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
     upsertJob(patch)
   }
 
+  // =========================
+  // FE-9184: live "Messages Waiting" refresh (hub-backed)
+  // =========================
+  // A hub thread_message WS event only says "a post landed" — the authoritative
+  // per-agent waiting counts live in the /jobs REST response (BE-6200 GROUP BY).
+  // Refetch once per quiet window and patch ONLY messages_waiting_count onto
+  // jobs already in the store: count-only so a stale REST row can never regress
+  // fresher WS lifecycle state, existing-only so a late or cross-project row can
+  // never create a ghost entry (Handover 0463).
+
+  async function fetchWaitingCounts(projectId) {
+    let rows = []
+    try {
+      const response = await api.agentJobs.list(projectId)
+      const data = response?.data
+      rows = Array.isArray(data) ? data : data?.jobs || data?.rows || []
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.debug('[agentJobsStore] messages-waiting refresh failed (non-fatal):', error)
+      return
+    }
+    for (const raw of ensureArray(rows)) {
+      const key = resolveJobId(raw?.agent_id) || resolveJobId(raw?.job_id || raw?.id)
+      if (!key) continue
+      const previous = jobsById.value.get(key)
+      if (!previous) continue
+      const count = raw?.messages_waiting_count ?? 0
+      if ((previous.messages_waiting_count ?? 0) === count) continue
+      // Handover 0463: spread previous to preserve identity fields
+      upsertJob({ ...previous, messages_waiting_count: count })
+    }
+  }
+
+  // maxWait bounds staleness during sustained agent chatter: at most one fetch
+  // per 3s while messages keep arriving, one 500ms after the burst goes quiet.
+  const debouncedFetchWaitingCounts = debounce(fetchWaitingCounts, 500, { maxWait: 3000 })
+
+  function refreshMessagesWaitingCounts(projectId) {
+    if (!projectId) return
+    debouncedFetchWaitingCounts(projectId)
+  }
+
   function removeJob(uniqueKeyOrJobId) {
     if (!uniqueKeyOrJobId) return
     // Try direct removal by unique_key
@@ -455,6 +498,7 @@ export const useAgentJobsStore = defineStore('agentJobsDomain', () => {
     setJobs,
     upsertJob,
     removeJob,
+    refreshMessagesWaitingCounts,
 
     // ws handlers
     handleCreated,

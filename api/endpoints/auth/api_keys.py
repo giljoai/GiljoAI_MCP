@@ -17,7 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.endpoints.dependencies import get_auth_service, get_notification_service
-from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
+from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session, require_browser_session
 from giljo_mcp.models import User
 from giljo_mcp.services import AuthService, NotificationService
 from giljo_mcp.utils.log_sanitizer import sanitize
@@ -108,12 +108,16 @@ async def create_api_key(
     request: APIKeyCreateRequest = Body(...),
     current_user: User = Depends(get_current_active_user),
     auth_service: AuthService = Depends(get_auth_service),
+    _browser: None = Depends(require_browser_session),
 ):
     """
     Generate a new API key for current user.
 
     This endpoint creates a new API key and returns it in plaintext.
     WARNING: The key is only shown once! Store it securely.
+
+    SEC-9171 #3: minting a key requires a browser session — a held API key or
+    OAuth Bearer cannot self-replicate into a fresh long-lived key.
 
     Args:
         request: API key creation request (name, permissions)

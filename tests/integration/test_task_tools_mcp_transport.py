@@ -397,6 +397,58 @@ async def test_update_task_completion_notes_without_completed_is_noop(task_mcp_c
 
 
 # ---------------------------------------------------------------------------
+# TSK-9163: due_date through the transport. The wrapper's due_date param is
+# typed str, so the service ALWAYS receives a string on this path; before the
+# _parse_due_date fix the raw str reached the DateTime(timezone=True) column
+# and asyncpg rejected it at commit — every MCP due_date write 500'd with the
+# generic internal-error envelope (REST was unaffected: Pydantic parses).
+# ---------------------------------------------------------------------------
+
+
+async def test_update_task_due_date_string_via_transport(task_mcp_client, db_session, primary_tenant_key):
+    """The exact TSK-9163 repro call: update_task(task_id, due_date='2026-07-15')."""
+    new_client, _switch = task_mcp_client
+    task_id = await _create_seed_task(new_client, db_session, primary_tenant_key)
+
+    async with new_client() as session:
+        result = await session.call_tool(
+            "update_task",
+            {"task_id": task_id, "due_date": "2026-07-15"},
+        )
+
+    assert result.isError is False, _error_text(result)
+    payload = _payload(result)
+    assert payload["task_id"] == task_id
+    assert "due_date" in payload["updated_fields"]
+
+    # Round-trip: the stored value must read back as the requested date.
+    async with new_client() as session:
+        full = await session.call_tool("list_tasks", {"mode": "full"})
+    row = next(r for r in _payload(full)["tasks"] if r["task_id"] == task_id)
+    assert row["due_date"] is not None
+    parsed = datetime.fromisoformat(row["due_date"])
+    assert (parsed.year, parsed.month, parsed.day) == (2026, 7, 15)
+
+
+async def test_update_task_due_date_garbage_is_actionable_error_via_transport(
+    task_mcp_client, db_session, primary_tenant_key
+):
+    """An unparseable due_date must surface as an actionable validation error
+    naming the field, not the generic internal-error envelope."""
+    new_client, _switch = task_mcp_client
+    task_id = await _create_seed_task(new_client, db_session, primary_tenant_key)
+
+    async with new_client() as session:
+        result = await session.call_tool(
+            "update_task",
+            {"task_id": task_id, "due_date": "next tuesday"},
+        )
+
+    assert result.isError is True
+    assert "due_date" in _error_text(result)
+
+
+# ---------------------------------------------------------------------------
 # list_tasks wrapper (mcp_sdk_server.py:665-702)
 # ---------------------------------------------------------------------------
 
@@ -577,6 +629,58 @@ async def test_list_tasks_hidden_filter_via_wrapper(task_mcp_client, db_session,
     ids_v = {r["task_id"] for r in _payload(only_visible)["tasks"]}
     assert visible_id in ids_v
     assert hidden_id not in ids_v
+
+
+# ---------------------------------------------------------------------------
+# TSK-9177: due_before through the transport. Same class as TSK-9163: the
+# wrapper's due_before param is typed str and was forwarded raw into
+# ``Task.due_date < due_before``, so asyncpg rejected the str-vs-timestamptz
+# comparison and every MCP list_tasks(due_before=...) call failed with the
+# generic internal-error envelope.
+# ---------------------------------------------------------------------------
+
+
+async def test_list_tasks_due_before_string_via_transport(task_mcp_client, db_session, primary_tenant_key):
+    """The exact TSK-9177 repro call: list_tasks(due_before='2026-07-15')."""
+    new_client, _switch = task_mcp_client
+    task_id = await _create_seed_task(new_client, db_session, primary_tenant_key)
+
+    async with new_client() as session:
+        set_due = await session.call_tool(
+            "update_task",
+            {"task_id": task_id, "due_date": "2026-07-10T00:00:00+00:00"},
+        )
+    assert set_due.isError is False, _error_text(set_due)
+
+    async with new_client() as session:
+        result = await session.call_tool("list_tasks", {"due_before": "2026-07-15"})
+
+    assert result.isError is False, _error_text(result)
+    ids = {row["task_id"] for row in _payload(result)["tasks"]}
+    assert task_id in ids
+
+    # The parsed bound must actually filter: a cutoff before the due date
+    # excludes the task.
+    async with new_client() as session:
+        earlier = await session.call_tool("list_tasks", {"due_before": "2026-07-01"})
+    assert earlier.isError is False, _error_text(earlier)
+    ids_earlier = {row["task_id"] for row in _payload(earlier)["tasks"]}
+    assert task_id not in ids_earlier
+
+
+async def test_list_tasks_due_before_garbage_is_actionable_error_via_transport(
+    task_mcp_client, db_session, primary_tenant_key
+):
+    """An unparseable due_before must surface as an actionable validation error
+    naming the field, not the generic internal-error envelope."""
+    new_client, _switch = task_mcp_client
+    await _create_seed_task(new_client, db_session, primary_tenant_key)
+
+    async with new_client() as session:
+        result = await session.call_tool("list_tasks", {"due_before": "next tuesday"})
+
+    assert result.isError is True
+    assert "due_before" in _error_text(result)
 
 
 # Suppress unused-import warning: random/datetime are kept for future

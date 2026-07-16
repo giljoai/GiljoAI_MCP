@@ -28,6 +28,7 @@ These methods reference base-class attributes/methods (``self.db_manager``,
 through ``self`` -- resolved across the MRO of the composed ``TaskService``.
 """
 
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import select
@@ -39,6 +40,34 @@ from giljo_mcp.exceptions import ValidationError
 from giljo_mcp.models import Task
 from giljo_mcp.tenant import current_tenant
 from giljo_mcp.utils.taxonomy_alias import format_taxonomy_alias
+
+
+def _parse_due_date(value: Any, *, operation: str, field: str = "due_date", task_id: str = "") -> datetime:
+    """TSK-9163/TSK-9177: the @mcp.tool wrappers deliver due_date (update_task)
+    and due_before (list_tasks) as ISO 8601 STRINGS; unparsed they reach the
+    DateTime(timezone=True) column as a str and asyncpg rejects the
+    str-vs-timestamptz write/comparison as a generic internal error. Parse here —
+    mirroring the REST path, where Pydantic's ``TaskUpdate.due_date: datetime``
+    does the same conversion — and reject garbage as agent-actionable
+    ValidationError, not a 500.
+    """
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, str):
+        try:
+            return datetime.fromisoformat(value)
+        except ValueError:
+            pass
+    context: dict[str, Any] = {"operation": operation}
+    if task_id:
+        context["task_id"] = task_id
+    raise ValidationError(
+        message=(
+            f"Invalid {field} {value!r}. Pass an ISO 8601 date or datetime, "
+            "e.g. '2026-07-15' or '2026-07-15T09:00:00+00:00'."
+        ),
+        context=context,
+    )
 
 
 class McpAdapterMixin:
@@ -210,7 +239,7 @@ class McpAdapterMixin:
         if priority is not None:
             update_kwargs["priority"] = priority
         if due_date is not None:
-            update_kwargs["due_date"] = due_date
+            update_kwargs["due_date"] = _parse_due_date(due_date, operation="update_task_for_mcp", task_id=task_id)
         if project_id is not None:
             update_kwargs["project_id"] = project_id
         if estimated_effort is not None:
@@ -341,6 +370,12 @@ class McpAdapterMixin:
                 message=f"Unknown mode '{mode}'. Valid modes: summary, full",
                 context={"operation": "list_tasks_for_mcp", "mode": mode},
             )
+
+        # TSK-9177: the @mcp.tool wrapper delivers due_before as an ISO string;
+        # parse at the boundary (same class as TSK-9163) so the impl compares
+        # datetime-vs-timestamptz instead of str-vs-timestamptz.
+        if due_before is not None:
+            due_before = _parse_due_date(due_before, operation="list_tasks_for_mcp", field="due_before")
 
         task_type_id: str | None = None
         if task_type:

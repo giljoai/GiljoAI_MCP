@@ -446,6 +446,34 @@ async def get_thread_history(
                 result["reactivation_guidance"] = guidance
         except Exception:  # noqa: BLE001 - guidance is an advisory hint; never fail the read
             logger.debug("get_thread_history reactivation guidance (D5) failed (non-fatal)", exc_info=True)
+    # FE-9184: a mark_read drain writes message_acknowledgments, which decrements
+    # the /jobs "Messages Waiting" badge — push a live thread_update so the
+    # dashboard refreshes without waiting for the next post. Emit ONLY when acks
+    # were actually written (marked_read > 0: a plain read, an already-drained
+    # cursor, and the NOT_A_PARTICIPANT rejection all skip). Best-effort like
+    # every hub WS emit — the acks are already committed.
+    if (
+        mark_read
+        and isinstance(result, dict)
+        and result.get("success") is not False
+        and result.get("marked_read", 0) > 0
+    ):
+        try:
+            from api.app_state import state as _state
+
+            if _state.websocket_manager:
+                t = result.get("thread") or {}
+                await broadcast_thread_update(
+                    _state.websocket_manager,
+                    _base._resolve_tenant(ctx),
+                    thread_id=thread_id,
+                    chat_id=t.get("chat_id", ""),
+                    status=t.get("status", "open"),
+                    next_action_owner=t.get("next_action_owner"),
+                    update_type="read",
+                )
+        except Exception:  # noqa: BLE001 - WS failure is non-fatal; the drain already committed
+            logger.debug("MCP get_thread_history mark_read WS broadcast failed (non-fatal)", exc_info=True)
     return result
 
 

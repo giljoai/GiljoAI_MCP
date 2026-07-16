@@ -13,8 +13,11 @@
           class="mb-3"
         />
 
-        <!-- Workspace/Organization + Role (read-only) - Handover 0424o, 0875 -->
-        <div class="mb-4 pa-4 bg-surface-variant rounded">
+        <!-- Workspace/Organization + Role (read-only) - Handover 0424o, 0875.
+             CE-only display (FE-9172): hosted SaaS is single-user/account-owner,
+             so the Owner/Admin badges are hidden there. Display only — role
+             logic and guards are unchanged. -->
+        <div v-if="isCe" class="mb-4 pa-4 bg-surface-variant rounded" data-test="workspace-role-box">
           <div v-if="userStore.currentOrg" class="d-flex align-center mb-3">
             <v-icon size="small" color="primary" class="mr-2">mdi-office-building</v-icon>
             <div class="text-body-small text-muted-a11y mr-2">Workspace</div>

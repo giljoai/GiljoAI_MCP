@@ -57,3 +57,41 @@ async def test_helper_interops_with_externally_hashed_value():
     """A hash produced by raw bcrypt (e.g. a test fixture / legacy row) verifies."""
     legacy = bcrypt.hashpw(b"legacy-pw", bcrypt.gensalt()).decode("utf-8")
     assert await async_verify_password("legacy-pw", legacy) is True
+
+
+# ---------------------------------------------------------------------------
+# SEC-9174 #6 — bcrypt >72-byte fail-close
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_verify_overlong_password_fails_closed():
+    """bcrypt >= 4 raises ValueError for a password over 72 UTF-8 bytes. The
+    helper must fail CLOSED (return False), never propagate — pre-fix the raise
+    surfaced as a 500 at login for a KNOWN account vs a 401 for an unknown one,
+    a username-enumeration oracle (SEC-9174 #6)."""
+    hashed = await async_hash_password("S3cret-pass!")
+    assert await async_verify_password("A" * 100, hashed) is False
+
+
+@pytest.mark.asyncio
+async def test_verify_overlong_multibyte_password_fails_closed():
+    """The 72 limit is BYTES, not characters: 40 x 'é' is 40 chars / 80 bytes."""
+    hashed = await async_hash_password("S3cret-pass!")
+    assert await async_verify_password("é" * 40, hashed) is False
+
+
+@pytest.mark.asyncio
+async def test_verify_at_72_byte_boundary_still_works():
+    """Exactly-72-byte passwords stay verifiable — the guard must not over-reject."""
+    password = "B" * 72
+    hashed = await async_hash_password(password)
+    assert await async_verify_password(password, hashed) is True
+    assert await async_verify_password("B" * 71 + "x", hashed) is False
+
+
+@pytest.mark.asyncio
+async def test_verify_malformed_stored_hash_fails_closed():
+    """A corrupt stored hash makes bcrypt.checkpw raise ValueError ('invalid
+    salt'); verification must fail closed (False), not bubble up as a 500."""
+    assert await async_verify_password("whatever", "not-a-bcrypt-hash") is False

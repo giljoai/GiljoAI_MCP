@@ -296,6 +296,28 @@ async def test_setup_context_socket_is_not_indexed():
 
 
 @pytest.mark.asyncio
+async def test_reconnect_under_new_tenant_deindexes_old_tenant():
+    """SEC-9171 (#24): a client_id reused across tenants must leave the OLD
+    tenant's fan-out bucket — otherwise tenant A's broadcasts reach the socket
+    now owned by tenant B (cross-tenant leak for static-id CLI/API-key clients).
+    """
+    mgr = WebSocketManager()
+    ws_a, ws_b = _FakeWS(), _FakeWS()
+
+    await mgr.connect(ws_a, "shared-id", {"tenant_key": "tk_a"})
+    await mgr.connect(ws_b, "shared-id", {"tenant_key": "tk_b"})  # same id, new tenant
+
+    # The id must live ONLY in tenant B's bucket (A's is pruned when emptied).
+    assert "shared-id" not in mgr.tenant_connections.get("tk_a", set())
+    assert mgr.tenant_connections["tk_b"] == {"shared-id"}
+
+    # A broadcast to tenant A must not reach the socket now owned by tenant B.
+    sent = await mgr.broadcast_event_to_tenant(tenant_key="tk_a", event=_event("tk_a"))
+    assert sent == 0
+    assert ws_b.sent == []
+
+
+@pytest.mark.asyncio
 async def test_stale_identity_disconnect_leaves_index_intact():
     """A superseded socket's late teardown must not deindex the live socket."""
     mgr = WebSocketManager()

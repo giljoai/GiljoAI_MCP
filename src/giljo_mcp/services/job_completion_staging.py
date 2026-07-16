@@ -294,7 +294,66 @@ async def is_staging_end_orchestrator_call(
         and project.staging_status == "staging_complete"
     ):
         return False, project
+
+    # BE-9165 (wall 2): a staging finale where every spawned specialist has
+    # ALREADY recorded its deliverables is the project's real completion, not a
+    # pause before implementation. Classifying it as a staging-end re-parked the
+    # orchestrator at 'waiting' (CE-0032), which write_project_closeout then
+    # blocked on forever — the retroactive-staging deadlock. Route it to the
+    # normal closeout path instead (orchestrator 'complete', job finalized,
+    # closeout checklist returned). A GENUINE staging end has freshly spawned
+    # 'waiting' specialists (in flight) and a zero-spawn finale keeps the
+    # STAGING_END_NO_AGENTS gate — both classify exactly as before.
+    if project is not None and await _finale_deliverables_recorded(
+        session,
+        tenant_key,
+        str(job.project_id),
+        db_manager=db_manager,
+        tenant_manager=tenant_manager,
+    ):
+        return False, project
+
     return True, project
+
+
+async def _finale_deliverables_recorded(
+    session: AsyncSession,
+    tenant_key: str,
+    project_id: str,
+    *,
+    db_manager: Any,
+    tenant_manager: Any,
+) -> bool:
+    """True iff this project's staging finale has nothing left to implement (BE-9165).
+
+    Requires at least one spawned specialist AND none in flight (statuses all in
+    :data:`~giljo_mcp.repositories.mission_repository.TERMINAL_AGENT_STATUSES`).
+    Chain members are EXCLUDED: their implementation gate opens in software (§14),
+    so they never hit the retroactive-staging deadlock, and rerouting them would
+    skip the §14 chain-advance bookkeeping — a chain lookup failure therefore
+    counts as "chain member" (no reroute), the conservative side.
+    """
+    from giljo_mcp.repositories.mission_repository import MissionRepository
+
+    total, in_flight = await MissionRepository().count_non_orchestrator_agents_by_liveness(
+        session, tenant_key, project_id
+    )
+    if total == 0 or in_flight > 0:
+        return False
+
+    try:
+        from giljo_mcp.services.sequence_run_service import SequenceRunService
+
+        svc = SequenceRunService(
+            db_manager=db_manager,
+            tenant_manager=tenant_manager,
+            session=session,
+        )
+        run = await svc.find_active_run_for_project(project_id=project_id, tenant_key=tenant_key)
+    except Exception:  # noqa: BLE001 — on lookup failure keep the staging-end classification unchanged
+        logger.warning("[BE-9165] chain-member check failed (non-fatal); keeping staging-end classification")
+        return False
+    return run is None
 
 
 async def is_conductor_staging_end(

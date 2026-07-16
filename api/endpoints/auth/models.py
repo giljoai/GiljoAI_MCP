@@ -12,7 +12,8 @@ public request/response contract of the /api/auth surface.
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
-from api.endpoints.auth_models import validate_password_strength
+from api.endpoints.auth_models import BoundedPassword, validate_password_strength
+from giljo_mcp.utils.password_helper import BCRYPT_MAX_PASSWORD_BYTES
 
 
 class LoginRequest(BaseModel):
@@ -119,7 +120,7 @@ class RegisterUserRequest(BaseModel):
     """Request to register new user (admin only)"""
 
     username: str = Field(..., min_length=3, max_length=64)
-    password: str = Field(..., min_length=8)
+    password: BoundedPassword
     email: EmailStr | None = None
     first_name: str | None = Field(default=None, min_length=1, max_length=255, description="Given name")
     last_name: str | None = Field(default=None, max_length=255, description="Family name (optional)")
@@ -174,8 +175,8 @@ class PasswordChangeRequest(BaseModel):
     """Request to change password from default"""
 
     current_password: str = Field(..., min_length=1)
-    new_password: str = Field(..., min_length=8)
-    confirm_password: str = Field(..., min_length=8)
+    new_password: str = Field(..., min_length=8, max_length=BCRYPT_MAX_PASSWORD_BYTES)
+    confirm_password: str = Field(..., min_length=8, max_length=BCRYPT_MAX_PASSWORD_BYTES)
 
     @field_validator("new_password")
     @classmethod

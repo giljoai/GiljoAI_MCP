@@ -87,7 +87,7 @@ This makes the lane visible at a glance and grep-able for future audits.
 **`GILJO_MODE`** controls what the product exposes at all. Two values:
 
 - `ce` — Community Edition. Single-user self-hosted install. Product shows both product-level and server-level tabs; server-level endpoints are active.
-- `saas` — paid SaaS (Solo, future Team). Hosted; users register into their own org (one tenant per user). Product shows product-level tabs only; server-level endpoints return 404 via `require_ce_mode`. (The legacy `demo` edition was folded into SaaS Solo and fully removed — BE-6015.)
+- `saas` — paid hosted SaaS, permanently single-user per tenant. Each user registers into a one-user compatibility organization with a unique `tenant_key`; no future Team or multi-user tier is planned. Product shows product-level tabs only; server-level endpoints return 404 via `require_ce_mode`. (The legacy `demo` edition was folded into SaaS Solo and fully removed — BE-6015.)
 
 **The two axes never tangle.** A CE admin and a SaaS admin both have `role=admin`. They see different tabs because `GILJO_MODE` gates product exposure — NOT because of their role. Same role value, different visibility, by design.
 

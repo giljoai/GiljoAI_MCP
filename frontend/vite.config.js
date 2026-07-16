@@ -4,7 +4,7 @@ import vuetify from 'vite-plugin-vuetify'
 import { fileURLToPath, URL } from 'node:url'
 import { resolve } from 'path'
 import fs from 'fs'
-import yaml from 'js-yaml'
+import * as yaml from 'js-yaml'
 import { sentryVitePlugin } from '@sentry/vite-plugin'
 
 // Load frontend port from environment or use default

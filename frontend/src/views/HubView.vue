@@ -31,8 +31,8 @@
 
     <!-- Main layout: thread list | timeline + composer -->
     <div class="hub-view__body">
-      <!-- Left: two-tab thread list — "Project comms" (project-bound threads) +
-           "Town square" (standalone), replacing the old top/bottom split (FE-9012c D2). -->
+      <!-- Left: two-tab thread list — "Project threads" (project-bound threads) +
+           "General threads" (standalone), replacing the old top/bottom split (FE-9012c D2). -->
       <div class="hub-view__sidebar">
         <div class="tab-pills hub-view__tabs" role="tablist">
           <button
@@ -44,7 +44,7 @@
             data-testid="hub-tab-project"
             @click="activeTab = 'project'"
           >
-            Project comms
+            Project threads
             <span
               v-if="commHub.projectUnreadTotal > 0"
               class="hub-view__tab-badge smooth-border"
@@ -61,7 +61,7 @@
             data-testid="hub-tab-town"
             @click="activeTab = 'town'"
           >
-            Town square
+            General threads
             <span
               v-if="commHub.townSquareUnreadTotal > 0"
               class="hub-view__tab-badge smooth-border"
@@ -159,7 +159,7 @@ onMounted(async () => {
 
   // FE-9012c (D3): the /jobs message icon deep-links via ?thread=<id>&tab=project.
   // Honor an explicit tab, then pre-select the thread and align the tab to its
-  // binding (project_id present => Project comms, else Town square).
+  // binding (project_id present => Project threads, else General threads).
   if (route.query.tab === 'project' || route.query.tab === 'town') {
     activeTab.value = route.query.tab
   }

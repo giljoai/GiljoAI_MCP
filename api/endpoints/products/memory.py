@@ -129,7 +129,7 @@ async def get_memory_entries(
             "tenant_key": sanitize(current_user.tenant_key),
             "product_id": sanitize(product_id),
             "project_id": sanitize(project_id),
-            "limit": limit,
+            "limit": sanitize(limit),
             "filtered_count": len(entry_responses),
         },
     )

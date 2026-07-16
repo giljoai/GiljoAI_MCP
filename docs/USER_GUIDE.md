@@ -424,11 +424,11 @@ The User Manager kebab menu adapts by edition:
 > [!CE]
 > A recovery PIN is a Community Edition feature. On hosted GiljoAI you reset your password by email instead.
 
-> The "Add User" button is currently hidden in all editions pending the future Team tier. First-install admin creation is unaffected.
+> GiljoAI MCP is permanently single-user per tenant in both Community Edition and hosted SaaS. The "Add User" button is intentionally unavailable; a future Team tier is not planned. First-install account creation is unaffected.
 
 ### Account: Download My Data
 
-On the Account > Danger Zone page, the **Download My Data** card exports a ZIP of all your products, projects, vision documents, agents, memory, tasks, and configuration (credentials redacted). Click **Generate Export**; a progress bar runs, and a download link valid for 15 minutes appears with a per-model record-count breakdown. Available to Community Edition users and to hosted (SaaS) organization admins.
+On the Account > Danger Zone page, the **Download My Data** card exports a ZIP of all your products, projects, vision documents, agents, memory, tasks, and configuration (credentials redacted). Click **Generate Export**; a progress bar runs, and a download link valid for 15 minutes appears with a per-model record-count breakdown. Available to Community Edition users and hosted SaaS account owners.
 
 > [!SAAS]
 > **Hosted accounts include billing and subscriptions.** Plans, checkout, cancellation, resume, switching to annual, trial behavior, and how account deletion differs on a trial versus a paid plan are covered in the **Billing & Subscription** chapter, shown at the end of this guide on hosted accounts. The self-hosted Community Edition has no billing.
