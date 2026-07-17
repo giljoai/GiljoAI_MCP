@@ -202,6 +202,14 @@ class ProductService:
             BaseGiljoError: If database operation fails
         """
         try:
+            # BE-9215: name column is String(255). Cap at the owning-service write
+            # so every transport (REST, MCP create_product, vision extraction) gets
+            # a clean 422 instead of a raw StringDataRightTruncation 500.
+            if name is not None and len(name) > 255:
+                raise ValidationError(
+                    message=f"Product name exceeds 255 character limit (got {len(name)}).",
+                    context={"operation": "create_product"},
+                )
             if target_platforms is not None:
                 is_valid, error_msg = self._validate_target_platforms(target_platforms)
                 if not is_valid:
@@ -365,6 +373,13 @@ class ProductService:
             BaseGiljoError: If database operation fails
         """
         try:
+            # BE-9215: name column is String(255). Reject an over-long rename with
+            # a clean 422 at the write boundary rather than a DB truncation 500.
+            if updates.get("name") is not None and len(updates["name"]) > 255:
+                raise ValidationError(
+                    message=f"Product name exceeds 255 character limit (got {len(updates['name'])}).",
+                    context={"product_id": product_id},
+                )
             if "target_platforms" in updates:
                 is_valid, error_msg = self._validate_target_platforms(updates["target_platforms"])
                 if not is_valid:

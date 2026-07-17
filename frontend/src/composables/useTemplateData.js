@@ -7,8 +7,8 @@
  * Extracted from TemplateManager.vue (Handover 0950k).
  *
  * @param {import('vue').Ref<string>} search - Search text ref
- * @param {import('vue').Ref<string|null>} filterCategory - Category filter ref
- * @param {import('vue').Ref<string|null>} filterStatus - Status filter ref
+ * @param {import('vue').Ref<string|null>} filterRole - Role filter ref (matches template.role)
+ * @param {import('vue').Ref<string|null>} filterStatus - Status filter ref ('active' | 'inactive', matches template.is_active)
  * @returns {Object} Template data state, computeds, and load methods
  */
 import { ref, computed } from 'vue'
@@ -39,15 +39,15 @@ const DEFAULT_EDITING_TEMPLATE = () => ({
   tools: null,
 })
 
-export function useTemplateData(search, filterCategory, filterStatus) {
+export function useTemplateData(search, filterRole, filterStatus) {
   const templates = ref([])
   const loading = ref(false)
   const activeStats = ref({
     totalActive: null,
     totalCapacity: null,
     userActive: 0,
-    userLimit: 7,
-    remainingUserSlots: 7,
+    userLimit: 15,
+    remainingUserSlots: 15,
     systemReserved: 1,
   })
   const previewContent = ref('')
@@ -59,19 +59,29 @@ export function useTemplateData(search, filterCategory, filterStatus) {
   const filteredTemplates = computed(() => {
     let filtered = templates.value
 
-    if (filterCategory.value) {
-      filtered = filtered.filter((t) => t.category === filterCategory.value)
+    if (filterRole.value) {
+      filtered = filtered.filter((t) => t.role === filterRole.value)
     }
 
+    // FE-9203: templates have no `status` field — active/inactive maps to the
+    // real `is_active` boolean on the model.
     if (filterStatus.value) {
-      filtered = filtered.filter((t) => t.status === filterStatus.value)
+      filtered = filtered.filter((t) =>
+        filterStatus.value === 'active' ? t.is_active : !t.is_active,
+      )
     }
 
-    if (!filterCategory.value && !filterStatus.value) {
+    if (!filterRole.value && !filterStatus.value) {
       return [orchestratorRow, ...filtered]
     }
     return filtered
   })
+
+  // FE-9203: role filter options derived from the roles actually present in
+  // the loaded data — never a hardcoded list that can drift from the model.
+  const availableRoles = computed(() =>
+    [...new Set(templates.value.map((t) => t.role).filter(Boolean))].sort(),
+  )
 
   const generatedName = computed(() => {
     const role = editingTemplate.value.role
@@ -91,17 +101,17 @@ export function useTemplateData(search, filterCategory, filterStatus) {
     if (activeStats.value.totalCapacity !== null) {
       return activeStats.value.totalCapacity
     }
-    return (activeStats.value.userLimit || 7) + (activeStats.value.systemReserved || 1)
+    return (activeStats.value.userLimit || 15) + (activeStats.value.systemReserved || 1)
   })
 
   const remainingUserSlots = computed(() => {
     if (typeof activeStats.value.remainingUserSlots === 'number') {
       return Math.max(0, activeStats.value.remainingUserSlots)
     }
-    return Math.max(0, (activeStats.value.userLimit || 7) - (activeStats.value.userActive || 0))
+    return Math.max(0, (activeStats.value.userLimit || 15) - (activeStats.value.userActive || 0))
   })
 
-  const userAgentLimit = computed(() => activeStats.value.userLimit ?? 7)
+  const userAgentLimit = computed(() => activeStats.value.userLimit ?? 15)
 
   const loadTemplates = async () => {
     loading.value = true
@@ -120,7 +130,7 @@ export function useTemplateData(search, filterCategory, filterStatus) {
       const response = await api.templates.activeCount()
       const data = response.data || {}
       const userActive = data.active_count ?? 0
-      const userLimit = data.limit ?? 7
+      const userLimit = data.limit ?? 15
       const systemReserved = 1
       activeStats.value = {
         totalActive: userActive + systemReserved,
@@ -143,6 +153,22 @@ export function useTemplateData(search, filterCategory, filterStatus) {
     editingTemplate.value = DEFAULT_EDITING_TEMPLATE()
   }
 
+  // FE-9203: additive import of the seeded default agents. The server owns the
+  // anti-spam semantics (skip-identical, never overwrite); this just disables
+  // the trigger while in flight and refreshes the table on completion.
+  const importingDefaults = ref(false)
+  const importDefaults = async () => {
+    importingDefaults.value = true
+    try {
+      const response = await api.templates.importDefaults()
+      await loadTemplates()
+      await loadActiveCount()
+      return response.data
+    } finally {
+      importingDefaults.value = false
+    }
+  }
+
   return {
     templates,
     loading,
@@ -151,6 +177,7 @@ export function useTemplateData(search, filterCategory, filterStatus) {
     editingTemplate,
     orchestratorRow,
     filteredTemplates,
+    availableRoles,
     generatedName,
     totalActiveAgents,
     totalCapacity,
@@ -159,5 +186,7 @@ export function useTemplateData(search, filterCategory, filterStatus) {
     loadTemplates,
     loadActiveCount,
     resetEditingTemplate,
+    importingDefaults,
+    importDefaults,
   }
 }

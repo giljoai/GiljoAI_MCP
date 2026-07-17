@@ -140,6 +140,8 @@
             density="compact"
             variant="outlined"
             hide-details="auto"
+            maxlength="255"
+            counter="255"
             class="mb-3"
             aria-label="Project name"
           />

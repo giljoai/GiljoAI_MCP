@@ -90,6 +90,40 @@ class TestSetupStateUpdateValidation:
             SetupStateUpdate(setup_step_completed=100)
 
 
+class TestTutorialReentryValidation:
+    """BE-9201: learning_beat / router_choice model constraints."""
+
+    def test_valid_beat_range(self):
+        """Beats 1 and 6 (the rail's boundaries) are both valid."""
+        assert SetupStateUpdate(learning_beat=1).learning_beat == 1
+        assert SetupStateUpdate(learning_beat=6).learning_beat == 6
+
+    def test_rejects_beat_zero_and_seven(self):
+        """The tutorial has exactly 6 rail stops — 0 and 7 are out of range."""
+        with pytest.raises(ValidationError):
+            SetupStateUpdate(learning_beat=0)
+        with pytest.raises(ValidationError):
+            SetupStateUpdate(learning_beat=7)
+
+    def test_valid_router_choices(self):
+        """All four router doors are accepted."""
+        for door in ("A", "B", "C", "D"):
+            assert SetupStateUpdate(router_choice=door).router_choice == door
+
+    def test_rejects_unknown_router_choice(self):
+        """Anything outside A|B|C|D is rejected at the boundary."""
+        with pytest.raises(ValidationError):
+            SetupStateUpdate(router_choice="E")
+        with pytest.raises(ValidationError):
+            SetupStateUpdate(router_choice="a")  # case-sensitive contract
+
+    def test_defaults_are_none(self):
+        """Omitted fields stay None — an older frontend never sends them."""
+        update = SetupStateUpdate()
+        assert update.learning_beat is None
+        assert update.router_choice is None
+
+
 # ---------------------------------------------------------------------------
 # API endpoint tests (require api_client and auth fixtures)
 # ---------------------------------------------------------------------------
@@ -199,6 +233,107 @@ async def test_get_me_includes_setup_fields(api_client, auth_headers):
     # Defaults for a freshly created test user
     assert data["setup_complete"] is False, "Default setup_complete should be False"
     assert data["setup_step_completed"] == 0, "Default setup_step_completed should be 0"
+
+
+# ---------------------------------------------------------------------------
+# BE-9201: onboarding-tutorial re-entry state (learning_beat + router_choice)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_patch_tutorial_reentry_state_persists_and_echoes(api_client, auth_headers):
+    """PATCH learning_beat + router_choice persists both and echoes them back."""
+    response = await api_client.patch(
+        "/api/auth/me/setup-state",
+        headers=auth_headers,
+        json={"learning_beat": 3, "router_choice": "D"},
+    )
+    assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
+    data = response.json()
+    assert data["learning_beat"] == 3
+    assert data["router_choice"] == "D"
+
+
+@pytest.mark.asyncio
+async def test_patch_learning_beat_six_boundary_roundtrips(api_client, auth_headers):
+    """A persisted beat=6 (the router stop) survives the roundtrip.
+
+    Documents the range contract for FE re-entry: 6 is a legal stored value
+    (the state machine's last rail stop), so a stale beat=6 re-entry reads back
+    6 and lands on the router — never a validation error or a crash.
+    """
+    patch_response = await api_client.patch(
+        "/api/auth/me/setup-state",
+        headers=auth_headers,
+        json={"learning_beat": 6},
+    )
+    assert patch_response.status_code == 200
+    assert patch_response.json()["learning_beat"] == 6
+
+    me_response = await api_client.get("/api/auth/me", headers=auth_headers)
+    assert me_response.status_code == 200
+    assert me_response.json()["learning_beat"] == 6
+
+
+@pytest.mark.asyncio
+async def test_patch_tutorial_reentry_rejects_out_of_range(api_client, auth_headers):
+    """learning_beat outside 1-6 and router_choice outside A-D both 422."""
+    beat_response = await api_client.patch(
+        "/api/auth/me/setup-state",
+        headers=auth_headers,
+        json={"learning_beat": 7},
+    )
+    assert beat_response.status_code == 422
+
+    door_response = await api_client.patch(
+        "/api/auth/me/setup-state",
+        headers=auth_headers,
+        json={"router_choice": "X"},
+    )
+    assert door_response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_patch_setup_state_tolerates_unknown_fields(api_client, auth_headers):
+    """A payload carrying an unknown field is accepted (ignored), not 422'd.
+
+    The forward/backward tolerance contract: an older backend receiving a newer
+    frontend's extra fields must not break the whole PATCH.
+    """
+    response = await api_client.patch(
+        "/api/auth/me/setup-state",
+        headers=auth_headers,
+        json={"learning_beat": 2, "some_future_field": "ignored"},
+    )
+    assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
+    assert response.json()["learning_beat"] == 2
+
+
+@pytest.mark.asyncio
+async def test_get_me_includes_tutorial_reentry_fields(api_client, auth_headers):
+    """GET /me carries learning_beat + router_choice (NULL for a fresh user)."""
+    response = await api_client.get("/api/auth/me", headers=auth_headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert "learning_beat" in data
+    assert "router_choice" in data
+
+
+@pytest.mark.asyncio
+async def test_tutorial_reentry_roundtrip_via_me(api_client, auth_headers):
+    """PATCH tutorial state then GET /me confirms persisted values."""
+    patch_response = await api_client.patch(
+        "/api/auth/me/setup-state",
+        headers=auth_headers,
+        json={"learning_beat": 5, "router_choice": "B"},
+    )
+    assert patch_response.status_code == 200
+
+    me_response = await api_client.get("/api/auth/me", headers=auth_headers)
+    assert me_response.status_code == 200
+    data = me_response.json()
+    assert data["learning_beat"] == 5
+    assert data["router_choice"] == "B"
 
 
 @pytest.mark.asyncio

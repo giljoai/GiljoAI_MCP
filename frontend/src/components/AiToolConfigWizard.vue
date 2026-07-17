@@ -206,7 +206,7 @@ onMounted(() => {
   loadModeFlag()
 })
 
-// Expose methods to programmatically open the wizard (McpIntegrationCard + ApiKeyManager).
+// Expose methods to programmatically open the wizard (ApiKeyManager's Configurator button).
 defineExpose({
   open: () => {
     showWizard.value = true

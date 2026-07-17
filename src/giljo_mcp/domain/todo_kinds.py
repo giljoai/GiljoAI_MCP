@@ -8,7 +8,7 @@
 Single source of truth for the self-closeout / chain-drive TODO taxonomy. The
 completion gate used to re-run three keyword regexes on *every* incomplete TODO
 at ``complete_job`` time (``job_completion_service`` §rows 4-6 of
-``handovers/INF-6201_PROPOSAL_hub_absorbs_bus.md``). That was the brittle
+``internal design notes``). That was the brittle
 "closeout dance": a novel wording (the field-reported "Conductor self-complete")
 missed the match and stranded a finale.
 

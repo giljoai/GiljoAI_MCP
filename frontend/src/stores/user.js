@@ -228,6 +228,10 @@ export const useUserStore = defineStore('user', () => {
       if (data.setup_selected_tools !== undefined) currentUser.value.setup_selected_tools = data.setup_selected_tools
       if (data.setup_step_completed !== undefined) currentUser.value.setup_step_completed = data.setup_step_completed
       if (data.learning_complete !== undefined) currentUser.value.learning_complete = data.learning_complete
+      // FE-9200 seam: tutorial resume fields (BE-9201 schema, in flight).
+      // Absent from the response until the backend ships them — tolerated.
+      if (data.learning_beat !== undefined) currentUser.value.learning_beat = data.learning_beat
+      if (data.router_choice !== undefined) currentUser.value.router_choice = data.router_choice
     }
     return data
   }

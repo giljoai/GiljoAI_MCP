@@ -1,69 +1,73 @@
 <template>
-  <!-- API key flow — shown for key-only tools, or when bearer fallback is revealed -->
-  <div class="panel-section bearer-flow" data-testid="key-flow-section">
-    <label class="section-label">API Key</label>
+  <!-- API key flow — Card 1 (Generate) + Card 2 (Command). Shown for key + manual
+       methods, or when a sign-in tool's fallback is toggled on. -->
+  <div class="key-flow" data-testid="key-flow-section">
+    <!-- Card 1 — Generate key -->
+    <div class="numbered-card">
+      <span class="numbered-card-step">1.</span>
+      <div class="numbered-card-body">
+        <!-- Checking for existing key -->
+        <div v-if="checkingKey" class="api-key-status" data-testid="key-status-checking">
+          <v-progress-circular size="16" width="2" indeterminate :color="colorMuted" />
+          <span class="status-text">Checking for existing key...</span>
+        </div>
 
-    <!-- Checking for existing key -->
-    <div v-if="checkingKey" class="api-key-status api-key-status--centered" data-testid="key-status-checking">
-      <v-progress-circular size="16" width="2" indeterminate :color="colorMuted" />
-      <span class="status-text">Checking for existing key...</span>
-    </div>
+        <!-- Generating key -->
+        <div v-else-if="generatingKey" class="api-key-status" data-testid="key-status-generating">
+          <v-progress-circular size="16" width="2" indeterminate :color="colorMuted" />
+          <span class="status-text">Generating API key...</span>
+        </div>
 
-    <!-- Generating key -->
-    <div v-else-if="generatingKey" class="api-key-status api-key-status--centered" data-testid="key-status-generating">
-      <v-progress-circular size="16" width="2" indeterminate :color="colorMuted" />
-      <span class="status-text">Generating API key...</span>
-    </div>
+        <!-- Fresh key generated (embedded in the command below — never shown raw) -->
+        <div v-else-if="generatedKey" class="api-key-status" data-testid="key-status-generated">
+          <v-icon size="16" :color="colorSuccess">mdi-check-circle</v-icon>
+          <span class="status-text status-text--key">Key generated</span>
+          <span class="key-inline-note">already inside the command below</span>
+        </div>
 
-    <!-- Fresh key generated (full key available) -->
-    <div v-else-if="generatedKey" class="api-key-status api-key-status--centered" data-testid="key-status-generated">
-      <v-icon size="16" :color="colorSuccess">mdi-check-circle</v-icon>
-      <span class="status-text">Key generated — paste the command below in your terminal</span>
-    </div>
+        <!-- Existing key found (prefix only, no plaintext) -->
+        <div v-else-if="existingKeyPrefix" class="api-key-existing" data-testid="key-status-existing">
+          <div class="api-key-status">
+            <v-icon size="16" :color="colorSuccess">mdi-check-circle</v-icon>
+            <span class="status-text">Key exists ({{ existingKeyPrefix }}...)</span>
+          </div>
+          <v-btn
+            size="small"
+            color="primary"
+            variant="flat"
+            prepend-icon="mdi-key-plus"
+            data-testid="generate-new-key-btn"
+            :loading="generatingKey"
+            @click="$emit('generate-key')"
+          >
+            Generate New Config
+          </v-btn>
+        </div>
 
-    <!-- Existing key found (prefix only, no plaintext) -->
-    <div v-else-if="existingKeyPrefix" class="api-key-existing" data-testid="key-status-existing">
-      <div class="api-key-status api-key-status--centered">
-        <v-icon size="16" :color="colorSuccess">mdi-check-circle</v-icon>
-        <span class="status-text">Key exists ({{ existingKeyPrefix }}...)</span>
+        <!-- No key at all -->
+        <div v-else class="api-key-status api-key-status--empty" data-testid="key-status-empty">
+          <span class="status-text">Create the API key this tool will use</span>
+          <v-btn
+            size="small"
+            color="primary"
+            variant="flat"
+            prepend-icon="mdi-key-plus"
+            data-testid="generate-key-btn"
+            :loading="generatingKey"
+            @click="$emit('generate-key')"
+          >
+            Generate API Key
+          </v-btn>
+        </div>
+
+        <v-alert v-if="keyError" type="error" variant="tonal" density="compact" class="mt-2" data-testid="key-error-alert" closable @click:close="$emit('clear-key-error')">
+          {{ keyError }}
+        </v-alert>
       </div>
-      <div class="api-key-actions">
-        <v-btn
-          size="small"
-          color="primary"
-          variant="flat"
-          prepend-icon="mdi-key-plus"
-          data-testid="generate-new-key-btn"
-          :loading="generatingKey"
-          @click="$emit('generate-key')"
-        >
-          Generate New Config
-        </v-btn>
-      </div>
     </div>
 
-    <!-- No key at all -->
-    <div v-else class="api-key-status api-key-status--centered" data-testid="key-status-empty">
-      <v-btn
-        size="small"
-        color="primary"
-        variant="flat"
-        prepend-icon="mdi-key-plus"
-        data-testid="generate-key-btn"
-        :loading="generatingKey"
-        @click="$emit('generate-key')"
-      >
-        Generate API Key
-      </v-btn>
-    </div>
-
-    <v-alert v-if="keyError" type="error" variant="tonal" density="compact" class="mt-2" data-testid="key-error-alert" closable @click:close="$emit('clear-key-error')">
-      {{ keyError }}
-    </v-alert>
-
-    <!-- Configuration Display (only when key is available) -->
-    <div v-if="hasKey" class="panel-section">
-      <label class="section-label">Configuration</label>
+    <!-- Card 2 — Configuration command (only when key is available) -->
+    <div v-if="hasKey" class="key-flow-config">
 
       <!-- HTTPS cert trust (Node.js tools) -->
       <template v-if="needsCertTrust">
@@ -116,10 +120,10 @@
         <pre class="config-code">{{ envVarText }}</pre>
       </div>
 
-      <!-- Main config command (bearer) -->
+      <!-- Main config command (bearer for CLI tools, JSON server config for generic) -->
       <div class="config-block smooth-border" data-testid="config-command-block">
         <div class="config-block-header">
-          <span class="config-block-label">CONFIGURATION COMMAND Paste in terminal</span>
+          <span class="config-block-label">{{ isGeneric ? 'Server config (key included)' : 'Paste in your terminal (key included)' }}</span>
           <v-btn
             icon="mdi-content-copy"
             size="x-small"
@@ -131,22 +135,6 @@
         </div>
         <pre class="config-code">{{ configCommand }}</pre>
       </div>
-    </div>
-
-    <!-- Connection Status for key-only tools (OAuth tools show it in the OAuth section) -->
-    <div v-if="!activeSupportsOauth && hasKey" class="panel-section connection-section">
-      <p class="instruction-text mb-4">Start your AI Coding tool</p>
-      <div class="connection-status-line">
-        <span class="connection-label">CONNECTION STATUS:</span>
-        <span
-          :class="[
-            'status-dot',
-            activeConnected ? 'status-dot--connected' : 'status-dot--waiting',
-          ]"
-          data-testid="conn-status-dot"
-        />
-      </div>
-      <p class="instruction-text mt-4">Ask your AI Coding tool to run a health check</p>
     </div>
   </div>
 </template>
@@ -160,13 +148,12 @@ defineProps({
   keyError:          { type: String,  default: '' },
   hasKey:            { type: Boolean, required: true },
   needsCertTrust:    { type: Boolean, required: true },
-  activeSupportsOauth: { type: Boolean, required: true },
-  activeConnected:   { type: Boolean, required: true },
   activeNormalizedId: { type: String, required: true },
   platform:          { type: String,  required: true },
   certCommand:       { type: String,  default: '' },
   envVarText:        { type: String,  default: '' },
   configCommand:     { type: String,  required: true },
+  isGeneric:         { type: Boolean, default: false },
   colorMuted:        { type: String,  required: true },
   colorSuccess:      { type: String,  required: true },
 })
@@ -178,19 +165,39 @@ defineEmits(['generate-key', 'clear-key-error', 'set-platform', 'copy-text'])
 @use '../../styles/variables' as *;
 @use '../../styles/design-tokens' as *;
 
-/* Shared label style (duplicated from parent — scoped styles don't cross component boundary) */
-.section-label {
-  display: block;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: $lightest-blue;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 8px;
+/* Numbered cards (Card 1 Generate / Card 2 Command) — the restyled key flow. */
+.key-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.panel-section {
-  margin-bottom: 20px;
+.numbered-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  background: $elevation-elevated;
+  border-radius: $border-radius-md;
+  padding: 16px 18px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10);
+}
+
+.numbered-card-step {
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 700;
+  font-size: 0.94rem;
+  color: $color-brand-yellow;
+  line-height: 1.5;
+}
+
+.numbered-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.key-flow-config {
+  display: flex;
+  flex-direction: column;
 }
 
 /* API Key */
@@ -200,26 +207,31 @@ defineEmits(['generate-key', 'clear-key-error', 'set-platform', 'copy-text'])
   gap: 8px;
 }
 
-.api-key-status--centered {
-  justify-content: center;
+.api-key-status--empty {
+  justify-content: space-between;
 }
 
 .api-key-existing {
   display: flex;
-  flex-direction: column;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
-}
-
-.api-key-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 
 .status-text {
   font-size: 0.875rem;
   color: $color-text-primary;
+}
+
+.status-text--key {
+  color: $color-status-success;
+  font-weight: 600;
+}
+
+.key-inline-note {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.6rem;
+  color: var(--text-muted);
 }
 
 /* Platform pill toggles (matches UserSettings pill-toggle pattern) */
@@ -298,44 +310,4 @@ defineEmits(['generate-key', 'clear-key-error', 'set-platform', 'copy-text'])
   word-break: break-all;
 }
 
-/* Connection status */
-.connection-section {
-  text-align: center;
-}
-
-.connection-status-line {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-}
-
-.connection-label {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: $lightest-blue;
-  letter-spacing: 0.5px;
-}
-
-.status-dot {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-}
-
-.status-dot--waiting {
-  background: $color-indicator-disconnected;
-  box-shadow: 0 0 8px 3px rgba($color-indicator-disconnected, 0.5);
-}
-
-.status-dot--connected {
-  background: $color-status-success;
-  box-shadow: 0 0 8px 3px rgba($color-status-success, 0.5);
-}
-
-.instruction-text {
-  font-size: 0.8125rem;
-  color: $lightest-blue;
-  line-height: 1.5;
-}
 </style>

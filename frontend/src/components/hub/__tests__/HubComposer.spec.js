@@ -205,7 +205,7 @@ describe('HubComposer', () => {
     store.selectedThreadId = 'thr-001'
     // Initial participants: only an earlier-joined agent.
     store.participantsByThreadId.set('thr-001', [
-      { participant_id: 'p-old', display_name: 'git_EM_12', participant_type: 'agent' },
+      { participant_id: 'p-old', display_name: 'agent-legacy', participant_type: 'agent' },
     ])
 
     const wrapper = mountComposer(pinia)
@@ -215,7 +215,7 @@ describe('HubComposer', () => {
     participantsMock.mockResolvedValueOnce({
       data: {
         participants: [
-          { participant_id: 'p-old', display_name: 'git_EM_12', participant_type: 'agent' },
+          { participant_id: 'p-old', display_name: 'agent-legacy', participant_type: 'agent' },
           { participant_id: 'p-new', display_name: 'CI2_lane', participant_type: 'agent' },
         ],
       },

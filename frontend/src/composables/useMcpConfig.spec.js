@@ -16,6 +16,8 @@ import {
   generateCodexOAuthConfig,
   generateGeminiOAuthConfig,
   generateClaudeDesktopOAuthConfig,
+  generateOpenCodeOAuthConfig,
+  generateOpenCodeConfig,
   generateClaudeConfig,
   generateCodexConfig,
   generateGeminiConfig,
@@ -44,6 +46,14 @@ describe('normalizeToolId', () => {
 
   it('passes through unknown ids unchanged', () => {
     expect(normalizeToolId('generic_mcp')).toBe('generic_mcp')
+  })
+
+  it('maps the generic wizard id → generic_mcp (FE-9204)', () => {
+    expect(normalizeToolId('generic')).toBe('generic_mcp')
+  })
+
+  it('passes through opencode unchanged (FE-9204)', () => {
+    expect(normalizeToolId('opencode')).toBe('opencode')
   })
 })
 
@@ -145,6 +155,18 @@ describe('OAuth generators (BE-6157, byte-parity with ai_tools.py)', () => {
     )
     expect(result).not.toContain('mcp add')
   })
+
+  it('OpenCode sign-in command registers then authenticates, no bearer (FE-9204)', () => {
+    const result = generateOpenCodeOAuthConfig('https://giljo.example.com')
+    expect(result).toBe('opencode mcp add giljo_mcp https://giljo.example.com/mcp && opencode mcp auth giljo_mcp')
+    expect(result).not.toContain('Authorization')
+    expect(result).not.toContain('Bearer')
+  })
+
+  it('OpenCode bearer command carries the Authorization header (FE-9204)', () => {
+    const result = generateOpenCodeConfig('https://giljo.example.com', 'tok_abc')
+    expect(result).toBe('opencode mcp add giljo_mcp https://giljo.example.com/mcp --header "Authorization: Bearer tok_abc"')
+  })
 })
 
 describe('generateConfigForTool authMethod dispatch (BE-6157)', () => {
@@ -169,6 +191,23 @@ describe('generateConfigForTool authMethod dispatch (BE-6157)', () => {
 
   it('routes gemini oauth to the OAuth generator', () => {
     expect(generateConfigForTool('gemini', URL, KEY, { authMethod: 'oauth' })).toBe(generateGeminiOAuthConfig(URL))
+  })
+
+  it('routes opencode oauth to the sign-in-plus-auth command (FE-9204)', () => {
+    const result = generateConfigForTool('opencode', URL, KEY, { authMethod: 'oauth' })
+    expect(result).toBe(`opencode mcp add giljo_mcp ${URL}/mcp && opencode mcp auth giljo_mcp`)
+    expect(result).not.toContain('Authorization')
+    expect(result).not.toContain('Bearer')
+  })
+
+  it('routes opencode bearer to the header command (FE-9204)', () => {
+    expect(generateConfigForTool('opencode', URL, KEY)).toBe(
+      `opencode mcp add giljo_mcp ${URL}/mcp --header "Authorization: Bearer ${KEY}"`,
+    )
+  })
+
+  it('routes the generic wizard id to the generic_mcp JSON emitter (FE-9204)', () => {
+    expect(generateConfigForTool('generic', URL, KEY)).toBe(generateConfigForTool('generic_mcp', URL, KEY))
   })
 
   it('routes claude_desktop oauth to the instruction generator', () => {
@@ -199,18 +238,19 @@ describe('generateConfigForTool authMethod dispatch (BE-6157)', () => {
 })
 
 describe('AUTH_CAPABILITIES metadata (BE-6157)', () => {
-  it('covers exactly the six connection tools', () => {
+  it('covers exactly the seven connection tools (opencode added FE-9204)', () => {
     expect(Object.keys(AUTH_CAPABILITIES).sort()).toEqual(
-      ['antigravity', 'claude', 'claude_desktop', 'codex', 'gemini', 'generic_mcp'],
+      ['antigravity', 'claude', 'claude_desktop', 'codex', 'gemini', 'generic_mcp', 'opencode'],
     )
   })
 
-  it('matches the verified capability matrix (2026-06-20)', () => {
+  it('matches the verified capability matrix (2026-06-20; opencode FE-9204)', () => {
     const matrix = {
       claude: ['Anthropic', true, true, 'oauth'],
       claude_desktop: ['Anthropic', true, true, 'oauth'],
       codex: ['OpenAI', true, true, 'oauth'],
       gemini: ['Google', true, true, 'oauth'],
+      opencode: ['OpenCode', true, true, 'oauth'],
       antigravity: ['Google', false, true, 'bearer'],
       generic_mcp: ['Other', false, true, 'bearer'],
     }

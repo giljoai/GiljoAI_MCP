@@ -27,7 +27,7 @@ Drops:
   (write-only telemetry; no reader anywhere)
 - configurations: is_secret (no writer)
 
-Reference: handovers/Reference_docs/ORPHAN_COLUMN_AUDIT_seq127_NB2.md sec 3.a/3.b.
+Reference: internal design notes sec 3.a/3.b.
 
 Idempotent. Reversible.
 """

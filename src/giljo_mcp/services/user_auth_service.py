@@ -19,6 +19,7 @@ Responsibilities:
 import logging
 from datetime import UTC, datetime
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from giljo_mcp.database import DatabaseManager
@@ -132,6 +133,13 @@ class UserAuthService:
         # Hash and update password (off the event loop via the shared helper)
         user.password_hash = await async_hash_password(new_password)
         user.must_change_password = False  # Clear flag after successful change
+
+        # SEC-9217b: user-first FOR UPDATE lock (same order the OAuth /refresh grant
+        # takes) so a concurrent refresh grant cannot interleave with this eviction
+        # and mint a surviving access+refresh pair.
+        await session.execute(
+            select(User.id).where(User.id == str(user.id), User.tenant_key == self.tenant_key).with_for_update()
+        )
 
         # SEC-9047: a credential change evicts every live session. Bumping the
         # revocation epoch invalidates all outstanding access tokens (the `rev`
@@ -418,11 +426,27 @@ class UserAuthService:
         if not user:
             raise ResourceNotFoundError(message="User not found", context={"user_id": user_id})
 
+        # SEC-9217b: user-first FOR UPDATE lock (same order the OAuth /refresh grant
+        # takes) so a concurrent refresh grant cannot interleave with this eviction
+        # and mint a surviving access+refresh pair.
+        await session.execute(
+            select(User.id).where(User.id == str(user.id), User.tenant_key == self.tenant_key).with_for_update()
+        )
+
+        # SEC-9217a: bring force-logout to parity with change_password (SEC-9047).
+        # Bumping the epoch only invalidates outstanding ACCESS tokens (the `rev`
+        # claim gate in principal.py). A held OAuth refresh token is untouched and
+        # would mint a fresh access token at the NEW epoch on its next /refresh,
+        # sailing past the gate. Revoking the user's refresh families closes that seam.
         user.token_revocation_epoch = (user.token_revocation_epoch or 0) + 1
+        revoked_count = await revoke_all_refresh_tokens_for_user(
+            session, user_id=str(user.id), tenant_key=self.tenant_key
+        )
         await session.commit()
         await session.refresh(user)
 
         self._logger.info(
-            f"Force-logout: bumped revocation epoch for user {user.username} to {user.token_revocation_epoch}"
+            f"Force-logout: bumped revocation epoch for user {user.username} to "
+            f"{user.token_revocation_epoch} ({revoked_count} refresh token(s) revoked)"
         )
         return user

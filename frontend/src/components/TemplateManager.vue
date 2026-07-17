@@ -10,9 +10,9 @@
           >
         </template>
         <span
-          >Each active agent template consumes context tokens during orchestration. The 8-slot limit
+          >Each active agent template consumes context tokens during orchestration. The 16-slot limit
           keeps prompt budgets manageable. 1 slot is reserved for the Orchestrator (managed in Admin
-          Settings), leaving 7 for your custom agents. Run the giljo_setup tool (choose "Agents only")
+          Settings), leaving 15 for your custom agents. Run the giljo_setup tool (choose "Agents only")
           in your CLI tool to install or update templates.</span
         >
       </v-tooltip>
@@ -93,9 +93,9 @@
         class="filter-search"
       />
       <v-select
-        v-model="filterCategory"
-        :items="categories"
-        placeholder="Category"
+        v-model="filterRole"
+        :items="availableRoles"
+        placeholder="Role"
         clearable
         variant="solo"
         flat
@@ -114,6 +114,16 @@
         hide-details
         class="filter-select"
       />
+      <v-btn
+        variant="tonal"
+        color="primary"
+        prepend-icon="mdi-account-multiple-plus"
+        aria-label="Add default agents"
+        :loading="importingDefaults"
+        @click="importDefaultAgents"
+      >
+        Add Default Agents
+      </v-btn>
       <v-btn
         color="primary"
         prepend-icon="mdi-plus"
@@ -246,7 +256,7 @@ const templateExportEvent = inject('templateExportEvent', ref(null))
 
 // Search and filters (owned here, passed into composable)
 const search = ref('')
-const filterCategory = ref(null)
+const filterRole = ref(null)
 const filterStatus = ref(null)
 
 // Template data composable
@@ -255,6 +265,7 @@ const {
   loading,
   editingTemplate,
   filteredTemplates,
+  availableRoles,
   generatedName,
   totalActiveAgents,
   totalCapacity,
@@ -263,7 +274,9 @@ const {
   loadTemplates,
   loadActiveCount,
   resetEditingTemplate,
-} = useTemplateData(search, filterCategory, filterStatus)
+  importingDefaults,
+  importDefaults,
+} = useTemplateData(search, filterRole, filterStatus)
 
 // HITL closeout mode
 const closeoutModeHitl = ref(true)
@@ -300,17 +313,29 @@ const resetDialog = ref(false)
 const deletingTemplate = ref(null)
 const resettingTemplate = ref(null)
 
+// FE-9203: Export Status column sort — needs-export first (stale or never
+// exported), then exported (oldest export first), then user-managed dismissals,
+// system-managed rows last. Uses the real export signals on the API payload
+// (may_be_stale, last_exported_at, user_managed_export).
+const exportStatusRank = (t) => {
+  if (t._system) return 3
+  if (t.user_managed_export) return 2
+  if (t.may_be_stale || !t.last_exported_at) return 0
+  return 1
+}
+const sortExportStatus = (a, b) =>
+  exportStatusRank(a) - exportStatusRank(b) ||
+  new Date(a.last_exported_at || 0) - new Date(b.last_exported_at || 0)
+
 // Table configuration
 const headers = [
   { title: 'Agent Name', key: 'name', align: 'start' },
   { title: 'Role', key: 'role', align: 'start' },
   { title: 'Active', key: 'is_active', align: 'center' },
-  { title: 'Export Status', key: 'export_status', align: 'center', sortable: false },
+  { title: 'Export Status', key: 'export_status', align: 'center', sortRaw: sortExportStatus },
   { title: 'Updated', key: 'updated_at', align: 'start' },
   { title: 'Actions', key: 'actions', sortable: false, width: '4%', align: 'center' },
 ]
-
-const categories = ['role', 'project_type', 'custom']
 
 const roleOptions = [
   'analyzer',
@@ -323,10 +348,12 @@ const roleOptions = [
   'documenter',
 ]
 
+// FE-9203: agent templates have exactly two lifecycle states — is_active
+// true/false. There is no archived/draft state on the model; do not add
+// options here that the API cannot satisfy.
 const statusOptions = [
   { title: 'Active', value: 'active' },
-  { title: 'Archived', value: 'archived' },
-  { title: 'Draft', value: 'draft' },
+  { title: 'Inactive', value: 'inactive' },
 ]
 
 // Handover 0075: Handle active toggle with validation
@@ -345,6 +372,21 @@ const handleToggleActive = async (template, newValue) => {
     const errorMsg = error.response?.data?.detail || 'Failed to update agent'
     showToast({ message: errorMsg, type: 'error' })
     await reloadTemplates()
+  }
+}
+
+// FE-9203: "Add default agents" — additive import; the server guards repeat clicks (skip-identical).
+const importDefaultAgents = async () => {
+  try {
+    const summary = await importDefaults()
+    const parts = []
+    if (summary.added.length) parts.push(`${summary.added.length} added`)
+    if (summary.added_as_duplicate.length) parts.push(`${summary.added_as_duplicate.length} added as duplicate`)
+    if (summary.skipped_identical.length) parts.push(`${summary.skipped_identical.length} already present`)
+    const anyAdded = summary.added.length > 0 || summary.added_as_duplicate.length > 0
+    showToast({ message: `Default agents: ${parts.join(', ')}`, type: anyAdded ? 'success' : 'info' })
+  } catch (error) {
+    showToast({ message: error.response?.data?.detail || 'Failed to add default agents', type: 'error' })
   }
 }
 

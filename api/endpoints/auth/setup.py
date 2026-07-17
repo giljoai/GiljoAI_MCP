@@ -37,6 +37,12 @@ async def update_setup_state(
         current_user.setup_complete = payload.setup_complete
     if payload.learning_complete is not None:
         current_user.learning_complete = payload.learning_complete
+    # BE-9201: onboarding-tutorial re-entry state (validated by SetupStateUpdate:
+    # learning_beat 1-6, router_choice A|B|C|D).
+    if payload.learning_beat is not None:
+        current_user.learning_beat = payload.learning_beat
+    if payload.router_choice is not None:
+        current_user.router_choice = payload.router_choice
     await db.commit()
     await db.refresh(current_user)
     return {
@@ -44,4 +50,6 @@ async def update_setup_state(
         "setup_selected_tools": current_user.setup_selected_tools,
         "setup_step_completed": current_user.setup_step_completed,
         "learning_complete": current_user.learning_complete,
+        "learning_beat": current_user.learning_beat,
+        "router_choice": current_user.router_choice,
     }

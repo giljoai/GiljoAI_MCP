@@ -62,7 +62,7 @@ from giljo_mcp.schemas.service_responses import (
 )
 from giljo_mcp.tenant import TenantManager
 from giljo_mcp.utils.log_sanitizer import sanitize
-from giljo_mcp.utils.password_helper import async_hash_password, async_verify_password
+from giljo_mcp.utils.password_helper import DUMMY_BCRYPT_HASH, async_hash_password, async_verify_password
 
 
 logger = logging.getLogger(__name__)
@@ -189,16 +189,16 @@ class AuthService:
         wire-level ``username`` parameter name is preserved for API compatibility
         and reused for error context/logging.
         """
-        # Verify user exists, has a password set, and it matches. bcrypt off the
-        # event loop. BE-1004 amendment 4: a social-only user (password_hash IS
-        # NULL -- see ProvisioningService.provision_tenant's social_provider
-        # branch) must fail the SAME generic way as a wrong password, not crash
-        # (async_verify_password would raise AttributeError on None.encode(),
-        # surfacing as a 500 that also doubles as a user-enumeration oracle
-        # distinguishing "exists, social-only" from "wrong password"). The `or`
-        # short-circuit below skips the bcrypt call entirely for both a missing
-        # user AND a passwordless one, mirroring the existing not-found path.
-        if not user or user.password_hash is None or not await async_verify_password(password, user.password_hash):
+        # One bcrypt verify on EVERY path, off the event loop, so response time
+        # can't reveal whether the account exists (SEC-9217c timing oracle): the
+        # real stored hash when present, else DUMMY_BCRYPT_HASH whose result is
+        # discarded via the `stored is not None` gate. BE-1004 amendment 4: a
+        # social-only user (password_hash IS NULL) must fail the SAME generic
+        # way as a wrong password, never crash on a None hash.
+        stored = user.password_hash if user is not None else None
+        password_ok = await async_verify_password(password, stored or DUMMY_BCRYPT_HASH) and stored is not None
+
+        if not password_ok:
             self._logger.warning(
                 f"Authentication failed for identifier: {sanitize(username)}",
                 extra={"identifier": sanitize(username), "reason": "invalid_credentials"},

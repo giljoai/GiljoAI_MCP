@@ -65,10 +65,12 @@ describe('SetupStep3Commands', () => {
       expect(wrapper.text()).toContain('giljo_setup')
     })
 
-    it('renders instruction text with tool name', async () => {
+    it('renders instruction text with tool name (harmonized registry name)', async () => {
       const wrapper = mountStep3()
       await flushPromises()
-      expect(wrapper.text()).toContain('Ask your Claude Code CLI to run:')
+      // TOOL_META now comes from the shared setupTools.js registry (FE-9204), so
+      // the display name harmonizes to "Claude Code" (was "Claude Code CLI").
+      expect(wrapper.text()).toContain('Ask your Claude Code to run:')
     })
 
     it('does not show tab bar with single connected tool', async () => {
@@ -85,6 +87,28 @@ describe('SetupStep3Commands', () => {
       await flushPromises()
       expect(wrapper.find('.tool-tabs').exists()).toBe(true)
       expect(wrapper.findAll('.tool-tab')).toHaveLength(2)
+    })
+
+    // FE-9204: the Install step must resolve the two tools added to the choose grid
+    // (OpenCode has an mdi icon, Generic MCP client a logo) — it kept a stale 4-tool
+    // TOOL_META fork that rendered a broken image + empty name for them.
+    it('renders OpenCode (mdi icon, no broken image) when connected', async () => {
+      const wrapper = mountStep3({ selectedTools: ['opencode'], connectedTools: ['opencode'] })
+      await flushPromises()
+      expect(wrapper.text()).toContain('Ask your OpenCode to run:')
+    })
+
+    it('renders the generic MCP client with a resolvable name + logo when connected', async () => {
+      const wrapper = mountStep3({
+        selectedTools: ['claude_code', 'generic'],
+        connectedTools: ['claude_code', 'generic'],
+      })
+      await flushPromises()
+      const tabs = wrapper.findAll('.tool-tab')
+      expect(tabs).toHaveLength(2)
+      // The generic tab renders its name (not empty) and a logo image (not broken).
+      expect(tabs[1].text()).toContain('Generic MCP client')
+      expect(tabs[1].find('img').attributes('src')).toBe('/logo-mcp.svg')
     })
   })
 

@@ -26,6 +26,10 @@ export function normalizeToolId(toolId) {
     codex_cli: 'codex',
     gemini_cli: 'gemini',
     antigravity_cli: 'antigravity',
+    // Setup wizard IDs for the two tools added in the connect redesign (FE-9204).
+    // `opencode` has no legacy alias (its own generators); `generic` folds into the
+    // existing `generic_mcp` legacy id so it reuses generateGenericMcpConfig().
+    generic: 'generic_mcp',
   }
   return map[toolId] || toolId
 }
@@ -208,6 +212,14 @@ export function generateGeminiOAuthConfig(serverUrl) {
 }
 
 /**
+ * Generate OpenCode MCP add command for the OAuth flow (no bearer header) (FE-9204).
+ * OpenCode registers the server, then runs its own browser sign-in via `mcp auth`.
+ */
+export function generateOpenCodeOAuthConfig(serverUrl) {
+  return `opencode mcp add giljo_mcp ${serverUrl}/mcp && opencode mcp auth giljo_mcp`
+}
+
+/**
  * Claude Desktop OAuth has no CLI `mcp add` command — the connector is added in
  * the app/web settings and runs OAuth in the browser. Emit a short real
  * instruction (NOT a fake command). serverUrl is intentionally unused — the
@@ -226,9 +238,19 @@ export function generateGeminiConfig(serverUrl, apiKey) {
 }
 
 /**
+ * Generate OpenCode MCP add command for the bearer (API-key) flow (FE-9204).
+ * Same `mcp add` as the OAuth variant plus an Authorization header — no separate
+ * `mcp auth` browser step is needed when a key is supplied.
+ */
+export function generateOpenCodeConfig(serverUrl, apiKey) {
+  return `opencode mcp add giljo_mcp ${serverUrl}/mcp --header "Authorization: Bearer ${apiKey}"`
+}
+
+/**
  * Generate Generic MCP JSON config snippet (streamable-http, plain headers).
  * Used by the standalone modal for any MCP-compatible client not covered by
- * a dedicated generator. Only used by the standalone modal, NOT the setup wizard.
+ * a dedicated generator, AND by the setup wizard's "Generic MCP client" tool
+ * (FE-9204) — the wizard id `generic` normalizes to `generic_mcp`.
  */
 // eslint-disable-next-line giljo-internal/no-orphaned-exports -- referenced internally by generateConfigForTool() and imported in tests/unit/composables/useMcpConfig.spec.js (outside src/)
 export function generateGenericMcpConfig(serverUrl, apiKey) {
@@ -300,6 +322,8 @@ export function generateConfigForTool(toolId, serverUrl, apiKey, options = {}) {
         return generateCodexOAuthConfig(serverUrl)
       case 'gemini':
         return generateGeminiOAuthConfig(serverUrl)
+      case 'opencode':
+        return generateOpenCodeOAuthConfig(serverUrl)
       // antigravity + generic_mcp have NO OAuth variant — fall through to bearer.
     }
   }
@@ -312,6 +336,8 @@ export function generateConfigForTool(toolId, serverUrl, apiKey, options = {}) {
       return generateCodexConfig(serverUrl)
     case 'gemini':
       return generateGeminiConfig(serverUrl, apiKey)
+    case 'opencode':
+      return generateOpenCodeConfig(serverUrl, apiKey)
     case 'generic_mcp':
       return generateGenericMcpConfig(serverUrl, apiKey)
     case 'antigravity':
@@ -400,6 +426,16 @@ export const AUTH_CAPABILITIES = {
     default_auth: 'oauth',
     oauth_quirk_note: '',
   },
+  // OpenCode (FE-9204): sign-in-capable, also accepts a bearer key. FE-only entry
+  // — api/endpoints/ai_tools.py AUTH_CAPABILITIES is a test-only mirror with no
+  // runtime tool-id validation, so no backend parity is required (verified FE-9204).
+  opencode: {
+    vendor: 'OpenCode',
+    supports_oauth: true,
+    supports_bearer: true,
+    default_auth: 'oauth',
+    oauth_quirk_note: '',
+  },
   antigravity: {
     vendor: 'Google',
     supports_oauth: false,
@@ -438,6 +474,7 @@ export function makeKeyName(toolId) {
     claude_desktop: 'Claude Desktop',
     codex: 'Codex CLI',
     gemini: 'Gemini',
+    opencode: 'OpenCode',
     generic_mcp: 'Generic MCP',
     antigravity: 'Antigravity CLI',
   }

@@ -29,7 +29,7 @@ vi.mock('@/services/api', () => ({
   default: {
     templates: {
       list: vi.fn().mockResolvedValue({ data: [] }),
-      activeCount: vi.fn().mockResolvedValue({ data: { max_slots: 8 } }),
+      activeCount: vi.fn().mockResolvedValue({ data: { max_slots: 16 } }),
     },
     stats: {
       getDashboard: vi.fn().mockResolvedValue({ data: { recent_projects: [] } }),
@@ -43,6 +43,11 @@ vi.mock('@/components/GilMascot.vue', () => ({
 }))
 vi.mock('@/components/setup/SetupWizardOverlay.vue', () => ({
   default: { name: 'SetupWizardOverlay', template: '<div />' },
+}))
+// FE-9200: the tutorial overlay pulls the whole beats/screens graph — stub it
+// like the wizard (its own behavior is covered by tests/unit/components/tutorial/).
+vi.mock('@/components/tutorial/TutorialOverlay.vue', () => ({
+  default: { name: 'TutorialOverlay', template: '<div />' },
 }))
 vi.mock('@/components/setup/CertTrustModal.vue', () => ({
   default: { name: 'CertTrustModal', template: '<div />' },

@@ -80,7 +80,7 @@ class AuthRepository:
         authentication succeeds.
 
         Part of AUTH-EMAIL dual-lookup (handover af53e62b,
-        ``handovers/AUTH_EMAIL_USERNAME_DECISION.md``).
+        ``internal design notes``).
 
         Args:
             session: Active database session

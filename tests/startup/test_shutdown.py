@@ -6,11 +6,26 @@
 """Tests for shutdown module"""
 
 import asyncio
+import logging
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from api.app_state import APIState
+
+
+def _quiet_state() -> APIState:
+    """An APIState with no live services -- a minimal simulated shutdown."""
+    state = APIState()
+    state.heartbeat_task = None
+    state.cleanup_task = None
+    state.metrics_sync_task = None
+    state.health_monitor = None
+    state.silence_detector = None
+    state.connections = {}
+    state.websocket_broker = None
+    state.db_manager = None
+    return state
 
 
 @pytest.mark.asyncio
@@ -215,12 +230,12 @@ async def test_shutdown_logs_progress():
     with patch("api.startup.shutdown.logger") as mock_logger:
         await shutdown(state)
 
-        # Verify shutdown messages were logged (progress steps use print(), not logger)
+        # Verify shutdown messages were logged (step detail is at DEBUG, TSK-9194)
         info_calls = [call.args[0] for call in mock_logger.info.call_args_list]
 
         # Check for the actual logger.info messages from shutdown.py
         assert any("Shutting down GiljoAI MCP API" in msg for msg in info_calls)
-        assert any("API shutdown complete" in msg for msg in info_calls)
+        assert any("Shutdown: %d/%d steps OK" in msg for msg in info_calls)
 
 
 @pytest.mark.asyncio
@@ -265,3 +280,80 @@ async def test_shutdown_all_tasks_in_order():
     assert execution_order.index("cancel_heartbeat") < execution_order.index("stop_health_monitor")
     assert execution_order.index("stop_health_monitor") < execution_order.index("close_websocket")
     assert execution_order.index("close_websocket") < execution_order.index("close_database")
+
+
+# --- TSK-9194: shutdown log-diet regression tests (incident 2026-07-16) ---
+# The 6-step shutdown banner (progress lines x 4 uvicorn workers) burst past
+# Railway's 500 logs/sec replica cap ("Messages dropped: 35") and destroyed the
+# diagnostic tail. Shutdown must emit at most 3 lines per process at INFO;
+# step detail lives at DEBUG; a failed step must still be named at WARNING+.
+
+
+@pytest.mark.asyncio
+async def test_shutdown_emits_at_most_three_info_lines_per_process(capsys, caplog):
+    """A clean simulated shutdown emits <=3 INFO-level lines per process.
+
+    Counts both logger records at INFO+ and stdout lines (print() output
+    becomes an INFO-equivalent log line on non-TTY platform log collectors).
+    """
+    from api.startup.shutdown import shutdown
+
+    state = _quiet_state()
+
+    with caplog.at_level(logging.INFO, logger="api.startup.shutdown"):
+        await shutdown(state)
+
+    # \r-based progress rewrites still emit distinct log lines on non-TTY output
+    stdout_lines = [line for line in capsys.readouterr().out.replace("\r", "\n").splitlines() if line.strip()]
+    info_records = [r for r in caplog.records if r.name == "api.startup.shutdown" and r.levelno >= logging.INFO]
+    total = len(stdout_lines) + len(info_records)
+    assert total <= 3, (
+        f"shutdown emitted {total} INFO-level lines per process "
+        f"(stdout={stdout_lines!r}, log={[r.getMessage() for r in info_records]!r})"
+    )
+
+
+@pytest.mark.asyncio
+async def test_shutdown_step_detail_available_at_debug(caplog):
+    """Every shutdown step is still traceable by name at DEBUG level."""
+    from api.startup.shutdown import shutdown
+
+    state = _quiet_state()
+
+    with caplog.at_level(logging.DEBUG, logger="api.startup.shutdown"):
+        await shutdown(state)
+
+    debug_msgs = [
+        r.getMessage() for r in caplog.records if r.name == "api.startup.shutdown" and r.levelno == logging.DEBUG
+    ]
+    for label in (
+        "Background tasks",
+        "Health monitor",
+        "Silence detector",
+        "WebSocket connections",
+        "WebSocket broker",
+        "Database",
+    ):
+        assert any(label in msg for msg in debug_msgs), f"step '{label}' not visible at DEBUG"
+
+
+@pytest.mark.asyncio
+async def test_shutdown_failed_step_named_at_warning_or_above(caplog):
+    """A failing step is still reported at WARNING+ with the step name,
+    and the end-of-shutdown summary names the failed step too."""
+    from api.startup.shutdown import shutdown
+
+    state = _quiet_state()
+    state.health_monitor = MagicMock()
+    state.health_monitor.stop = AsyncMock(side_effect=RuntimeError("stop failed"))
+
+    with caplog.at_level(logging.INFO, logger="api.startup.shutdown"):
+        await shutdown(state)
+
+    warn_msgs = [
+        r.getMessage() for r in caplog.records if r.name == "api.startup.shutdown" and r.levelno >= logging.WARNING
+    ]
+    # The step failure itself names the step
+    assert any("Health monitor" in msg for msg in warn_msgs)
+    # The summary line reports the failure with the step name
+    assert any("Shutdown:" in msg and "Health monitor" in msg for msg in warn_msgs)

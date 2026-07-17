@@ -127,7 +127,7 @@ class SequenceRun(Base):
     # Conductor identity (BE-6165b). NULL until the sequence driver self-registers the
     # head-of-order orchestrator on its first staging/mission call (BE-6165c). The
     # ChainDirectiveComposer reads these to address directives; NULL renders dormant.
-    conductor_agent_id = Column(String(36), nullable=True)
+    conductor_agent_id = Column(String(64), nullable=True)  # BE-9214: agent ids validate to 64
     conductor_project_id = Column(String(36), nullable=True)
     conductor_label = Column(String(80), nullable=True)
 

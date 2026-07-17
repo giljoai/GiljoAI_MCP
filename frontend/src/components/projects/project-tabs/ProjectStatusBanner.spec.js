@@ -93,3 +93,37 @@ describe('ProjectStatusBanner', () => {
     expect(wrapper.find('[data-testid="memory-pending-chip"]').exists()).toBe(true)
   })
 })
+
+describe('ProjectStatusBanner — FE-9191 Review project on the completed pill', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+  })
+
+  it('shows the Review project button beside the done pill when projectDoneStatus is "completed"', () => {
+    const wrapper = mountBanner({ projectDoneStatus: 'completed' })
+    expect(wrapper.find('[data-testid="project-done-banner"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="review-completed-btn"]').exists()).toBe(true)
+  })
+
+  it('clicking Review project on the completed pill emits open-closeout-modal', async () => {
+    const wrapper = mountBanner({ projectDoneStatus: 'completed' })
+    await wrapper.find('[data-testid="review-completed-btn"]').trigger('click')
+    expect(wrapper.emitted('open-closeout-modal')).toBeTruthy()
+  })
+
+  it('does NOT render the Review project button on an active project (no done status)', () => {
+    const wrapper = mountBanner({ projectDoneStatus: null })
+    expect(wrapper.find('[data-testid="review-completed-btn"]').exists()).toBe(false)
+  })
+
+  it('does NOT render the Review project button for terminated projects (pill only)', () => {
+    const wrapper = mountBanner({ projectDoneStatus: 'terminated' })
+    expect(wrapper.find('[data-testid="project-done-banner"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="review-completed-btn"]').exists()).toBe(false)
+  })
+
+  it('does NOT render the Review project button for cancelled projects (pill only)', () => {
+    const wrapper = mountBanner({ projectDoneStatus: 'cancelled' })
+    expect(wrapper.find('[data-testid="review-completed-btn"]').exists()).toBe(false)
+  })
+})

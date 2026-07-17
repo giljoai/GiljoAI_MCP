@@ -1,6 +1,6 @@
 # GiljoAI MCP: User Guide
 
-*Last updated: 2026-06-04*
+*Last updated: 2026-07-17*
 
 This guide covers every page and UI element in GiljoAI MCP. Read from top to bottom on first use, or jump to the section you need.
 
@@ -36,24 +36,42 @@ When you have an active product but have not created any projects under it yet, 
 
 Clicking a template auto-creates a pre-filled project and takes you to the Projects page. Once a product has had its first project created, these cards do not reappear for that product (even if you later delete all its projects).
 
-### Onboarding Hint Cards
-
-Below the hero, up to two hint cards remind you to enable integrations (Git, Serena MCP) and to customize your agent templates. They greet you by name and are signed "-Gil." The integration hint disappears once both Git and Serena are enabled, so you are not nagged about things already done.
-
 ### Your Team
 
-A team roster shows the orchestrator plus your active agent templates. Each agent shows a tinted initial badge, display name, and description. Empty slots show a plus icon. The slot count (e.g. "3 / 8 slots") appears in the header. Click "Manage" to go to Agent Template settings.
+A team roster shows the orchestrator plus your active agent templates. Each agent shows a tinted initial badge, display name, and description. Empty slots show a plus icon. The slot count (e.g. "3 / 16 slots") appears in the header — that is one reserved orchestrator slot plus up to fifteen of your own agents. Click "Manage" to go to Agent Template settings.
 
 ### Onboarding Flow
 
-The page detects your setup state on mount and opens the appropriate overlay:
+The page detects your setup state on mount and opens the appropriate step:
 
-- First login with setup incomplete: the Setup Wizard opens automatically.
-- Setup complete, learning guide not yet seen: the "How to Use GiljoAI MCP" guide opens after the wizard closes.
+- First login with setup incomplete: the **Setup Wizard** opens automatically.
+- Setup complete, tour not yet seen: an animated **welcome tour** opens a moment after the wizard closes.
 - Returning to Home with `?openSetup=true` in the URL: the Setup Wizard opens in re-run mode.
-- Returning to Home with `?openGuide=true` in the URL: the learning guide opens directly.
+- Returning to Home with `?openGuide=true` in the URL: the welcome tour opens directly.
 
-The learning guide is also accessible any time from Tools, under the Startup tab.
+The welcome tour is also reachable any time from **Tools**, under the **Startup** tab.
+
+#### The Welcome Tour
+
+After setup, a short animated tour introduces the product. It is a guided walkthrough, not a wall of text, and you can leave at any point with **"Skip — I'll explore on my own."** It never blocks you, and it remembers where you left off — reopen it and you resume at the same stop and the same starting choice.
+
+A rail down the left lets you jump between six stops:
+
+1. **How it works** — your own AI tools do the thinking; GiljoAI keeps the thread and briefs them at every session start. GiljoAI never runs an AI model itself.
+2. **Product & crew** — define your product once and the whole agent crew inherits it.
+3. **Missions** — how work is framed as missions, not one-off chats.
+4. **360 Memory** — every project makes the next one smarter.
+5. **The destination** — a preview of your working dashboard.
+6. **Get started** — choose how to create your first product.
+
+The final stop offers four ways to start, from fastest to most manual:
+
+- **I have an existing codebase** (fastest, no typing) — one prompt and your connected agent reads the repo, writes the vision document, and fills in the product card for you.
+- **I have an idea — help me shape it** — a short guided interview turns your idea into a product.
+- **I have a vision document** — drag in a `.md` or `.txt` brief and it becomes your product.
+- **I'll fill it in myself** — opens the classic product form.
+
+The first three hand a prompt to your connected agent, which proposes a product for you to review and activate. The last one leaves the tour and opens the product form directly.
 
 #### Setup Wizard Steps
 
@@ -61,16 +79,26 @@ The wizard has four steps shown in a progress bar:
 
 | Step | Label | What happens |
 |---|---|---|
-| 0 | Choose Tools | Select one or more AI coding tools (Claude Code CLI, Claude.ai / Desktop, Codex CLI / ChatGPT.com, Gemini CLI, Antigravity CLI) |
-| 1 | Connect | Generate API keys and configure each selected tool |
-| 2 | Install | Install the slash command skills on your machine |
-| 3 | Launch | Confirm setup and get your first bootstrap prompt |
+| 1 | Choose Tools | Pick one or more of the six AI coding tools you use (you can add the rest later) |
+| 2 | Connect | The wizard walks you through your chosen tools one at a time, with a live status card that flips green the moment each one connects |
+| 3 | Install | Ask your tool to run `giljo_setup`, which installs the `/giljo` skill and your agent templates |
+| 4 | Launch | Confirm you are set up and jump to creating your first product |
 
-The wizard can be restarted any time from Tools > Startup.
+The six pickable tools are **Claude Code**, **Codex CLI**, **Gemini CLI**, **Antigravity CLI**, **OpenCode**, and **Generic MCP client** (which covers anything else that speaks open MCP). Claude Desktop and other chat clients connect a little differently — see **AI Tool Configuration (Connect)** for the exact steps. The wizard can be restarted any time from **Tools → Startup**.
 
 ### System Banners
 
-Status banners may appear at the top of the page. They are now backed by the notification system, so a banner's state (including a dismissal) persists across page refreshes and browser sessions. Dismissible banners have an X; some banners (such as a lapsed subscription) clear only when the underlying condition is resolved. Community Edition system banners (pending migrations, update available, skills drift) link to the **Tools** page.
+Guidance and status banners appear in a single strip at the top of the page. Every banner leads with Gil's face and speaks to you directly — these are the same nudges that older versions showed as pop-in cards, now folded into one place. Each has one **"Go to…"** button, and dismissing a banner sticks (its state is stored server-side, so it persists across refreshes, sessions, and devices). Some banners (such as a lapsed subscription) clear only when the underlying condition is resolved. Time-based banners are re-checked periodically, so a dismissed reminder reliably comes back while it still applies — even on a server left running a long time.
+
+Common banners:
+
+- **Enable Git and Serena** — turn on both integrations in your connect settings to give agents more context (retires once both are on).
+- **Tune your agents** — after your first project completes, a one-time nudge to make the default agent templates and product context your own.
+- **Activate your product** — shown when you have a product but none is active.
+- **Context review** — about two weeks after a product's context was last reviewed, once at least one project has completed since, Gil suggests tuning it so agents stay current. You can suppress it in notification settings.
+
+> [!CE]
+> Community Edition also shows system notices for pending database migrations and available updates (the update banner points you to where to download the new version). Both editions show the skills-drift banner.
 
 ---
 
@@ -83,12 +111,12 @@ The Dashboard shows system-wide statistics for the active product.
 Three stat pills appear at the top. Each pill shows a count, a mini bar chart, and a color-coded legend:
 
 - **Status Distribution:** Total projects broken down by status (active, completed, staged, cancelled, terminated).
-- **Taxonomy:** Projects broken down by project type (e.g. Backend, Frontend, API).
+- **Project Types:** Projects broken down by project type (e.g. Backend, Frontend, API).
 - **Agent Roles:** Total agents spawned, broken down by role type.
 
 ### Mini Stats Row
 
-Six compact counters appear below the stat pills:
+Five compact counters appear below the stat pills:
 
 | Counter | Description |
 |---|---|
@@ -96,8 +124,7 @@ Six compact counters appear below the stat pills:
 | Tasks | Total tasks across all statuses |
 | API Calls | Total FastAPI calls recorded |
 | MCP Calls | Total MCP tool calls recorded |
-| Exec: Auto | Projects run in automatic execution modes (multi-terminal, CLI tools) |
-| Exec: Supervised | Projects run in supervised execution mode |
+| Commits | Git commits captured in 360 Memory |
 
 ### Projects Panel
 
@@ -118,12 +145,14 @@ Products sit at the top of the hierarchy: Product - Projects - Jobs - Agents. A 
 
 ### Creating a Product
 
-Click "New Product" to open the product form. The Setup tab is **AI-first**:
+Analyzing a vision document is now the **default** way to create a product; filling every field by hand is the explicit escape hatch. Click "New Product" to open the product form. The Setup tab is **AI-first**:
 
 1. Enter a **Name** (required).
-2. Optionally attach one or more **vision documents** (`.md` or `.txt`, max 10 MB each).
+2. Optionally attach one or more **vision documents** (`.md` or `.txt`, max 5 MB each).
 3. If you attach a document, an optional **extraction-instructions** panel appears where you can steer what the AI pulls out.
 4. The footer button moves through **Stage analysis → Analyzing… → Next** as the AI processes your document.
+
+When analysis can determine your project's path on disk, it fills in the **Codebase Folder** for you, with a visible way to skip that field.
 
 If a vision document is attached, the remaining tabs (Tech Stack, Architecture, Testing) and the **Next** button stay locked until analysis completes — a tooltip explains "Run analysis to unlock." Everything unlocks automatically when the AI finishes.
 
@@ -132,6 +161,8 @@ If you would rather fill in fields by hand, tick **Skip** (labeled "Not recommen
 If you save a product with a name that duplicates an existing one, a blocking dialog appears ("Duplicate product name — pick a different name, or activate or rename the existing product"). Your typed fields are preserved behind the dialog.
 
 > **Editing** an existing product never locks the tabs — the analysis gate applies only when creating a new product.
+
+> **Prefer to skip the form entirely?** A connected AI agent can create your first product *and* write its vision document for you from a single prompt (this is what the welcome tour's "existing codebase" and "shape an idea" paths do). An agent-written product appears in the dashboard exactly like one you created by hand.
 
 ### Context Fields
 
@@ -171,7 +202,7 @@ The workflow:
 
 1. Select the sections you want to retune (description, tech stack, architecture, core features, codebase structure, etc.)
 2. Click **Generate Tuning Prompt**. A structured prompt is produced; the view scrolls to it automatically so you can copy it to your clipboard.
-3. Paste the prompt into your AI coding tool (Claude Code CLI, Claude Desktop, Codex CLI, Gemini CLI, or any MCP-compatible tool)
+3. Paste the prompt into your connected AI coding tool
 4. The agent scans the codebase, checks for drift between the stored context and the actual code, and presents findings section by section
 5. Approve or reject each section's proposed changes in the tool's conversation
 6. Approved changes are applied directly to the product fields in GiljoAI MCP. There is no separate review step in the dashboard
@@ -201,6 +232,12 @@ Projects can also be created from your AI coding tool using `/giljo add project 
 
 In the Projects list, click a project's colored **Serial badge** (e.g. `BE-0042`) to open its Project Review. The rest of the row is selectable text, so you can copy a project's name or description without triggering navigation.
 
+### Managing the Projects List
+
+- A **compact view** toggle tightens the table so more projects fit on screen at once.
+- Deleting a project moves it to **Deleted Projects for 10 days**, where it can be restored. After 10 days it is permanently purged. A **"Deleted projects (N)"** button opens that recovery list.
+- Row actions include Activate, Deactivate, Complete, Cancel, Reopen, Review, **Mark Superseded**, Edit, Duplicate, Archive/Unarchive, and Delete.
+
 ### Project Status and Protection
 
 Projects move through several statuses as work progresses. Two statuses lock a project from further changes:
@@ -210,30 +247,75 @@ Projects move through several statuses as work progresses. Two statuses lock a p
 
 Completed and cancelled projects are protected. Any attempt to change their fields (name, description, status, etc.) will be blocked with an error.
 
-### Staging and Activation
+You can also mark a project **Superseded** with a link to the project that replaced it. This keeps history navigable — the old project stays visible and points at its successor — without deleting anything.
 
-Projects have two preparation states before they run:
+### The Project Workspace: Staging and Implementation
 
-- **Staged:** A bootstrap prompt has been generated and is ready to paste into your AI coding tool. The staged indicator shows a green checkmark in the project table.
-- **Active:** The project is currently running. Only one project per product can be active at a time.
+Opening a project takes you to its workspace, which has two tabs:
 
-To activate and launch a project, click the play button in the project table row. If the project is already staged, activation resumes from the staged state. If it is not staged, the bootstrap prompt is generated first.
+- **Staging** — where you prepare the project and generate the orchestrator prompt.
+- **Implementation** — the live agent monitoring view once work is running (covered under **Jobs** below).
 
-The bootstrap prompt includes: your product context, 360 Memory entries, project description, and agent template definitions. Paste this into your AI coding tool to start the orchestrator.
+#### Choosing an Execution Mode
 
-If a staging orchestrator finishes without spawning any specialist agents, staging is blocked and the project stays re-stageable (the Implement button stays disabled) so you can stage it again — it will not be left in a broken state.
+On the Staging tab you pick how the work runs. There are two modes:
+
+- **Multi-terminal** — you launch each agent in its own terminal. Phases run one after another; agents within a phase run in parallel.
+- **Subagent** — one main agent spawns and manages all the others itself. This works with tools that support subagents.
+
+Next to the mode picker, a read-only **"detected"** chip shows what GiljoAI auto-resolved from the tool you connected — a hint, not a setting you change.
+
+Running agents unattended (**headless**) is a separate, account-level switch in your settings rather than a per-project choice. When a project runs headless, the dashboard **follows it live** on its own — you do not have to babysit each terminal.
+
+#### Staging a Project
+
+On the Staging tab, the stage button walks through its own states as you go: **Stage Project → Staging… → Unstage** (to back out) → **Re-Stage** (to recover a staged-but-not-yet-launched project). It is disabled once implementation has launched. Staging generates the orchestrator prompt (your product context, 360 Memory, project description, and agent template definitions) for you to paste into your connected tool.
+
+- **Staged:** the prompt is ready; the staged indicator shows a green checkmark in the project table.
+- **Active:** the project is currently running. Only one project per product can be active at a time.
+
+If a staging orchestrator finishes without spawning any specialist agents, staging is blocked and the project stays re-stageable (the **Implement** button stays disabled) so you can stage it again — it will not be left in a broken state.
+
+Once staging completes and you have chosen a mode, click **Implement** to launch, which switches you to the Implementation tab.
 
 ### Project Phases
 
-**Implementation Phase:** Agents execute the plan. In multi-terminal mode, phases run sequentially; within a phase, agents run in parallel. In CLI subagent modes (Claude Code CLI, Codex CLI, Gemini CLI), the orchestrator spawns all agents simultaneously.
+**Implementation phase:** agents execute the plan. In multi-terminal mode, phases run one after another and agents within a phase run in parallel. In subagent mode, the orchestrator spawns and coordinates the agents itself.
 
-**Closeout Phase:** When implementation is complete, the orchestrator requests your approval before closing the project. You review what was done, then approve. Once you approve, the orchestrator writes the 360 Memory entry and marks the project complete. The memory entry captures what was built, key decisions, patterns discovered, and what worked. This data flows into the next project automatically.
+**Closeout phase:** when every agent has finished, you review the project and close it out — GiljoAI writes a 360 Memory entry capturing what was built, key decisions, patterns discovered, and outcomes, and marks the project complete. That memory flows into the next project automatically. The closeout workflow is described in detail under **Jobs → Closing Out a Project** below.
+
+---
+
+## Roadmap
+
+The **Roadmap** (in the left navigation) is a single ranked plan of what to build next for your active product. It pulls together the product's **inactive projects and pending tasks** and orders them, with a risk and complexity score on each. There is one roadmap per active product.
+
+### Who Ranks It
+
+Your **AI agent** builds the roadmap — GiljoAI's server never analyzes or reorders it on its own. The page is a bridge:
+
+1. Click **Create Roadmap** (empty) or **Refresh Roadmap** (populated). This **copies a prompt** to your clipboard.
+2. Paste it into the agent connected to this account. (Tick **"Add my own instructions"** first if you want to steer it.)
+3. A **"Waiting for your agent…"** banner appears while the agent works and clears automatically the moment it saves the roadmap.
+
+Because the agent does the ranking, the risk (low / med / high), complexity (light / med / heavy), and any blocked flags all reflect its judgment, not an automatic calculation.
+
+### Working With the List
+
+Each item is a card showing a **PROJECT** or **TASK** badge, its status, its risk and complexity, and a **Blocked** row with the agent's reason if it flagged one. From a card you can:
+
+- **Drag** the grip to reorder — the order saves automatically and survives a refresh.
+- **Activate** a project — this stages it and opens the Implementation view.
+- **Convert to Project** — promotes a task into a new project.
+- **Remove from roadmap** — takes the item off the roadmap only; the project or task itself is untouched and reappears next time the agent rebuilds the roadmap.
+
+A **"Fold in tasks"** switch filters tasks out so you see projects alone.
 
 ---
 
 ## Jobs
 
-The Jobs page (accessed via a project detail view or the navigation) shows the real-time agent monitoring table for a running project.
+The **Jobs** entry in the left navigation and a project's **Implementation** tab open the same thing: the real-time agent monitoring table for a running project.
 
 ### Agent Monitoring
 
@@ -260,7 +342,7 @@ Each agent displays one of the following statuses (this table doubles as the on-
 | `waiting` | Waiting. | Yellow, italic |
 | `working` | Working... | White, italic, animated dots |
 | `blocked` | Needs Input | Orange, upright |
-| `awaiting_user` | Needs Decision | Amber, upright (an approval is pending — see Agent Approvals) |
+| `awaiting_user` | Decision Required | Amber, upright (an approval is pending — see Agent Approvals) |
 | `idle` | Monitoring | Steel blue, italic |
 | `sleeping` | Sleeping | Soft purple, italic |
 | `silent` | Silent | Orange, upright (agent stopped communicating) |
@@ -278,19 +360,31 @@ When you spawn more than one agent of the same type in a project (for example, t
 
 ### Agent Approvals (Human-in-the-Loop)
 
-When an agent needs a decision from you mid-work, it requests an approval. A clickable **approval banner** appears at the top of every page — one band per waiting agent, tinted with the agent's color and showing a preview of the request. (This is separate from project closeout.)
+When an agent needs a decision from you mid-work, the project's Implementation tab shows an amber **"Decision Required"** banner: *"Check in with the orchestrator in chat, then click here to decide."*
 
-1. Click the banner to open the **Decision dialog**, a focused window showing the agent's reason and the available options (e.g. Approve / Reject / Defer). Read the agent's full reasoning in your AI chat before choosing.
-2. Pick an option. Your decision is delivered to the orchestrator's inbox automatically.
-3. The banner turns green: *"Orchestrator unlocked — Tell the orchestrator to read its message and proceed."* Nudge the orchestrator in your AI chat to check its inbox. The green band clears on its own once it does.
+1. Read the agent's full reasoning in your AI chat.
+2. Click the banner to open the **decision dialog**, which shows the request and the available options (e.g. Approve / Reject / Defer).
+3. Pick an option. **This is the only place a decision is made** — there is no global approvals page, and picking an option here is what unlocks the orchestrator. Your choice is delivered to the orchestrator's inbox.
 
-Multiple pending approvals stack as multiple banners.
+The banner then confirms *"Orchestrator unlocked — Tell the orchestrator to read its message and proceed."* Nudge the orchestrator in your AI chat to check its inbox; the banner clears on its own once it does.
+
+### Closing Out a Project
+
+When every agent has finished, the Implementation tab guides you through closeout via the status banner at the top:
+
+1. **"Saving project memory…"** appears briefly while the 360 Memory entry is written.
+2. A **"Review project"** button then appears. Click it to open the closeout summary — the project's 360 Memory, laid out as **Summary**, **Key Outcomes**, **Decisions Made**, and **Git Commits**.
+3. Click **Close**. A confirmation toast fires and you return to the **Projects** page immediately.
+
+To look back at a finished project, its banner shows a green **"Project Completed and Closed"** pill (or "Terminated"/"Cancelled") with its own **"Review project"** button. Reopening the summary and clicking **Close** there is a safe acknowledgement — it will not re-file or overwrite anything.
+
+If a closeout ever looks stuck because the orchestrator was never staged, you can **force-close** it to free the project. A project where everything already finished always routes cleanly to the closeout summary.
 
 ### Auto Check-In
 
 In multi-terminal execution mode, an Auto Check-In slider appears after staging. Drag the slider to set an interval (Off, 5, 10, 15, 20, 30, 40, or 60 minutes). When set to any interval other than Off, the orchestrator automatically checks in on sleeping agents at that cadence.
 
-You can change the interval while the orchestrator is already running — the new value takes effect at the next check-in cycle. A hint ("Applies at next check-in.") appears below the slider in that case. Auto check-in does not appear in CLI subagent modes (Claude Code CLI, Codex CLI, Gemini CLI), where the orchestrator manages agent communication directly.
+You can change the interval while the orchestrator is already running — the new value takes effect at the next check-in cycle. A hint ("Applies at next check-in.") appears below the slider in that case. Auto check-in does not appear in subagent mode, where the orchestrator manages agent communication directly.
 
 ---
 
@@ -302,10 +396,45 @@ The modal is organized into expandable sections:
 
 - **Agent Jobs:** Each agent job is shown as a collapsible card. Expand it to see its assigned mission, todo list, and step progress.
 - **Agent Messages:** The message traffic between agents during the project — useful for understanding why decisions were made.
+- **Project Threads:** A read-only view of the project's Message Hub threads, with an **"Open in Hub"** link to jump into the full conversation.
 - **Git Commits:** Commits recorded during the project (requires git integration to be enabled in Tools > Connect).
 - **360 Memory:** The memory entry written at closeout.
 
-Closeout and agent approvals are separate flows. If an agent has a pending approval when you open the Close Out dialog, the dialog directs you to resolve it in the Decision dialog first (see Agent Approvals above).
+Closeout and agent approvals are separate flows. If an agent has a pending approval when you open the closeout summary, it directs you to resolve the decision in the decision dialog first (see Agent Approvals above).
+
+---
+
+## Message Hub
+
+The **Message Hub** (in the left navigation) is where you and your agents talk. You broadcast to the whole team or message one agent directly, and agents post back under their own identities as they coordinate. The nav item shows an unread-count badge and pulses when it is your turn to reply somewhere.
+
+### Threads
+
+Threads are grouped under two tabs, each with its own unread badge:
+
+- **Project threads** — conversations attached to a specific project.
+- **General threads** — standalone conversations not tied to a project.
+
+Each thread row shows a `CHT-####` id (click to copy the full id), a status pill, the subject, and the time. Click a row to read its timeline on the right. Every message shows who sent it (you appear in brand yellow, agents in their role color), the time, a **Broadcast** or **Direct** chip, and an **"action required"** flag when a post needs a response.
+
+### Reading and Replying
+
+Type in the composer at the bottom:
+
+- Toggle **Broadcast** (everyone on the thread) or **Direct** (pick one agent under **"To agent…"**).
+- Press **Ctrl+Enter** or click **Send**.
+
+You can reach a thread directly from a notification, from the **Open in Hub** link in Project Review, and from the message icon on the Implementation tab.
+
+### Your Turn and the Baton
+
+Agents pass a conversational "turn" (the baton) as they work. The Hub shows the baton **only when it is pointing at you**: a **"Your turn"** badge above the composer and a gold chip on the thread row. When you see it, replying passes the turn back so work can continue. (The Hub does not show which *agent* currently holds the turn — only your own turn is highlighted.) A directed message that needs action automatically hands the turn to whoever it is addressed to, so no separate hand-off step is needed.
+
+### Creating and Recovering Threads
+
+- **New Thread** needs a **Subject**; a Project and Product are optional.
+- **Request Auto Check-in** (in the composer) asks the agents on a thread to check in on an interval you set (default 10 minutes). This is **best-effort** — a model may or may not comply.
+- Only **General threads** can be deleted; the **Deleted** button lists soft-deleted threads so you can restore them. Project threads follow their project's lifecycle and cannot be deleted from the Hub.
 
 ---
 
@@ -358,34 +487,82 @@ Navigate to **Tools** via the left navigation. Five tabs are available:
 
 | Tab | Contents |
 |---|---|
-| **Connect** | External integrations (git repositories, MCP clients, API keys) that enrich 360 Memory and let coding agents connect to GiljoAI |
+| **Connect** | Your directory of connected AI tools, API keys, and integrations (git, Serena MCP) |
 | **Agents** | Agent Template Manager: browse, create, edit, and activate agent templates |
-| **Context** | Context priority configuration: toggle context fields, set depth per source, configure 360 Memory depth and git integration |
-| **Notifications** | Toast position (top/bottom, left/center/right), display-duration slider, and (Community Edition) the agent silence threshold in minutes |
-| **Startup** | Two cards: "Setup Wizard" (reopens the wizard) and "Learning" (reopens the "How to Use" guide) |
+| **Context** | Context configuration: choose what grounding context agents receive and how much |
+| **Notifications** | Notification position and duration, and (Community Edition) the agent silence threshold |
+| **Startup** | Cards to reopen the **Setup Wizard**, open this **guide** (the "Learning" card), and — in Community Edition — the **Certificate Trust** helper |
 
-API keys are managed inside the **Connect** tab alongside the integrations they unlock.
+### Connecting Your AI Tools (Connect)
 
-### AI Tool Configuration (Connect)
+The Connect tab is a single directory of your tools. A left rail headed **"YOUR TOOLS"** lists each one with a live status — **Connected**, **Waiting**, or **Not set up**. Click **"+ Add a tool"** to pick from the six supported tools and walk through the same one-at-a-time connect flow the Setup Wizard uses; each tool card lets you copy its connection command and, later, **Remove tool**.
 
-The Connect tab's configuration wizard generates the exact connection snippet for each supported tool: **Claude Code CLI**, **Claude.ai / Desktop**, **Codex CLI / ChatGPT.com**, **Gemini CLI**, **Antigravity CLI**, and **Generic MCP**. Selecting Claude.ai / Desktop produces a `claude_desktop_config.json` snippet with an accordion showing the config-file location for Windows, macOS, and Linux.
+The six directly supported tools are **Claude Code**, **Codex CLI**, **Gemini CLI**, **Antigravity CLI**, **OpenCode**, and **Generic MCP client**. **Claude Desktop** and other chat clients are not in that pickable list — they connect either by adding GiljoAI as a connector (a one-click **browser sign-in**) or by pasting a JSON config into the client's own MCP settings.
 
-The MCP server URL in the copied snippet adapts to your deployment: self-hosted (CE) installs include the explicit `:7272` port; hosted (SaaS) deployments omit it. On hosted deployments the certificate-trust step is hidden, because those certificates are already trusted.
+Each tool connects one of three ways, and the card shows the right steps for the one you pick:
+
+- **Browser sign-in** — paste one command; your browser opens for a one-click sign-in.
+- **Key** — generate an API key, then paste one command.
+- **Manual config** — copy a server config block into the client's MCP settings.
+
+GiljoAI notices what kind of tool connected — a command-line tool, a chat client, or a web-based coding agent — and tailors its instructions to fit. Web coding agents, which can't hold a live terminal, hand their work back to you across pull requests.
+
+> Some clients are allowed a smaller set of tools than others (a **core**, **standard**, or **full** profile enforced by the server), so if a connected client shows fewer GiljoAI tools than another, that is expected.
+
+### API Keys
+
+API keys live in the Connect tab. There is **no "create key" button** — a key is **generated automatically the first time you copy a tool's connection command**. You can hold **any number** of keys; each **expires after 90 days**. To retire one, use its **Revoke** action and confirm by typing **DELETE** in the dialog.
 
 ### Git Integration
 
 The Git integration card (Connect tab) works with any local git repository, not just GitHub. Its "Git Setup Guide" button links to git-scm.com. Enabling it lets GiljoAI record commit history into 360 Memory.
 
-### Agent Silence Threshold
+### Agent Templates (Agents tab)
 
-> [!CE]
-> This setting is available in the self-hosted Community Edition only; it is hidden in hosted (SaaS) mode.
+The **Agents** tab is where you shape your agent crew. You have **16 active slots**: one is reserved for the Orchestrator (managed in Admin Settings), leaving **15 for your own agents**. When 15 are active, activating another is blocked with: *"Maximum 15 active agent roles allowed (currently 15). Deactivate another role first."* Deactivate one to free a slot. There is **no limit on how many templates you can create** — the cap is only on how many are *active* at once.
 
-In the Notifications tab, the **Agent Silence Threshold (minutes)** input (1–60) controls how long an agent can go without communicating before it is marked "Silent." The value is saved to the database and persists across sessions.
+**Add Default Agents.** The **"Add Default Agents"** button safely re-imports the starter set at any time. It is purely additive: your edited templates are never touched. A fresh default whose name you have already customized lands as a separate `-duplicate` copy, and defaults you already have are skipped.
+
+**Finding templates.** Filter by free-text **Search**, by **Role**, and by **Status** (Active / Inactive). The **Export Status** column is sortable, so out-of-date templates are easy to find.
+
+**Editing a template.** The editor has these fields:
+
+- **Role** (required) — the agent's role, e.g. implementer, tester, reviewer.
+- **Custom Suffix (optional)** — appended to the display name (a live preview shows the result).
+- **Coding tool** — the tool this agent runs in (Claude, Codex, Gemini, or Antigravity).
+- **Description** — a short summary.
+- **Role & Expertise** — describe the agent's specialization, expertise, and personality. This is the field that shapes how the agent behaves.
 
 ### Installing Skills and Agents (`giljo_setup`)
 
-The `giljo_setup` MCP tool — which you run from inside your AI coding tool, not the dashboard — installs the slash-command skills and agent templates onto your machine. It asks you to choose an install scope: **Both** (commands + agents), **commands/skills only**, or **agents only**. If agent files already exist, it asks once whether to overwrite or skip them; skills/commands are always refreshed.
+`giljo_setup` is a tool you run **from inside your AI coding tool**, not from the dashboard, and it is available in both editions. It installs the `/giljo` skill and your agent templates onto your machine:
+
+- The **first** run installs both skills and agents.
+- **Later** runs always refresh your skills, and **ask before replacing** any agents you have edited.
+- Choose **"Agents only"** to push just your active templates to your tool. A refresh **preserves your edits**; a **reset** restores the shipped defaults. Exports carry up to **16 enabled agents**, and your own agents are prioritized so a full default set can never crowd them out.
+
+A download link is valid for a short window. If a link goes stale because your templates changed after it was created, the download reports itself as stale — just re-run `giljo_setup` to get a fresh one.
+
+### Shaping How Agents Behave
+
+Beyond each agent's **Role & Expertise**, two tenant-level controls shape what agents know and how the orchestrator thinks:
+
+**Context Configuration (Tools → Context).** Choose *what* grounding context agents receive and *how much*:
+
+- **Always on:** Product Info and Project Description.
+- **Toggles:** Tech Stack, Architecture, Testing.
+- **Depth:** Vision Documents at Light (33%), Medium (66%), or Full (100%); 360 Memory across the last 1, 3, 5, or 10 projects; Git History from 5 up to 100 commits (available when Git integration is on).
+
+**Tune Context (per product).** Each product card has a **"Tune Context"** button. Pick the sections to refresh and it generates a prompt for you to run in your agent; the agent checks the stored context against the real codebase, and changes are applied **only after it confirms drift** — nothing is overwritten blindly.
+
+**System Orchestrator Prompt (advanced).** For the whole account, an admin can override the orchestrator's core instructions under **Account → Danger Zone → System Orchestrator Prompt**. This is an advanced, tenant-wide setting — editing it can break orchestrator coordination, so a warning is shown and a **"Restore Default"** button is always available. Most users never need to touch it.
+
+### Notification Settings
+
+The **Notifications** tab sets where notifications appear (**Position** — six corner/edge options) and how long they stay (**Display duration**, 2–10 seconds).
+
+> [!CE]
+> Community Edition also shows an **Agent Silence Threshold (minutes)** setting (1–60) here, controlling how long an agent can go quiet before it is marked "Silent." It is saved to the database and persists across sessions. This setting is hidden in hosted (SaaS) mode.
 
 ---
 
@@ -393,51 +570,92 @@ The `giljo_setup` MCP tool — which you run from inside your AI coding tool, no
 
 Navigate to **Admin** via the left navigation (admin users only). The page title is "Admin Settings."
 
-Runtime settings (git integration, Serena MCP, SSL mode) are stored in the database. Changes you make here take effect immediately without restarting the server.
-
-Five tabs are available:
+Runtime settings (git integration, Serena MCP, network mode) are stored in the database. Changes you make here take effect immediately without restarting the server.
 
 | Tab | Contents |
 |---|---|
-| **Identity** | Workspace name and member management |
-| **Network** | External host, API port, frontend port, CORS origins, and SSL configuration |
-| **Database** | Read-only view of PostgreSQL connection settings; includes a "Test Connection" button |
-| **Security** | Cookie domain whitelist for multi-domain deployments |
-| **Prompts** | Orchestrator system prompt editor |
+| **Identity** | Workspace name and slug, plus user management |
+| **Network** (Community Edition) | Your server's actual live address, HTTPS on/off with bring-your-own-certificate, and the cookie domain whitelist |
+| **Database** (Community Edition) | Read-only view of PostgreSQL connection settings, with a "Test Connection" button |
+
+The **Network** tab shows the real IP address(es) and port your server is currently reachable on, and is where you turn on HTTPS by providing your own certificate (see **Self-Hosting & Network Setup**). The Network and Database tabs appear only in Community Edition.
 
 If your session has a stale or missing organization record, the Identity tab shows a friendly empty state ("No organization found. Please contact your administrator.") rather than a raw error. Legacy URLs `/tools/identity` and `/settings/identity` redirect here automatically.
 
-### User Profile
+### User Management
 
-Your profile collects **First Name** and **Last Name** as separate fields; greetings throughout the app use your first name.
-
-- **Community Edition:** Email changes apply immediately.
-- **Hosted (SaaS):** Changing your email starts a verification flow — a banner shows the pending address with **Resend** and **Cancel** buttons, the email field is disabled until you confirm, and a confirmation link is emailed to the new address.
-
-### Member Management
-
-The User Manager kebab menu adapts by edition:
-
-- **Community Edition:** "Change Password and PIN" for local credential management.
-- **Hosted (SaaS):** "Send password reset email," which emails the user a reset link.
+GiljoAI MCP is single-user, so the user list normally holds just your account. Attempting to add another user opens a **"Single-User License"** dialog explaining that Community Edition is licensed for single-user use and directing you to **sales@giljo.ai** for a commercial license.
 
 > [!CE]
-> A recovery PIN is a Community Edition feature. On hosted GiljoAI you reset your password by email instead.
+> A Community Edition admin can reset another local user's credentials from the user's row menu (**"Change Password & PIN"**).
 
 > GiljoAI MCP is permanently single-user per tenant in both Community Edition and hosted SaaS. The "Add User" button is intentionally unavailable; a future Team tier is not planned. First-install account creation is unaffected.
 
-### Account: Download My Data
+---
 
-On the Account > Danger Zone page, the **Download My Data** card exports a ZIP of all your products, projects, vision documents, agents, memory, tasks, and configuration (credentials redacted). Click **Generate Export**; a progress bar runs, and a download link valid for 15 minutes appears with a per-model record-count breakdown. Available to Community Edition users and hosted SaaS account owners.
+## Account and Security
+
+Your personal account lives under **Account** in the avatar menu, split into **Profile**, **Billing**, and **Danger Zone** tabs (hosted accounts add a **Connected Accounts** tab).
+
+### Your Profile
+
+The Profile tab shows your **Username** (fixed), **First Name**, **Last Name (optional)**, and **Email**. Greetings throughout the app use your first name.
+
+- **Community Edition:** email changes apply immediately.
+- **Hosted (SaaS):** changing your email starts a verification flow — a banner shows the pending address with **Resend** and **Cancel** buttons, the field stays disabled until you confirm, and a confirmation link is emailed to the new address.
+
+> [!CE]
+> The Admin/Owner badge shown next to your name is a Community Edition detail; hosted accounts, which are always single-user, do not display it.
+
+### Password and Recovery PIN
+
+Change your password in the Profile tab's **Password** section. **Changing it signs you out everywhere** — every other session and device is logged out, and you sign in again with the new password. Passwords must be at least **8 characters**; a very long password (over 72 bytes) is rejected with a clear message rather than a server error.
+
+> [!CE]
+> A **Recovery PIN** (exactly **4 digits**) is a Community Edition feature. If you forget your password, the PIN lets you reset it right from the sign-in screen. Set or change it in the Profile tab.
 
 > [!SAAS]
-> **Hosted accounts include billing and subscriptions.** Plans, checkout, cancellation, resume, switching to annual, trial behavior, and how account deletion differs on a trial versus a paid plan are covered in the **Billing & Subscription** chapter, shown at the end of this guide on hosted accounts. The self-hosted Community Edition has no billing.
+> On hosted GiljoAI you reset your password **by email** instead of with a PIN. A **"Reset Password"** item in the avatar menu sends a reset link to your address; your current password keeps working until you complete the reset.
+
+> [!SAAS]
+> You can **sign in with Google or GitHub**, and connect or disconnect those providers under **Account → Connected Accounts**. An account created with a provider can add a password at any time.
+
+For your safety, **changing your email, password, or recovery PIN — or generating a new API key — requires a live browser session**. An API key on its own cannot perform these account-security actions.
+
+### Sign-In Protection
+
+After **10 failed sign-in attempts**, an account is locked for **15 minutes** before you can try again.
+
+### Download My Data
+
+On **Account → Danger Zone**, the **Download my data** card exports a portable ZIP of your products, projects, vision documents, agents, memory, tasks, and configuration — with credentials redacted. It **covers every table automatically** (nothing is silently missed as the product grows) and is **version-stamped**, so older export files keep restoring correctly. Click **Generate export**; a progress bar runs and a download link valid for **15 minutes** appears with a per-model record count.
+
+> [!CE]
+> Your data lives in **your own PostgreSQL database**, so ongoing backups are yours to run — back it up like any database. The "Download my data" export is a portable snapshot, not a substitute for regular database backups.
+
+> [!SAAS]
+> "Download my data" is available to account admins. The Danger Zone also offers full self-service backups: **download your latest backup**, **save a restore point** on demand, and **request an operator-reviewed restore** (which preserves your API keys). Those controls, and how they relate to your subscription, are covered in the **Billing & Subscription** chapter shown at the end of this guide.
+
+### Trash and Recover
+
+Deleting things is reversible for a while:
+
+- **Projects** stay in Deleted Projects for **10 days** before permanent purge.
+- **Message Hub threads**, **vision documents**, and **agent templates** are recoverable for **30 days** after deletion.
+- **Archived** is a separate, tidy-away state (used for tasks and templates) — archived items are hidden from the default view but not deleted, and you can unarchive them any time.
+
+> [!SAAS]
+> **Hosted accounts include billing and subscriptions.** Plans, checkout, cancellation, resume, switching to annual, trial behavior, backups, and account deletion are covered in the **Billing & Subscription** chapter, shown at the end of this guide on hosted accounts. The self-hosted Community Edition has no billing.
 
 ---
 
 ## 360 Memory and Follow-up Work
 
 360 Memory entries are written by agents at project closeout. They capture what was built, decisions made, patterns found, and outcomes. Each subsequent project starts with this accumulated history available to the agent team.
+
+### Memory Browser
+
+The **Memory** page (in the left navigation) lets you search your product's accumulated history yourself. **Full-text search** covers every entry's summaries, key outcomes, and decisions. You can filter by **tag** or **project**, **group by project**, and sort by newest, oldest, or project sequence. The same history is available to your agents — they can search it mid-run to look up how earlier work was done, so lessons carry forward automatically.
 
 ### Reporting Follow-up Work
 
@@ -496,6 +714,30 @@ The About dialog (from the navigation drawer) shows the live running server vers
 
 ---
 
+## Limits at a glance
+
+The numbers you are most likely to bump into. "Edition" shows where a limit applies.
+
+| Thing | Limit | Edition |
+|---|---|---|
+| Active agents | 15 of your own, plus 1 reserved orchestrator (16 slots) | Both |
+| Templates you can create | Unlimited (only *active* agents are capped) | Both |
+| Projects in a chain | 2 to 5 | Both |
+| Vision document upload | 5 MB per file | Both |
+| API keys | Unlimited; each expires after 90 days | Both |
+| Password length | 8 characters minimum | Both |
+| Recovery PIN | Exactly 4 digits | CE |
+| Sign-in lockout | 10 failed attempts → 15-minute lock | Both |
+| Task title | 255 characters | Both |
+| Message Hub message | 20,000 characters | Both |
+| Deleted-project recovery | 10 days before permanent purge | Both |
+| Deleted thread / vision doc / agent template recovery | 30 days | Both |
+| Free trial | 7 days, no card required | SaaS |
+| Data-retention grace after trial/cancellation | 30 days | SaaS |
+| Seats | 1 (Solo) | SaaS |
+
+---
+
 ## Self-Hosting & Network Setup
 
 > [!CE]
@@ -519,6 +761,8 @@ GILJO_INSTALL_DIR=<optional>
 ```
 
 When `GILJO_UNATTENDED` is not set, the installer runs interactively as before.
+
+Both `install.ps1` and `install.sh` also support a **`--repair`** mode, which safely re-runs the installer over an existing install to fix a broken or partial setup without starting from scratch.
 
 ### HTTPS and Browser Configuration
 

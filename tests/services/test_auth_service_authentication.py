@@ -306,6 +306,117 @@ class TestAuthenticateUser:
         assert "Invalid credentials" in str(exc_info.value)
 
 
+class TestLoginTimingOracleEqualized:
+    """SEC-9217c: equalize unknown-user login timing (username-enumeration oracle).
+
+    Pre-fix, a missing user or a social-only user (``password_hash IS NULL``)
+    short-circuited past ``async_verify_password`` entirely, so the login
+    returned ~250-400ms faster than a real password-bearing account — a
+    reliably-measurable username/email-existence timing oracle. The fix runs
+    exactly one bcrypt verify on EVERY path (the real stored hash, or a constant
+    dummy hash whose result is discarded).
+
+    These assert the CODE PATH (``async_verify_password`` is invoked exactly
+    once), NOT wall-clock — a timing assertion is flaky under xdist. The spy
+    wraps the real helper so behavior (and the real bcrypt cost) is preserved.
+    """
+
+    @staticmethod
+    def _spy_on_verify(monkeypatch):
+        """Wrap the module-level ``async_verify_password`` with a call recorder.
+
+        Returns the list of ``password_hash`` values it was called with, so a
+        test can assert both the invocation COUNT and which hash was used.
+        """
+        import giljo_mcp.services.auth_service as svc
+
+        real = svc.async_verify_password
+        hashes_seen: list[str] = []
+
+        async def spy(plaintext, password_hash):
+            hashes_seen.append(password_hash)
+            return await real(plaintext, password_hash)
+
+        monkeypatch.setattr(svc, "async_verify_password", spy)
+        return hashes_seen
+
+    @pytest.mark.asyncio
+    async def test_real_user_wrong_password_verifies_exactly_once(
+        self, auth_service, auth_user_with_password, monkeypatch
+    ):
+        """Baseline: a real account with a wrong password runs one verify against
+        its own stored hash."""
+        hashes_seen = self._spy_on_verify(monkeypatch)
+        user, _ = auth_user_with_password
+
+        with pytest.raises(AuthenticationError):
+            await auth_service.authenticate_user(user.username, "WrongPassword123!")
+
+        assert len(hashes_seen) == 1
+        assert hashes_seen[0] == user.password_hash
+
+    @pytest.mark.asyncio
+    async def test_missing_user_verifies_exactly_once_against_dummy(self, auth_service, monkeypatch):
+        """A non-existent identifier must still pay exactly one bcrypt cost —
+        against the dummy hash — matching the real-account path."""
+        from giljo_mcp.utils.password_helper import DUMMY_BCRYPT_HASH
+
+        hashes_seen = self._spy_on_verify(monkeypatch)
+
+        with pytest.raises(AuthenticationError) as exc_info:
+            await auth_service.authenticate_user(f"ghost_{uuid4().hex[:8]}", "Password123!")
+
+        assert "Invalid credentials" in str(exc_info.value)
+        assert len(hashes_seen) == 1
+        assert hashes_seen[0] == DUMMY_BCRYPT_HASH
+
+    @pytest.mark.asyncio
+    async def test_null_hash_user_verifies_exactly_once_against_dummy(
+        self, auth_service, db_session, auth_test_org, monkeypatch
+    ):
+        """A social-only user (``password_hash IS NULL``) must pay one bcrypt
+        cost against the dummy hash and still fail with the SAME generic error
+        (BE-1004 amendment 4 preserved)."""
+        from giljo_mcp.utils.password_helper import DUMMY_BCRYPT_HASH
+
+        unique_id = str(uuid4())[:8]
+        user = User(
+            id=str(uuid4()),
+            username=f"socialonly_{unique_id}",
+            email=f"socialonly_{unique_id}@example.com",
+            password_hash=None,
+            role="admin",
+            tenant_key=auth_test_org.tenant_key,
+            org_id=auth_test_org.id,
+            is_active=True,
+            created_at=datetime.now(UTC),
+        )
+        db_session.add(user)
+        await db_session.commit()
+
+        hashes_seen = self._spy_on_verify(monkeypatch)
+
+        with pytest.raises(AuthenticationError) as exc_info:
+            await auth_service.authenticate_user(user.username, "SomeGuess123!")
+
+        assert "Invalid credentials" in str(exc_info.value)
+        assert len(hashes_seen) == 1
+        assert hashes_seen[0] == DUMMY_BCRYPT_HASH
+
+    @pytest.mark.asyncio
+    async def test_successful_login_still_one_verify(self, auth_service, auth_user_with_password, monkeypatch):
+        """The happy path is unregressed: a correct login runs exactly one verify
+        (against the real hash) and returns an AuthResult."""
+        hashes_seen = self._spy_on_verify(monkeypatch)
+        user, password = auth_user_with_password
+
+        result = await auth_service.authenticate_user(user.username, password)
+
+        assert isinstance(result, AuthResult)
+        assert len(hashes_seen) == 1
+        assert hashes_seen[0] == user.password_hash
+
+
 class TestUpdateLastLogin:
     """Tests for update_last_login method"""
 

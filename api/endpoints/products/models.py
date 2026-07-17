@@ -48,7 +48,7 @@ class TestConfigSchema(BaseModel):
 class ProductCreate(BaseModel):
     """Request model for creating a product"""
 
-    name: str = Field(..., description="Product name")
+    name: str = Field(..., max_length=255, description="Product name")
     description: str | None = Field(None, description="Product description")
     project_path: str | None = Field(None, description="File system path to product folder (required for agent export)")
     tech_stack: TechStackSchema | None = Field(None, description="Tech stack configuration - Handover 0840i")
@@ -68,7 +68,7 @@ class ProductCreate(BaseModel):
 class ProductUpdate(BaseModel):
     """Request model for updating a product"""
 
-    name: str | None = None
+    name: str | None = Field(None, max_length=255)
     description: str | None = None
     project_path: str | None = None
     tech_stack: TechStackSchema | None = Field(None, description="Tech stack configuration - Handover 0840i")

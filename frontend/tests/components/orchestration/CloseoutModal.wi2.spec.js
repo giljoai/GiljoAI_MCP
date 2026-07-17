@@ -79,7 +79,7 @@ describe('CloseoutModal — WI-2 post-archive UX', () => {
     })
   })
 
-  it('navigates to /projects after 2-second delay on successful archive', async () => {
+  it('navigates to /projects immediately on successful archive (TSK-9195)', async () => {
     const wrapper = mountModal()
     const btn = wrapper.find('[data-testid="close-out-btn"]')
     await btn.trigger('click')
@@ -88,13 +88,25 @@ describe('CloseoutModal — WI-2 post-archive UX', () => {
       expect(archiveMock).toHaveBeenCalled()
     })
 
-    // Not navigated yet
-    expect(pushMock).not.toHaveBeenCalled()
-
-    // Advance timers by 2 seconds
-    vi.advanceTimersByTime(2000)
-
+    // TSK-9195: navigation fires in the same tick as the archive success —
+    // no window where the stale Jobs view (re-clickable Review) stays on screen.
     expect(pushMock).toHaveBeenCalledWith('/projects')
+  })
+
+  it('leaves no timer-based navigation pending after Close success (TSK-9195)', async () => {
+    const wrapper = mountModal()
+    await wrapper.find('[data-testid="close-out-btn"]').trigger('click')
+
+    await vi.waitFor(() => {
+      expect(archiveMock).toHaveBeenCalled()
+    })
+
+    expect(pushMock).toHaveBeenCalledTimes(1)
+
+    // No delayed second navigation may exist.
+    vi.advanceTimersByTime(10000)
+    expect(pushMock).toHaveBeenCalledTimes(1)
+    expect(vi.getTimerCount()).toBe(0)
   })
 
   it('does NOT show toast or navigate on archive failure', async () => {

@@ -1,18 +1,18 @@
 # GiljoAI MCP: Product Overview
 
-*Last updated: 2026-06-04*
+*Last updated: 2026-07-17*
 
 ## What Is GiljoAI MCP
 
-GiljoAI MCP is a context engineering platform for AI-assisted software development. It stores product knowledge, generates focused prompts, and coordinates agents via the Model Context Protocol (MCP). It does not write code or reason about your codebase. Your AI coding tool does that work using your own subscription.
+GiljoAI MCP is a context engineering platform for AI-assisted software development. It stores your product knowledge, generates focused prompts, and coordinates your agents through the Model Context Protocol (MCP). It never writes code or reasons about your codebase itself. Your own AI coding tool does that work, using your own subscription.
 
 ## Who It Is For
 
 | User | What they get |
 |---|---|
-| Solo developer using Claude Code CLI, Claude Desktop, Codex CLI, or Gemini CLI | Multi-agent workflows without manual prompt engineering |
-| Developer building production software across many sessions | Persistent product context and 360 Memory across projects |
-| Team wanting agent coordination and audit trails | Shared product definitions, task boards, and message logs |
+| Solo developer using Claude Code, Codex CLI, Gemini CLI, Antigravity CLI, OpenCode, or any MCP client | Multi-agent workflows without manual prompt engineering |
+| Developer building production software across many sessions | Persistent product context and 360 Memory that carry across projects |
+| Anyone coordinating a crew of agents | A shared product definition, a ranked roadmap, task boards, and a message hub with an audit trail |
 
 GiljoAI MCP is for developers who already use AI coding tools and want a structured orchestration layer on top of them.
 
@@ -28,47 +28,41 @@ GiljoAI MCP sits at the intersection of product thinking and development. Whethe
 
 ---
 
-## The Six Pillars
+## What's Inside
 
-### Your Tools, Your Subscription
+**Your tools, your subscription.** GiljoAI never touches your AI credits. Connect Claude Code, Codex CLI, Gemini CLI, Antigravity CLI, OpenCode, or any generic MCP client — one at a time or several at once. GiljoAI is a passive MCP server: your tool connects over HTTP, reads context and coordination data, and does all the reasoning and coding itself.
 
-GiljoAI never touches your AI credits. You bring your own Claude Code CLI, Claude Desktop, Codex CLI, Gemini CLI, or any MCP-compatible tool, each with your own subscription. GiljoAI acts as a passive MCP server: your tool connects over HTTP, reads context and coordination data, and does all the reasoning and coding itself. You can connect multiple tools simultaneously, each with its own API key.
+**Products with vision-document context.** A Product holds everything your agents need to know: description, tech stack, architecture, testing strategy, and more. Fill it in by hand, upload a vision document, or point an agent at your codebase and let AI populate the fields for you.
 
-### Define Your Product
+**Projects, tasks, and missions.** Break work into projects (multi-step, agent-run) and tasks (quick notes). Each project gets a mission the orchestrator plans before any code is written, and you watch progress live.
 
-Create a Product to represent the software you are building. Fill in context fields: description, tech stack, architecture, testing strategy, and more. You can enter context manually, or upload a vision document and let your AI coding tool analyze it and populate the fields for you. Context settings let you toggle fields on or off and adjust depth per source, keeping prompts lean for simple tasks or fully detailed for complex missions.
+**The Roadmap.** A single ranked plan of your product's upcoming projects and tasks. Your AI agent scores each item for risk and effort; you drag to reorder.
 
-### Projects and Missions
+**Chain projects.** Link 2 to 5 projects to run one after another under a single chain mission. A dedicated conductor stages, launches, and advances each one, pausing for your go-ahead before it starts.
 
-Projects are focused units of work inside a product, such as a feature, sprint, or scaffolding effort. The workflow:
+**The Message Hub.** Threads where you and your agents talk — Project threads bound to a project, General threads for everything else. Agents post under their own identity; you reply by broadcast or direct message.
 
-1. Create a project and describe what needs to be done.
-2. Activate the project. GiljoAI assembles a bootstrap prompt from your product context, 360 Memory, and project description.
-3. Paste the prompt into your AI coding tool. The orchestrator agent connects to GiljoAI and plans the mission.
-4. The orchestrator spawns subagents from your templates. Each receives its role, expertise, and chain strategy from GiljoAI.
-5. Agents report status back in real time. You monitor progress on the Jobs page.
-6. When the project completes, GiljoAI writes a 360 Memory entry. The next project inherits that accumulated context.
+**360 Memory.** Every completed project writes a durable memory entry — what was built, key decisions, patterns found — and the next project inherits it. A searchable Memory browser lets you full-text search your whole history.
 
-### Skills and Agent Templates
+**Agent templates.** You get 16 active agent slots: 15 custom roles you define plus 1 reserved orchestrator. Edit each one's role and expertise, then sync them to your tool. A `/giljo` skill installed alongside them lets you create, update, and look up projects and tasks without leaving your session.
 
-Skills are installed on your machine during setup. Use them from your AI tool without breaking flow:
+**A guided start.** An animated welcome tour introduces the platform after setup and offers four ways to create your first product (see Getting Started).
 
-| Skill | Claude Code CLI | Codex CLI | Gemini CLI | What it does |
-|---|---|---|---|---|
-| **Projects and tasks** | `/giljo` | `$giljo` | `/giljo` | One command that routes both create and read: capture tasks, create or update projects, and look up projects and tasks (by name/alias/UUID, filtered by type, priority, or status) mid-session |
+**Trash and recover.** Deleted projects, tasks, threads, vision documents, and agent templates go to a recoverable trash before they are purged — so a wrong click is never permanent.
 
-Agent templates install and refresh through the `giljo_setup` tool (choose "Agents only"), not a slash command. The Agent Template Manager in the dashboard lets you browse, customize, and create agent profiles with roles, expertise, and chain strategies. Templates export automatically in the correct format for your connected platform.
+## Editions: Community and Hosted
 
-### 360 Memory
+> [!CE]
+> **Community Edition** is self-hosted on your own PostgreSQL database — you control updates and your data never leaves your machine. It runs over plain HTTP by default on localhost and your LAN; HTTPS is an opt-in, bring-your-own-certificate upgrade in Settings → Network.
 
-Each completed project writes to 360 Memory automatically: what was built, key decisions, patterns discovered, and what worked. This is not a plugin or integration; it is a core product behavior. Your next project starts with accumulated context from previous ones. The orchestrator reads past memories alongside your product context to plan each mission. You control how many memories back agents read through the context settings. Optionally enrich memory with git commit history for the complete development timeline.
-
-### Dashboard and Monitoring
-
-The Products, Projects, Tasks, and Jobs pages let you manage your work and track technical debt across all products. The Jobs page is where staging begins and agents execute. Watch their planning, to-do lists, and messages in real time. A message composer lets you talk directly to the orchestrator or broadcast to the entire agent team. All messages are logged in the MCP message system for auditability.
+> [!SAAS]
+> **Hosted GiljoAI** adds sign-in with Google or GitHub, a self-service Solo subscription, and nightly encrypted backups you can download or restore — all managed for you, nothing to install.
 
 ---
 
 ## How to Get Started
 
-Install GiljoAI MCP by following the steps in [INSTALLATION_GUIDE.md](INSTALLATION_GUIDE.md). After installation, run the in-app Setup Wizard to connect your AI coding tools, install the skills on your machine, and configure your first product.
+Once you are signed in, the in-app **Setup Wizard** walks you through four steps: choose your tools, connect each one, install your skills and agent templates, and launch. An animated welcome tour then opens and helps you create your first product. The **Getting Started** chapter walks through all of it.
+
+> [!CE]
+> Self-hosting? Install GiljoAI MCP first by following [INSTALLATION_GUIDE.md](INSTALLATION_GUIDE.md), then sign in and run the Setup Wizard.

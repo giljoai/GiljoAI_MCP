@@ -46,6 +46,7 @@ from giljo_mcp.services.cache_backends import (
 def _reset_state(monkeypatch):
     """Each test starts with a clean registry, fresh singleton, no trusted proxies."""
     monkeypatch.delenv(arl._TRUSTED_PROXIES_ENV, raising=False)
+    monkeypatch.delenv("FORWARDED_ALLOW_IPS", raising=False)
     reset_registry_for_tests()
     arl._RateLimiterHolder.reset_for_tests()
     yield
@@ -196,6 +197,102 @@ class TestSpoofedXffCannotEvadeLimit:
 
         # Third request, again a fresh forged XFF — must still be blocked.
         req = _make_request(client_host="192.0.2.9", forwarded_for="203.0.113.250")
+        assert await limiter.check_rate_limit(req, limit=2, window=60) is False
+
+
+# ---------------------------------------------------------------------------
+# SEC-9217d — composition bug: uvicorn FORWARDED_ALLOW_IPS=* leftmost-hop rewrite
+# ---------------------------------------------------------------------------
+
+
+class TestAlwaysTrustProxyHeaderRewriteBypass:
+    """Prod runs uvicorn with ``FORWARDED_ALLOW_IPS=*`` (needed so uvicorn honors
+    X-Forwarded-Proto for OAuth https detection). With ``always_trust``, uvicorn's
+    ProxyHeadersMiddleware overwrites ``scope["client"]`` with
+    ``x_forwarded_for_hosts[0]`` — the LEFTMOST hop, the original attacker-supplied
+    X-Forwarded-For entry (uvicorn 0.49 ``_TrustedHosts.get_trusted_client_address``).
+    ``request.client.host`` is then spoofable, so the resolver's
+    ``peer_is_trusted_proxy(client.host)`` gate is defeated and it returns the
+    attacker value verbatim → rotating XFF mints a fresh rate-limit bucket every
+    request → the auth limiter is bypassed.
+
+    These stubs reproduce the REAL Cloudflare→Railway shape, NOT a synthetic one:
+    the client sends a spoofed ``X-Forwarded-For``, Cloudflare APPENDS the true
+    client as the right-most XFF entry and sets ``CF-Connecting-IP`` to it, and
+    Cloudflare's egress is the TCP peer (so it is NOT in XFF). uvicorn's
+    always-trust rewrite then leaves ``client.host`` = the spoofed LEFTMOST hop.
+    ``GILJO_TRUSTED_PROXIES`` stands in for the Cloudflare egress ranges, as prod.
+    """
+
+    _TRUSTED_CF_RANGE = "192.0.2.0/24"  # stands in for Cloudflare egress ranges
+    _REAL_CLIENT = "203.0.113.7"  # constant true client (CF-appended, right-most)
+
+    def _always_trust_limiter(self, monkeypatch):
+        monkeypatch.setenv("FORWARDED_ALLOW_IPS", "*")
+        monkeypatch.setenv(arl._TRUSTED_PROXIES_ENV, self._TRUSTED_CF_RANGE)
+        arl._RateLimiterHolder.reset_for_tests()
+        return arl.RateLimiter()
+
+    def _rewritten_request(self, spoof_leftmost: str, *, with_cf_header: bool, extra_hop: str = ""):
+        # Real chain: client-supplied spoof (leftmost) then CF-appended true
+        # client (right-most). uvicorn always_trust set client.host = leftmost.
+        raw_xff = f"{spoof_leftmost}, {self._REAL_CLIENT}"
+        if extra_hop:
+            raw_xff = f"{raw_xff}, {extra_hop}"
+        return _make_request(
+            client_host=spoof_leftmost,
+            forwarded_for=raw_xff,
+            cf_connecting_ip=self._REAL_CLIENT if with_cf_header else None,
+        )
+
+    def test_resolver_returns_true_client_not_spoofed_leftmost(self, monkeypatch):
+        """The resolver must key on the true client, not uvicorn's spoofable
+        leftmost rewrite of client.host. CF-Connecting-IP is authoritative."""
+        limiter = self._always_trust_limiter(monkeypatch)
+        req = self._rewritten_request("198.51.100.99", with_cf_header=True)
+        assert limiter._get_client_ip(req) == self._REAL_CLIENT
+
+    def test_resolver_walks_to_nearest_untrusted_when_no_cf_header(self, monkeypatch):
+        """No CF header: walk the raw XFF from the connection side (rightmost) to
+        the nearest untrusted hop — the CF-appended real client — never the
+        spoofable leftmost entry."""
+        limiter = self._always_trust_limiter(monkeypatch)
+        req = self._rewritten_request("198.51.100.99", with_cf_header=False)
+        assert limiter._get_client_ip(req) == self._REAL_CLIENT
+
+    def test_walk_skips_trusted_egress_hop_when_intermediate_appends_it(self, monkeypatch):
+        """Robustness: if an intermediate DID append our own egress IP (a trusted
+        proxy) to the right of the real client, the walk skips it and still lands
+        on the real client, not the trusted infra IP."""
+        limiter = self._always_trust_limiter(monkeypatch)
+        # ...S(spoof), R(real client), 192.0.2.50(our trusted egress, right-most)
+        req = self._rewritten_request("198.51.100.99", with_cf_header=False, extra_hop="192.0.2.50")
+        assert limiter._get_client_ip(req) == self._REAL_CLIENT
+
+    @pytest.mark.asyncio
+    async def test_rotating_spoofed_leftmost_cannot_mint_fresh_buckets(self, monkeypatch):
+        """The bypass, at the limiter layer: an attacker rotating the leftmost XFF
+        hop (which uvicorn writes into client.host) must NOT get a fresh bucket per
+        request — all requests key on the constant true client and the limit holds."""
+        limiter = self._always_trust_limiter(monkeypatch)
+        for i in range(2):
+            req = self._rewritten_request(f"198.51.100.{i}", with_cf_header=True)
+            assert await limiter.check_rate_limit(req, limit=2, window=60) is True
+
+        # Third request, again rotating the spoofed leftmost hop — must be blocked
+        # because it keys on the same true client as the first two.
+        req = self._rewritten_request("198.51.100.250", with_cf_header=True)
+        assert await limiter.check_rate_limit(req, limit=2, window=60) is False
+
+    @pytest.mark.asyncio
+    async def test_bypass_also_closed_without_cf_header(self, monkeypatch):
+        """Same bypass, non-Cloudflare trusted proxy path (no CF header): rotating
+        the spoofed leftmost hop still keys on the constant right-most real client."""
+        limiter = self._always_trust_limiter(monkeypatch)
+        for i in range(2):
+            req = self._rewritten_request(f"198.51.100.{i}", with_cf_header=False)
+            assert await limiter.check_rate_limit(req, limit=2, window=60) is True
+        req = self._rewritten_request("198.51.100.250", with_cf_header=False)
         assert await limiter.check_rate_limit(req, limit=2, window=60) is False
 
 

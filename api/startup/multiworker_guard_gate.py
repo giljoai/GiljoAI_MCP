@@ -52,6 +52,7 @@ from __future__ import annotations
 
 import importlib
 import logging
+import os
 from typing import TYPE_CHECKING
 
 from api.broker.in_memory import InMemoryWebSocketEventBroker
@@ -67,12 +68,33 @@ if TYPE_CHECKING:
 logger = logging.getLogger("api.app")
 
 
+def log_deploy_posture() -> None:
+    """Log the effective restart policy + worker count so incident logs self-describe.
+
+    Incident 2026-07-16: a platform SIGTERM after a healthy deploy left the prod
+    service down for ~51 min, and diagnosing it required reconstructing the
+    restart policy and worker posture from Railway state after the fact. This one
+    INFO line puts both in every boot log. ``GILJO_RESTART_POLICY`` is exported by
+    railway.toml's startCommand (the single source of truth for the start
+    command), so ``restart_policy=unset`` is itself a signal: this process was NOT
+    launched by the config-as-code startCommand (CE, local dev, or a dashboard
+    start-command override drifting from the repo).
+    """
+    policy = os.getenv("GILJO_RESTART_POLICY", "").strip() or "unset"
+    logger.info(
+        "Deploy posture: restart_policy=%s, workers=%d (WEB_CONCURRENCY).",
+        policy,
+        _worker_count(),
+    )
+
+
 def assert_multiworker_prerequisites(state: APIState, *, giljo_mode: str) -> None:
     """Refuse to boot under ``WEB_CONCURRENCY>1`` unless every prerequisite is live.
 
-    No-op when the process is a single worker. See the module docstring for the
-    full per-prerequisite contract and rationale.
+    No-op when the process is a single worker (after logging the deploy posture).
+    See the module docstring for the full per-prerequisite contract and rationale.
     """
+    log_deploy_posture()
     worker_count = _worker_count()
     if worker_count <= 1:
         # Single worker: shared state is complete per-process — nothing to guard.

@@ -259,12 +259,19 @@ class CommThreadService:
         set_status: str | None = None,
         loop_directive: bool = False,
         loop_interval_minutes: int | None = None,
+        pass_baton_to: str | None = None,
         user_id: str | None = None,
         tenant_key: str | None = None,
     ) -> dict[str, Any]:
         """Post a message to a thread (broadcast to all participants, or direct to
         one). SIDE-EFFECT-FREE: persists Message + message_recipients only — never
         the orchestration send_message side-effects. Accepts a NULL project_id.
+
+        BE-9197: a non-'none' ``pass_baton_to`` hands the baton ATOMICALLY with
+        the post (one transaction — a failed post rolls the hand-off back);
+        'none'/omitted leave it untouched (posting is never clearing). The
+        auto-pass default resolves at the MCP boundary, NOT here, so the REST
+        and internal callers keep prior behavior unless they pass the param.
 
         BE-6054c: ``loop_directive=True`` marks the message so addressed agents get
         the "loop/sleep until this thread is resolved/closed" directive in their
@@ -318,6 +325,13 @@ class CommThreadService:
 
         async with self._scoped_session(tk) as session:
             thread = await self._require_thread(session, tk, thread_id)
+
+            # BE-9197: atomic hand-off — written BEFORE the persist so a failed
+            # post provably rolls the baton back (the atomicity test injects one).
+            baton_passed = False
+            if pass_baton_to and pass_baton_to != "none":
+                await self._repo.set_next_action_owner(session, tk, thread_id, pass_baton_to)
+                baton_passed = True
 
             # attribution_warning (TSK-0008): surface, never silently stamp. An
             # omitted from_agent falls back to the principal; the backend cannot tell
@@ -393,6 +407,9 @@ class CommThreadService:
                 "attribution_warning": attribution_warning,
                 "loop_directive_armed": loop_directive,
                 "loop_interval_minutes": interval_to_persist,
+                # BE-9197 (additive): did THIS post move the baton + owner after.
+                "baton_passed": baton_passed,
+                "next_action_owner": thread.next_action_owner,
             }
 
     async def _auto_enroll_project_roster(

@@ -24,7 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from giljo_mcp.exceptions import AuthorizationError, ProjectStateError, TemplateNotFoundError, ValidationError
 from giljo_mcp.models import AgentTemplate, User
-from giljo_mcp.services.template_service import TemplateService
+from giljo_mcp.services.template_service import USER_MANAGED_AGENT_LIMIT, TemplateService
 from giljo_mcp.system_roles import SYSTEM_MANAGED_ROLES
 from giljo_mcp.utils.log_sanitizer import sanitize
 
@@ -35,9 +35,6 @@ from .models import TemplateCreate, TemplateResponse, TemplateUpdate
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-# Constants
-USER_MANAGED_AGENT_LIMIT = 7  # Reserve one slot for orchestrator
 
 
 def _is_system_managed_role(role: str | None) -> bool:
@@ -294,6 +291,41 @@ async def recover_template(
         raise HTTPException(status_code=500, detail="Failed to recover template. Check server logs.") from exc
 
 
+@router.post("/import-defaults", response_model=dict)
+async def import_default_agent_templates(
+    current_user: User = Depends(get_current_active_user),
+    session: AsyncSession = Depends(get_db_session),
+) -> dict:
+    """Import the seeded default agent templates — additive only (FE-9203).
+
+    Delegates to ``giljo_mcp.template_import.import_default_templates`` (the
+    seeder-content sibling module routing writes through the owning
+    ``TemplateService``). Existing templates are NEVER modified: a free default
+    name is created as seeded, a pristine copy already present is skipped, and
+    a user-edited default name gets the pristine copy added under the existing
+    suffix machinery (e.g. ``implementer-duplicate``). Takes no request body.
+    """
+    from giljo_mcp.template_import import import_default_templates
+
+    try:
+        report = await import_default_templates(session, current_user.tenant_key)
+    except ValidationError as exc:
+        raise HTTPException(status_code=400, detail=exc.message) from exc
+
+    logger.info(
+        "User %s imported default templates: %d added, %d duplicate, %d skipped",
+        sanitize(current_user.username),
+        len(report.added),
+        len(report.added_as_duplicate),
+        len(report.skipped_identical),
+    )
+    return {
+        "added": report.added,
+        "added_as_duplicate": report.added_as_duplicate,
+        "skipped_identical": report.skipped_identical,
+    }
+
+
 @router.get("/stats/active-count", response_model=dict)
 async def get_active_count(
     current_user: User = Depends(get_current_active_user),
@@ -309,4 +341,8 @@ async def get_active_count(
         "active_count": count,
         "limit": USER_MANAGED_AGENT_LIMIT,
         "available": max(0, USER_MANAGED_AGENT_LIMIT - count),
+        # max_slots = total active slots (user-managed limit + 1 reserved
+        # orchestrator). The "N / max_slots" home badge reads this so it always
+        # tracks the server-enforced cap instead of a hardcoded frontend default.
+        "max_slots": USER_MANAGED_AGENT_LIMIT + 1,
     }

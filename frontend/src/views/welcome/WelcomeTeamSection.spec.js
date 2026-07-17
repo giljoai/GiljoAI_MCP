@@ -30,7 +30,7 @@ describe('WelcomeTeamSection', () => {
       props: {
         activeTemplates: sampleTemplates,
         emptySlots: 2,
-        totalSlots: 8,
+        totalSlots: 16,
         hasStaleAgents: false,
         ...props,
       },
@@ -67,8 +67,8 @@ describe('WelcomeTeamSection', () => {
 
   it('shows slot count as "activeTemplates+1 / totalSlots slots"', () => {
     const wrapper = mountTeam()
-    // 2 templates + orchestrator = 3; totalSlots = 8
+    // 2 templates + orchestrator = 3; totalSlots = 16
     expect(wrapper.find('.team-slots').text()).toContain('3')
-    expect(wrapper.find('.team-slots').text()).toContain('8')
+    expect(wrapper.find('.team-slots').text()).toContain('16')
   })
 })

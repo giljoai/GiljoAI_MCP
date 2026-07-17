@@ -367,7 +367,7 @@ npm run test:watch
 ## References
 
 - **Component Spec**:
-  [handovers/0077_launch_jobs_dual_tab_interface.md](../../../../../handovers/0077_launch_jobs_dual_tab_interface.md)
+  internal design notes
 - **WCAG 2.1 Guidelines**: https://www.w3.org/WAI/WCAG21/quickref/
 - **Vue Test Utils**: https://test-utils.vuejs.org/
 - **Vitest Documentation**: https://vitest.dev/

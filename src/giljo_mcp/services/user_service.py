@@ -204,7 +204,7 @@ class UserService:
             BaseGiljoError: Database operation failed
         """
         # SEC: password is mandatory. Historical fallback to the literal "GiljoMCP"
-        # was removed in v1.1.9.2 — see handovers/SECURITY_SCRUB_v1.1.9.2-IN-PROGRESS.md.
+        # was removed in v1.1.9.2 — see internal design notes
         if not password:
             raise ValidationError(
                 message="password is required to create a user",

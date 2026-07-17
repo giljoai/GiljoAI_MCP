@@ -18,13 +18,14 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+from sqlalchemy import select
+
+from giljo_mcp.models.auth import User
 from giljo_mcp.services.oauth_refresh_service import revoke_all_for_user
 
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
-
-    from giljo_mcp.models.auth import User
 
 
 async def evict_user_tokens(session: AsyncSession, user: User) -> int:
@@ -36,7 +37,15 @@ async def evict_user_tokens(session: AsyncSession, user: User) -> int:
     stops them minting fresh ones. Because the epoch persists on the row, a later
     reactivation cannot resurrect the pre-deactivation tokens. Returns the
     refresh-token rows revoked.
+
+    SEC-9217b: takes a user-first ``SELECT ... FOR UPDATE`` on the owning User
+    row BEFORE mutating, so a concurrent OAuth ``/refresh`` grant (which locks the
+    same row in the same order) cannot interleave with this eviction and mint a
+    surviving access+refresh pair. See ``oauth_refresh_service._refresh_grant_after_lookup``.
     """
+    await session.execute(
+        select(User.id).where(User.id == str(user.id), User.tenant_key == user.tenant_key).with_for_update()
+    )
     user.token_revocation_epoch = (user.token_revocation_epoch or 0) + 1
     return await revoke_all_for_user(session, user_id=str(user.id), tenant_key=user.tenant_key)
 

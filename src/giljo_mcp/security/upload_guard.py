@@ -22,7 +22,7 @@ can catch them and convert to structured 4xx responses with machine-readable
 ``error_code`` values.
 
 Authoritative behavior spec is covered by ``tests/security/test_upload_guard.py``
-and the analyzer handover ``handovers/SEC-0001_upload_analysis.md`` (sections
+and the analyzer handover ``internal design notes`` (sections
 2 and 3).
 """
 

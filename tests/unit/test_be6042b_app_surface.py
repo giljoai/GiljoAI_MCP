@@ -144,7 +144,9 @@ EXPECTED_ROUTE_SIGNATURES = frozenset(
 # /can-close + /generate-closeout + /closeout (GET) + /close-out; agent_jobs
 # /{id}/complete + /{id}/error + /{id}/progress + /pending + /{id}/mission (GET) +
 # /workflow/{id} + /{id}/executions + /{id}/clear-silent + /jobs/{id}/health.
-EXPECTED_ROUTE_COUNT = 244
+# then 244 -> 245 for FE-9203 "Add default agents": the additive default-template
+# import verb POST /api/v1/templates/import-defaults.
+EXPECTED_ROUTE_COUNT = 245
 
 # FULL frozen route-signature set — the STRICT set-equality lock. Snapshotted
 # from the UNMODIFIED 1,237-line api/app.py (git HEAD~1, the BE-6042a pilot) and
@@ -344,6 +346,7 @@ EXPECTED_FULL_ROUTE_SIGNATURES = frozenset(
         ("/api/v1/taxonomy-types/{type_id}", frozenset({"PUT"})),
         ("/api/v1/templates/", frozenset({"GET"})),
         ("/api/v1/templates/", frozenset({"POST"})),
+        ("/api/v1/templates/import-defaults", frozenset({"POST"})),
         ("/api/v1/templates/stats/active-count", frozenset({"GET"})),
         ("/api/v1/templates/{template_id}", frozenset({"DELETE"})),
         ("/api/v1/templates/{template_id}", frozenset({"GET"})),

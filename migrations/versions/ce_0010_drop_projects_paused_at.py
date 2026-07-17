@@ -12,7 +12,7 @@ Create Date: 2026-05-05
 Pause-as-a-distinct-state was never wired end-to-end. The deactivate flow
 (which is the actually-used codepath) never wrote paused_at. Drop the orphan
 column so the model and schema match. Reference:
-handovers/Reference_docs/ORPHAN_COLUMN_AUDIT_seq127_NB2.md, sec 3, P1 finding 2.
+internal design notes, sec 3, P1 finding 2.
 
 Idempotent: re-applying is a no-op.
 """

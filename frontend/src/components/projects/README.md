@@ -431,7 +431,7 @@ const sortedAgents = computed(() => {
 
 ## Related Documentation
 
-- [Handover 0077](../../../handovers/0077_launch_jobs_dual_tab_interface.md) -
+- Internal design notes -
   Dual-tab interface specification
 - [Agent Colors Config](../../config/agentColors.js) - Color system
   documentation

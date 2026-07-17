@@ -423,7 +423,7 @@ class AgentJobRepository:
 
         BE-3006b: repositories never commit. The session owner (the service
         entry point / DI scope) owns the commit. See
-        handovers/Reference_docs/TRANSACTION_OWNERSHIP_CONVENTION.md.
+        internal design notes
         """
         await session.flush()
 

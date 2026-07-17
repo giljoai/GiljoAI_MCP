@@ -2,7 +2,7 @@
  * Local ESLint plugin: giljo-internal
  *
  * Eight rules wired in via IMP-0013 Phase 4 to catch the five confirmed
- * anti-patterns from handovers/quality-sweep-audit-2026-04-21.md, plus
+ * anti-patterns from an internal quality-sweep audit, plus
  * three repo-hygiene rules.
  *
  * Loaded by eslint.config.js as a local CommonJS module. Not published to npm.

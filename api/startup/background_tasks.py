@@ -20,6 +20,10 @@ from sqlalchemy.exc import SQLAlchemyError
 from api.app_state import APIState
 from api.startup.background_jobs_gate import ENV_VAR as _BG_JOBS_ENV
 from api.startup.background_jobs_gate import should_run_background_jobs
+from api.startup.context_tuning_banner import (
+    compute_context_tuning_due,
+    emit_context_tuning_due_banner,
+)
 from api.startup.metrics_flushers import (
     log_task_death,
     sync_api_metrics_to_db,
@@ -112,19 +116,32 @@ async def emit_system_banners(state: APIState) -> None:
     tool_rename_boot_count = None if is_saas else await _get_tool_rename_boot_count(state.db_manager)
 
     for tenant_key in tenant_keys:
-        service = NotificationService(
-            db_manager=state.db_manager,
-            websocket_manager=getattr(state, "websocket_manager", None),
-        )
-        if not is_saas:
-            await _emit_pending_migrations_banner(service, tenant_key, pending_info)
-            await _emit_update_available_banner(service, tenant_key, update_info)
-            await _emit_tool_rename_notice_banner(service, tenant_key, tool_rename_boot_count)
-        # Drift is PER TENANT: compare the bundled SKILLS_VERSION against THIS
-        # tenant's acknowledged_version, so one tenant re-running /giljo_setup
-        # clears only its own banner.
-        skills_drift = await _compute_skills_drift(state.db_manager, tenant_key)
-        await _emit_skills_drift_banner(service, tenant_key, skills_drift)
+        # FE-9202 F1: per-tenant isolation. One tenant's failure (e.g. a product
+        # deactivated mid-cycle) must NOT abort the emit for every tenant after it
+        # — otherwise a single broken tenant silently freezes the whole banner
+        # refresh (including the skills-drift resurface) on every 6-hour tick.
+        try:
+            service = NotificationService(
+                db_manager=state.db_manager,
+                websocket_manager=getattr(state, "websocket_manager", None),
+            )
+            if not is_saas:
+                await _emit_pending_migrations_banner(service, tenant_key, pending_info)
+                await _emit_update_available_banner(service, tenant_key, update_info)
+                await _emit_tool_rename_notice_banner(service, tenant_key, tool_rename_boot_count)
+            # Drift is PER TENANT: compare the bundled SKILLS_VERSION against THIS
+            # tenant's acknowledged_version, so one tenant re-running /giljo_setup
+            # clears only its own banner.
+            skills_drift = await _compute_skills_drift(state.db_manager, tenant_key)
+            await _emit_skills_drift_banner(service, tenant_key, skills_drift)
+            # FE-9202: context-tuning-due reminder. Emits in BOTH editions (context
+            # tuning is a core concern) and is per-user (role_filter=None), so it
+            # runs outside the is_saas guard above. Gated on the user's
+            # tuning_reminder_threshold (count-based staleness, BE-9218).
+            tuning_due = await compute_context_tuning_due(state.db_manager, tenant_key)
+            await emit_context_tuning_due_banner(service, tenant_key, tuning_due, tools_route=_TOOLS_ROUTE)
+        except Exception as exc:  # Broad catch: one tenant's failure never blocks the rest.
+            logger.error("system banner emit failed for tenant %s: %s", tenant_key, exc, exc_info=True)
 
 
 async def _emit_pending_migrations_banner(
@@ -592,6 +609,33 @@ async def cleanup_expired_mcp_sessions_task(state: APIState):
             logger.error("Error during MCP session cleanup: %s", e, exc_info=True)
 
 
+async def refresh_system_banners_task(state: APIState) -> None:
+    """Re-evaluate the CE system banners every 6 hours (FE-9202).
+
+    ``emit_system_banners`` is idempotent (present-or-not upserts + resolve-on-
+    clear) but was only ever invoked at startup and on update-checker
+    transitions, so TIME-based banners never re-evaluated on a long-running
+    server. This loop closes that gap. Two banners depend on it:
+    - ``system.context_tuning_due`` (new) — the 14-day reminder can only appear
+      once its window elapses, which needs periodic evaluation.
+    - ``system.skills_drift`` (existing) — its documented 24h dismissal-resurface
+      now actually fires; a dismissed drift banner reappears daily while drift
+      persists, exactly as its ``resurface_after_hours`` always specified.
+    """
+    while True:
+        await asyncio.sleep(21600)  # 6 hours
+        if not state.db_manager:
+            continue
+        try:
+            await emit_system_banners(state)
+            logger.debug("System banners re-evaluated (6-hourly refresh)")
+        except asyncio.CancelledError:
+            raise
+        # BE-9053: catch-log-continue at the loop boundary (SaaS reaper pattern).
+        except Exception as e:
+            logger.error("Error during system banner refresh: %s", e, exc_info=True)
+
+
 async def init_background_tasks(state: APIState) -> None:
     """Initialize background tasks: cleanup, metrics sync, and one-time purge
 
@@ -717,6 +761,17 @@ async def init_background_tasks(state: APIState) -> None:
         logger.info("System banners emitted at startup")
     except Exception as e:  # Broad catch: banner emission must never block startup
         logger.error(f"Failed to emit system banners at startup: {e}", exc_info=True)
+
+    # FE-9202: 6-hourly system-banner refresh so time-based banners (context-tuning
+    # due + skills-drift resurface) re-evaluate on long-running servers.
+    try:
+        logger.info("Starting system banner refresh task...")
+        banner_refresh_task = asyncio.create_task(refresh_system_banners_task(state), name="system-banner-refresh")
+        banner_refresh_task.add_done_callback(log_task_death)
+        state.system_banner_refresh_task = banner_refresh_task
+        logger.info("System banner refresh task started (runs every 6 hours)")
+    except Exception as e:  # Broad catch: background task startup, non-fatal
+        logger.error(f"Failed to start system banner refresh task: {e}", exc_info=True)
 
     # Run one-time purge of expired deleted items
     if state.db_manager:

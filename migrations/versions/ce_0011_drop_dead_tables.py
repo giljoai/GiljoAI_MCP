@@ -17,7 +17,7 @@ Both tables are zero-write surfaces:
   this table but no code path ever inserts. The `AgentTemplate.usage_stats`
   relationship at `templates.py:115` is dead, as is `repositories/template_repository.py::delete_usage_stats`.
 
-Reference: handovers/Reference_docs/ORPHAN_COLUMN_AUDIT_seq127_NB2.md sec 3.a /
+Reference: internal design notes sec 3.a /
 audit clusters 1 + 2 (mission numbering); analyzer matrix rows 1 + 2.
 
 Idempotent. Reversible (downgrade re-creates skeletal tables matching the

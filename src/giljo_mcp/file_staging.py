@@ -39,15 +39,66 @@ from datetime import UTC
 from json import dumps as json_dumps
 from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from .database import tenant_session_context
 from .models import AgentTemplate
 from .platform_registry import EXPORT_ANTIGRAVITY_CLI, EXPORT_CODEX_CLI, SKILL_SLASH_PLATFORMS
 from .tools.slash_command_templates import get_all_templates
 
 
 logger = logging.getLogger(__name__)
+
+
+# Template-bearing ZIPs are rendered from the tenant's agent templates.
+# slash_commands.zip is static content and can never go stale, so it is excluded.
+_TEMPLATE_BEARING_ZIPS = frozenset({"agent_templates.zip", "giljo_setup.zip"})
+
+
+async def staged_agent_zip_is_stale(session: AsyncSession, tenant_key: str, filename: str) -> bool:
+    """True if a template-bearing staged ZIP would serve a pre-change snapshot (BE-9208 D1).
+
+    The token download endpoint serves the ZIP bytes frozen at staging time; we refuse
+    to serve one older than the tenant's latest template write. Compared over the
+    tenant's templates:
+      content_watermark = MAX(COALESCE(updated_at, created_at))  # latest create/edit/toggle/delete
+      export_watermark  = MAX(last_exported_at)                  # latest staging (stamps packaged templates)
+    Staging keeps last_exported_at >= updated_at for everything it packaged (existing
+    invariant — test_stage_agent_templates_preserves_staleness_after_export), so a fresh
+    token has content <= export; any template write AFTER staging pushes content past
+    export -> stale.
+
+    NB: anchoring on ``token.created_at`` would false-positive on EVERY fresh download —
+    the staging ``last_exported_at`` write bumps ``updated_at`` PAST the token's creation
+    time (verified empirically). The export-watermark moves in lockstep with that bump
+    and is the correct baseline. Non-template ZIPs (slash_commands.zip) are never stale.
+    """
+    if filename not in _TEMPLATE_BEARING_ZIPS:
+        return False
+
+    content_stmt = select(func.max(func.coalesce(AgentTemplate.updated_at, AgentTemplate.created_at))).where(
+        AgentTemplate.tenant_key == tenant_key
+    )
+    export_stmt = select(func.max(AgentTemplate.last_exported_at)).where(AgentTemplate.tenant_key == tenant_key)
+
+    # The public download path carries no ambient tenant; scope with the one resolved
+    # from the token row so the fail-closed guard is satisfied (mirrors
+    # TokenManager.increment_download_count).
+    with tenant_session_context(session, tenant_key):
+        content_watermark = (await session.execute(content_stmt)).scalar_one_or_none()
+        export_watermark = (await session.execute(export_stmt)).scalar_one_or_none()
+
+    if content_watermark is None:
+        # No templates exist at all -> no staged snapshot that can be stale.
+        return False
+    if export_watermark is None:
+        # Templates exist but NONE was ever exported: the staged ZIP predates all of
+        # the tenant's current templates (e.g. staged slash-commands-only when the
+        # tenant had no active templates, then templates were added) -> it can only be
+        # a pre-change snapshot, so refuse it.
+        return True
+    return content_watermark > export_watermark
 
 
 def _toml_string(value: object) -> str:
@@ -264,11 +315,11 @@ class FileStaging:
                 logger.warning(msg)
                 return (None, msg)
 
-            # Apply packaging selection (cap to 8 templates)
+            # Apply packaging selection (cap lives in select_templates_for_packaging)
             from .template_renderer import select_templates_for_packaging
             from .tools.agent_template_assembler import AgentTemplateAssembler
 
-            selected = select_templates_for_packaging(all_active, max_count=8)
+            selected = select_templates_for_packaging(all_active)
 
             # Assemble templates for the target platform (Handover 0836a)
             assembler = AgentTemplateAssembler()
@@ -377,7 +428,7 @@ class FileStaging:
                 all_active = result.scalars().all()
 
                 if all_active:
-                    selected_templates = select_templates_for_packaging(all_active, max_count=8)
+                    selected_templates = select_templates_for_packaging(all_active)
                     assembler = AgentTemplateAssembler()
                     export_data = assembler.assemble(selected_templates, platform)
 

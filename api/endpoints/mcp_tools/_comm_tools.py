@@ -47,6 +47,26 @@ logger = logging.getLogger(__name__)
 DEFAULT_HISTORY_TAIL = 200
 
 
+def _resolve_pass_baton_to(pass_baton_to: str, requires_action: bool, to_participant: str) -> str:
+    """Resolve post_to_thread's atomic baton hand-off (BE-9197) — THE contract
+    agents rely on, resolved at the tool boundary so the REST and internal
+    service callers keep prior behavior unless they opt in:
+
+    - an explicit ``pass_baton_to`` always wins;
+    - ``'none'`` posts WITHOUT moving the baton (suppresses the default);
+    - when absent, a directed action-request (``requires_action=true`` +
+      ``to_participant``) auto-passes the baton to that participant — the
+      "posted the question, forgot the pass_baton" incident class;
+    - every other post (broadcasts included) leaves the baton untouched.
+
+    Returns the owner to hand the baton to, or "" for no baton write.
+    """
+    resolved = pass_baton_to
+    if not resolved and requires_action and to_participant:
+        resolved = to_participant
+    return "" if resolved == "none" else resolved
+
+
 @mcp.tool(
     description=(
         "Create a persistent message-board thread (chat) and get back its CHT-#### "
@@ -138,7 +158,12 @@ async def join_thread(
         "conversation). Does NOT trigger agent reactivation or job side-effects. Set from_agent to "
         "your role/agent_id (drives the Hub author badge) -- omit ONLY when posting as the human "
         "user. This is the canonical agent-to-agent messaging tool -- role-attributed and "
-        "thread-scoped."
+        "thread-scoped. ATOMIC BATON HAND-OFF: pass_baton_to (agent_id | user_id | 'all' | 'none') "
+        "moves next_action_owner in the same transaction as the post -- no separate pass_baton "
+        "call needed. DEFAULT when pass_baton_to is omitted: a directed action-request "
+        "(requires_action=true + to_participant) auto-passes the baton to that participant; "
+        "pass_baton_to='none' posts without moving it; every other post (broadcasts included) "
+        "leaves the baton untouched."
     ),
 )
 async def post_to_thread(
@@ -179,6 +204,17 @@ async def post_to_thread(
             "0 = unset (agent uses its default). Only meaningful with loop_directive=true.",
         ),
     ] = 0,
+    pass_baton_to: Annotated[
+        str,
+        Field(
+            max_length=MCP_ID_MAX,
+            description="Atomically hand the baton (next_action_owner) with this post: an agent_id "
+            "| user_id | 'all' | 'none'. Explicit value always wins; 'none' posts WITHOUT moving "
+            "the baton. DEFAULT when omitted: a directed action-request (requires_action=true + "
+            "to_participant) auto-passes the baton to that participant; every other post leaves "
+            "the baton untouched.",
+        ),
+    ] = "",
     ctx: Context = None,
 ) -> dict[str, Any]:
     kwargs: dict[str, Any] = {
@@ -196,6 +232,10 @@ async def post_to_thread(
         kwargs["set_status"] = set_status
     if loop_interval_minutes:
         kwargs["loop_interval_minutes"] = loop_interval_minutes
+    # BE-9197: the auto-pass rule lives in _resolve_pass_baton_to (module top).
+    effective_baton_to = _resolve_pass_baton_to(pass_baton_to, requires_action, to_participant)
+    if effective_baton_to:
+        kwargs["pass_baton_to"] = effective_baton_to
     result = await _call_tool(ctx, "post_to_thread", kwargs)
     # BE-9012b (D5): relocate the bus auto-block/reactivation onto project-bound Hub
     # posts. A directed (to_participant), action-required post on a project-bound
@@ -242,6 +282,33 @@ async def post_to_thread(
             )
     except Exception:  # noqa: BLE001 - WS failure is non-fatal; result is already committed
         logger.debug("MCP post_to_thread WS broadcast failed (non-fatal)", exc_info=True)
+    # BE-9197: when this post atomically moved the baton, push the SAME live
+    # thread_update a standalone pass_baton pushes (update_type="baton", same
+    # payload shape — parity is boundary-tested) so the Hub UI reflects the
+    # hand-off identically whichever path moved it. Emitted after the message
+    # event, mirroring the post-then-pass two-call sequence.
+    if result.get("baton_passed"):
+        try:
+            from api.app_state import state as _state
+
+            if _state.websocket_manager:
+                tenant_key = _base._resolve_tenant(ctx)
+                accessor = _base._get_tool_accessor()
+                history = await accessor._comm_thread_service.get_thread_history(
+                    thread_id=thread_id, tenant_key=tenant_key
+                )
+                t = history["thread"]
+                await broadcast_thread_update(
+                    _state.websocket_manager,
+                    tenant_key,
+                    thread_id=thread_id,
+                    chat_id=t["chat_id"],
+                    status=t["status"],
+                    next_action_owner=result.get("next_action_owner"),
+                    update_type="baton",
+                )
+        except Exception:  # noqa: BLE001 - WS failure is non-fatal; result is already committed
+            logger.debug("MCP post_to_thread baton WS broadcast failed (non-fatal)", exc_info=True)
     return result
 
 

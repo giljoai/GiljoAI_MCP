@@ -12,6 +12,21 @@
          : projectDoneStatus === 'terminated' ? 'Project Terminated'
          : 'Project Cancelled' }}
     </v-chip>
+    <!-- FE-9191: review a completed project's closeout record from the pill.
+         Completed only — the closeout modal's Close is an acknowledge there
+         (skips the archive write); terminated/cancelled keep pill-only so the
+         archive path can never overwrite those statuses. -->
+    <v-btn
+      v-if="projectDoneStatus === 'completed'"
+      class="closeout-btn"
+      color="yellow-darken-2"
+      variant="flat"
+      prepend-icon="mdi-eye"
+      data-testid="review-completed-btn"
+      @click="$emit('open-closeout-modal')"
+    >
+      Review project
+    </v-btn>
   </div>
 
   <!-- State A2: Orchestrator awaiting_user — HITL decision required. -->

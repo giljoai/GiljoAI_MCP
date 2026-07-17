@@ -13,7 +13,8 @@
         :class="['tool-tab', 'smooth-border', { 'tool-tab--active': activeToolId === tool.id }]"
         @click="activeToolId = tool.id"
       >
-        <img :src="tool.logo" :alt="tool.name" class="tool-tab-logo" />
+        <img v-if="tool.logo" :src="tool.logo" :alt="tool.name" class="tool-tab-logo" />
+        <v-icon v-else size="18" class="tool-tab-logo">{{ tool.icon }}</v-icon>
         <span>{{ tool.name }}</span>
       </button>
     </div>
@@ -22,13 +23,14 @@
     <div class="wiz-center">
       <div class="tool-panel" role="tabpanel">
 
-        <!-- Primary path: giljo_setup -->
+        <!-- Primary path: giljo_setup (restyled to the numbered command-card idiom) -->
         <div class="panel-section">
-          <p class="instruction-text">
-            Ask your {{ activeTool.name }} to run:
-          </p>
-          <div class="setup-command-row">
-            <code class="setup-command">giljo_setup</code>
+          <div class="install-cmd-card">
+            <div class="install-cmd-head">
+              <span class="install-cmd-step">1.</span>
+              <span class="install-cmd-label">Ask your {{ activeTool.name }} to run:</span>
+            </div>
+            <div class="install-cmd-code">giljo_setup</div>
           </div>
           <p class="instruction-hint">
             This installs skills and installs agents when none exist. Later runs refresh skills and ask before
@@ -84,13 +86,7 @@
 import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useWebSocketStore } from '@/stores/websocket'
 import { TEXT_MUTED_BLUE as COLOR_MUTED, COLOR_SUCCESS_SETUP as COLOR_SUCCESS } from '@/config/colorTokens'
-
-const TOOL_META = {
-  claude_code: { name: 'Claude Code CLI', logo: '/claude-color.svg' },
-  codex_cli: { name: 'Codex CLI', logo: '/icons/codex_mark_white.svg' },
-  gemini_cli: { name: 'Gemini CLI', logo: '/gemini-icon.svg' },
-  antigravity_cli: { name: 'Antigravity CLI', logo: '/antigravity-color.svg' },
-}
+import { TOOL_META } from '@/config/setupTools'
 
 const props = defineProps({
   selectedTools: {
@@ -272,21 +268,42 @@ onUnmounted(() => {
   border-radius: $border-radius-sharp;
 }
 
-/* giljo_setup command display */
-.setup-command-row {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 8px;
+/* giljo_setup command — numbered command card (matches the connect step idiom). */
+.install-cmd-card {
+  background: $elevation-elevated;
+  border-radius: $border-radius-md;
+  padding: 16px 18px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10);
+  margin-bottom: 12px;
 }
 
-.setup-command {
-  font-family: "Roboto Mono", "Courier New", monospace;
-  font-size: 1.125rem;
-  font-weight: 600;
-  background: rgba($color-brand-yellow, 0.1);
+.install-cmd-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.install-cmd-step {
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 700;
+  font-size: 0.94rem;
   color: $color-brand-yellow;
-  padding: 8px 20px;
+}
+
+.install-cmd-label {
+  font-size: 0.84rem;
+  color: $color-text-primary;
+}
+
+.install-cmd-code {
+  background: $color-background-primary;
   border-radius: $border-radius-default;
+  padding: 11px 14px;
+  font-family: "Roboto Mono", "Courier New", monospace;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: $color-brand-yellow;
 }
 
 .instruction-hint {

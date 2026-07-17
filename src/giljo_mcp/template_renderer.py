@@ -11,16 +11,18 @@ Implements 0102a/0103 rules for Claude Code agent templates:
 - Color field maps GiljoAI app colors to Claude Code named colors
 - Omit tools to inherit all by default
 - Body: system_instructions + optional Behavioral Rules / Success Criteria sections
-- Packaging cap: max 8 distinct active roles with precedence
-  1) is_default first
-  2) updated_at descending
+- Packaging cap: max 16 active templates with precedence (BE-9208)
+  1) user-created before is_default (defaults are a low-priority tiebreak only)
+  2) updated_at (falling back to created_at) descending
   3) name ascending
+  Over-cap templates are omitted with a WARNING log (no silent starvation).
 
 Handover 0836a: Added render_gemini_agent() and render_codex_agent() for multi-platform export.
 """
 
 from __future__ import annotations
 
+import logging
 import re
 from typing import TYPE_CHECKING
 
@@ -31,6 +33,14 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
 from .models import AgentTemplate
+
+
+logger = logging.getLogger(__name__)
+
+# Single source of truth for the packaging cap. Raised 8 -> 16 (Patrik, BE-9208):
+# up to 16 enabled agents ship. Every export path relies on this default rather
+# than passing its own literal, so the cap lives in exactly one place.
+MAX_PACKAGED_TEMPLATES = 16
 
 
 _MCP_BOOTSTRAP_MARKER = "You are part of a GiljoAI MCP orchestration system"
@@ -237,32 +247,49 @@ def render_claude_agent(template: AgentTemplate) -> str:
     return f"---\n{yaml_header}\n---\n\n{body_text}"
 
 
-def select_templates_for_packaging(templates: Iterable[AgentTemplate], max_count: int = 8) -> list[AgentTemplate]:
+def select_templates_for_packaging(
+    templates: Iterable[AgentTemplate], max_count: int = MAX_PACKAGED_TEMPLATES
+) -> list[AgentTemplate]:
     """Select up to max_count templates using precedence rules.
 
-    No role-based deduplication - users control which templates are enabled via UI toggle.
-    The max_count cap (default 8) prevents context budget overflow.
+    No role-based deduplication - the enabled (is_active) set is the source of
+    truth; users control which templates ship via the UI toggle. The max_count
+    cap (default MAX_PACKAGED_TEMPLATES) prevents context budget overflow.
 
-    Precedence order:
-      1) is_default templates first
-      2) updated_at descending (most recent first)
+    Precedence order (BE-9208 — user-created must never be starved by the seeded
+    defaults):
+      1) user-created before is_default (defaults are a low-priority TIEBREAK only)
+      2) updated_at (falling back to created_at) descending (most recent first)
       3) name ascending (stable fallback)
+
+    When the active set exceeds the cap, the omitted templates are logged at
+    WARNING (their names) so the omission is surfaced, never silent.
     """
 
-    # Sort templates by precedence
+    # Ascending sort (no reverse), so each term controls its own direction:
+    #  - is_default False (0) sorts before True (1) -> user-created win.
+    #  - negative recency sorts most-recent first (updated_at, else created_at).
+    #  - name ascending as the final stable tiebreak.
     def sort_key(t: AgentTemplate):
-        # For updated_at, None should be older than anything
-        updated_ts = t.updated_at.isoformat() if getattr(t, "updated_at", None) else ""
-        # We want updated_at desc, so invert by using reverse in sort later
-        return (
-            bool(getattr(t, "is_default", False)),  # True > False when reversed
-            updated_ts,
-            (t.name or ""),
+        is_default = bool(getattr(t, "is_default", False))
+        modified = getattr(t, "updated_at", None) or getattr(t, "created_at", None)
+        neg_recency = -modified.timestamp() if modified else float("inf")
+        return (is_default, neg_recency, (t.name or ""))
+
+    sorted_list = sorted(templates, key=sort_key)
+
+    if len(sorted_list) > max_count:
+        omitted = sorted_list[max_count:]
+        logger.warning(
+            "Template packaging cap reached: %d active templates exceed the cap of %d; "
+            "shipping the %d highest-precedence (user-created preferred), omitting %d: %s",
+            len(sorted_list),
+            max_count,
+            max_count,
+            len(omitted),
+            ", ".join(t.name or "<unnamed>" for t in omitted),
         )
 
-    sorted_list = sorted(templates, key=sort_key, reverse=True)
-
-    # Return first max_count templates (no role deduplication)
     return sorted_list[:max_count]
 
 

@@ -279,6 +279,11 @@ TOOL_SCOPES: dict[str, str] = {
     "apply_context_tuning": SCOPE_WRITE,
     "get_vision_doc": SCOPE_READ,
     "update_product_context": SCOPE_WRITE,
+    # BE-9201: agent-side product bootstrap (establish the row + write the agent-
+    # authored vision doc). Same scope as update_product_context — user-owned
+    # product writes confined to the caller's tenant.
+    "create_product": SCOPE_WRITE,
+    "create_vision_document": SCOPE_WRITE,
 }
 
 
@@ -394,10 +399,14 @@ _STANDARD_PROFILE_TOOLS: frozenset[str] = _CORE_PROFILE_TOOLS | frozenset(
         # Roadmap
         "get_roadmap",
         "update_roadmap_metadata",
-        # Product context / vision
+        # Product context / vision (BE-9201 added the two bootstrap writes: the
+        # onboarding prompts run in the same non-agent-scope session tier that
+        # already carries update_product_context)
         "get_vision_doc",
         "update_product_context",
         "apply_context_tuning",
+        "create_product",
+        "create_vision_document",
         # Read-only orchestrator self-healing diagnostic
         "diagnose_project_state",
     }

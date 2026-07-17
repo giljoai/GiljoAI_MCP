@@ -52,8 +52,12 @@ from giljo_mcp.monitoring.agent_health_monitor import AgentHealthMonitor
 from giljo_mcp.tenant import TenantManager
 
 
-async def _seed_active_job(session: AsyncSession, tenant_key: str) -> None:
-    """Seed an active Project + AgentJob + AgentExecution for one tenant."""
+async def _seed_active_job(session: AsyncSession, tenant_key: str, started_at: datetime | None = None) -> None:
+    """Seed an active Project + AgentJob + AgentExecution for one tenant.
+
+    ``started_at`` defaults to now (healthy); pass an ancient timestamp to seed
+    an execution past the abandon ceiling (exercises the auto-fail handler).
+    """
     suffix = uuid.uuid4().hex[:8]
     project = Project(
         id=str(uuid.uuid4()),
@@ -88,7 +92,7 @@ async def _seed_active_job(session: AsyncSession, tenant_key: str) -> None:
         status="working",
         progress=10,
         tool_type="universal",
-        started_at=datetime.now(UTC),
+        started_at=started_at or datetime.now(UTC),
     )
     session.add(execution)
 
@@ -227,14 +231,25 @@ async def test_run_health_check_cycle_scopes_each_tenant_under_enforce(db_sessio
     enforce, the cycle must complete without raising -- the regression gate for
     the live enforce gap. (Without the per-tenant scoping it raises on the first
     tenant's scan.)
+
+    Hermetic (INF-9189): the per-tenant loop is scoped to THIS test's own
+    seeded tenants, so leaked/foreign rows in a shared dev DB can never steer
+    it — the real cross-tenant discovery still executes under its bypass (the
+    enforce regression this test gates). Tenant_b seeds an execution past the
+    abandon ceiling so the full auto-fail handler path (tenant-scoped write +
+    ``broadcast_agent_auto_failed``) runs deterministically under enforce —
+    previously nothing was ever unhealthy, the handler never ran, and the WS
+    stub's bare-MagicMock ``broadcast_agent_auto_failed`` exploded only when
+    foreign leaked rows crossed the ceiling.
     """
     from contextlib import asynccontextmanager
     from unittest.mock import AsyncMock, MagicMock
 
     tenant_a = TenantManager.generate_tenant_key()
     tenant_b = TenantManager.generate_tenant_key()
+    ancient = datetime.now(UTC) - timedelta(days=3)  # past the 1440m abandon ceiling
     await _seed_active_job(db_session, tenant_a)
-    await _seed_active_job(db_session, tenant_b)
+    await _seed_active_job(db_session, tenant_b, started_at=ancient)
     await db_session.flush()
     _strip_session_tenant_context(db_session)
 
@@ -245,15 +260,35 @@ async def test_run_health_check_cycle_scopes_each_tenant_under_enforce(db_sessio
         async def get_session_async(self):
             yield db_session
 
-    # Stub broadcaster so a detected unhealthy job exercises the full per-tenant
-    # handler path (which also runs a tenant-scoped write) under enforce.
+    # Complete broadcaster stub: BOTH async broadcast methods the per-tenant
+    # handler can await must be AsyncMock (a bare MagicMock raises TypeError
+    # on await — the exact failure leaked foreign rows used to trigger).
     ws = MagicMock()
     ws.broadcast_health_alert = AsyncMock()
+    ws.broadcast_agent_auto_failed = AsyncMock()
     monitor = AgentHealthMonitor(db_manager=_SingleSessionDB(), ws_manager=ws)  # type: ignore[arg-type]
+
+    # Scope the per-tenant loop to this test's own tenants: the REAL discovery
+    # read still runs (under its bypass, against the enforce guard), but any
+    # foreign tenants present in the DB are filtered out afterwards.
+    seeded = {tenant_a, tenant_b}
+    real_get_all_tenants = monitor._get_all_tenants
+
+    async def _scoped_get_all_tenants(session: AsyncSession) -> list[str]:
+        return [t for t in await real_get_all_tenants(session) if t in seeded]
+
+    monitor._get_all_tenants = _scoped_get_all_tenants  # instance-only patch
+    # Skip the first-scan alert suppression so the ancient seed actually
+    # reaches the handler this cycle (simulates a steady-state, non-first scan).
+    monitor._first_scan = False
 
     # Must not raise: discovery under bypass, per-tenant scans under each
     # tenant's own context.
     await monitor._run_health_check_cycle()
+
+    # The ancient in-scope execution crossed the abandon ceiling: the handler
+    # ran its tenant-scoped write and awaited the auto-fail broadcast.
+    ws.broadcast_agent_auto_failed.assert_awaited()
 
     # The cycle leaves no tenant context leaked on the shared ContextVar.
     assert TenantManager.get_current_tenant() is None

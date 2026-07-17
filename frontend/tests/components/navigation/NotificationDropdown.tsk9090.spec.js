@@ -94,9 +94,12 @@ describe('NotificationDropdown — TSK-9090: payload.project_id deep-link', () =
   it('clicking a payload.project_id notification routes to that specific project', async () => {
     const wrapper = mountDropdown([PAYLOAD_PROJECT_NOTIF])
     await wrapper.find('.v-list-item').trigger('click')
+    // FE-9191: pre_launch_workproduct is a closeout-family notification, so it
+    // now lands on the jobs tab (where the closeout pill and review live).
     expect(pushSpy).toHaveBeenCalledWith({
       name: 'ProjectLaunch',
       params: { projectId: 'proj-payload-123' },
+      query: { tab: 'jobs' },
     })
   })
 

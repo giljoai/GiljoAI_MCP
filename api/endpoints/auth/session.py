@@ -568,4 +568,6 @@ async def get_me(
         setup_selected_tools=current_user.setup_selected_tools,
         setup_step_completed=current_user.setup_step_completed,
         learning_complete=current_user.learning_complete,
+        learning_beat=current_user.learning_beat,
+        router_choice=current_user.router_choice,
     )

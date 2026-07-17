@@ -261,7 +261,7 @@ class Message(Base):
     completed_at = Column(DateTime(timezone=True), nullable=True)
 
     # 0840b: Extracted from meta_data JSONB
-    from_agent_id = Column(String(36), nullable=True)
+    from_agent_id = Column(String(64), nullable=True)  # BE-9214: hub agent ids validate to 64
     from_display_name = Column(String(255), nullable=True)
     auto_generated = Column(Boolean, server_default="false", nullable=False)
 
@@ -313,7 +313,7 @@ class MessageRecipient(Base):
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
     message_id = Column(String(36), ForeignKey("messages.id", ondelete="CASCADE"), nullable=False)
-    agent_id = Column(String(36), nullable=False)
+    agent_id = Column(String(64), nullable=False)  # BE-9214: hub agent ids validate to 64
     tenant_key = Column(String(255), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -336,7 +336,7 @@ class MessageAcknowledgment(Base):
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
     message_id = Column(String(36), ForeignKey("messages.id", ondelete="CASCADE"), nullable=False)
-    agent_id = Column(String(36), nullable=False)
+    agent_id = Column(String(64), nullable=False)  # BE-9214: hub agent ids validate to 64
     tenant_key = Column(String(255), nullable=False)
     acknowledged_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -359,7 +359,7 @@ class MessageCompletion(Base):
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
     message_id = Column(String(36), ForeignKey("messages.id", ondelete="CASCADE"), nullable=False)
-    agent_id = Column(String(36), nullable=False)
+    agent_id = Column(String(64), nullable=False)  # BE-9214: hub agent ids validate to 64
     tenant_key = Column(String(255), nullable=False)
     completed_at = Column(DateTime(timezone=True), server_default=func.now())
 

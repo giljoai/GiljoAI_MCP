@@ -27,6 +27,7 @@ from api.schemas.vision_document import VisionDocumentResponse
 from giljo_mcp.auth.dependencies import get_current_active_user, get_db_session
 from giljo_mcp.config_manager import get_config
 from giljo_mcp.exceptions import (
+    AlreadyExistsError,
     AuthorizationError,
     ResourceNotFoundError,
     ValidationError,
@@ -226,7 +227,10 @@ async def upload_vision_document(
             )
         logger.warning("Vision upload validation error: %s", e)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid upload request.")
-    except (ResourceNotFoundError, ValidationError, AuthorizationError, HTTPException):
+    except (ResourceNotFoundError, ValidationError, AuthorizationError, AlreadyExistsError, HTTPException):
+        # TSK-9205: the service now raises AlreadyExistsError (409) on a duplicate
+        # -name write race; let the global handler map it to 409 rather than the
+        # broad catch below turning it into a 500.
         raise
     except Exception as e:  # Broad catch: API boundary, converts to HTTP error
         logger.exception("Vision upload failed")

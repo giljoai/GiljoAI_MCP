@@ -356,13 +356,13 @@ const handleCloseOutProject = async () => {
     emit('closeout', responseData)
     emit('close')
 
-    // WI-2: Show success toast centered at top, hold 2 seconds, then navigate to /projects.
+    // WI-2/TSK-9195: toast + immediate navigation. The toast renders in the
+    // layout-level ToastManager and survives the route change, so there is no
+    // reason to hold the stale view (a delay left Review re-clickable for ~2s).
     // FE-6131e: suppressNavigation keeps the sequence cockpit in place.
     showToast({ message: 'Project closed out successfully', type: 'success' })
     if (!props.suppressNavigation) {
-      setTimeout(() => {
-        router.push('/projects')
-      }, 2000)
+      router.push('/projects')
     }
   } catch (err) {
     console.error('[CloseoutModal] Failed to close out project:', err)

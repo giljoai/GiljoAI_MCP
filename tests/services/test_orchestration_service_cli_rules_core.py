@@ -22,6 +22,7 @@ import pytest
 
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.models import AgentExecution, AgentJob, AgentTemplate, Product, Project
+from tests.helpers.test_db_helper import purge_tenant_rows
 
 
 @pytest.mark.asyncio
@@ -112,7 +113,11 @@ class TestCLIModeRules:
                 "product_id": str(product.id),
             }
 
-            # Cleanup handled by test isolation
+        # Teardown: this fixture commits through a REAL db_manager session (the
+        # ToolAccessor under test reads via its own sessions, so the seed must
+        # actually commit) — TransactionalTestContext cannot roll it back. Purge
+        # the unique tenant or the committed rows persist across runs (INF-9189).
+        await purge_tenant_rows(db_manager, tenant_key)
 
     @pytest.fixture
     async def multi_terminal_context(self, db_manager: DatabaseManager):
@@ -181,6 +186,9 @@ class TestCLIModeRules:
                 "project_id": str(project.id),
                 "product_id": str(product.id),
             }
+
+        # Teardown: same real-commit purge as cli_mode_context (INF-9189).
+        await purge_tenant_rows(db_manager, tenant_key)
 
     async def test_cli_mode_response_includes_cli_mode_rules(
         self,

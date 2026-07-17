@@ -105,6 +105,23 @@ class ToolRenameNoticePayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class ContextTuningDuePayload(BaseModel):
+    """Validates payload for Notification.type == "system.context_tuning_due".
+
+    FE-9202: emitted by the periodic system-banner refresh when the active
+    product has not had its context tuned in 14+ days AND at least one project
+    has completed since the last tune (the activity gate). Carries the product
+    identity the banner renders and links back to. ``projects_since_tune`` is the
+    completed-project count since the last tune (the activity signal).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    product_id: str = Field(..., min_length=1, max_length=36)
+    product_name: str = Field(..., min_length=1, max_length=255)
+    projects_since_tune: int = Field(..., ge=0)
+
+
 class ProjectPrelaunchWorkproductPayload(BaseModel):
     """Validates payload for Notification.type == "project.pre_launch_workproduct".
 
@@ -145,6 +162,7 @@ NOTIFICATION_PAYLOAD_VALIDATORS: dict[str, type[BaseModel]] = {
     "system.update_available": UpdateAvailablePayload,
     "system.skills_drift": SkillsDriftPayload,
     "system.tool_rename_notice": ToolRenameNoticePayload,
+    "system.context_tuning_due": ContextTuningDuePayload,
     "project.pre_launch_workproduct": ProjectPrelaunchWorkproductPayload,
     "closeout.approval_required": CloseoutApprovalRequiredPayload,
 }

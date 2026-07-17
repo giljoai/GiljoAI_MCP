@@ -401,6 +401,34 @@ class TransactionalTestContext:
             self.connection = None
 
 
+async def purge_tenant_rows(db_manager: DatabaseManager, tenant_key: str) -> None:
+    """Fixture-layer teardown for suites that COMMIT through real service-owned sessions.
+
+    A suite that exercises services WITHOUT an injected test_session (real
+    ``db_manager.get_session_async()`` sessions) commits its rows for real;
+    ``TransactionalTestContext`` cannot roll them back, and the committed
+    ``test_tenant_*`` rows persist in the per-worker test DB across runs
+    (INF-9189: 143 leaked agent_executions rows found on local dev DBs).
+
+    Call this after ``yield`` in the fixture that MINTS the suite's unique
+    tenant_key — it deletes every row committed under that tenant, in FK-safe
+    order (executions -> jobs -> templates -> projects -> products). The
+    tenant-scoped session authorizes the tenant-predicate deletes under the
+    fail-closed isolation guard. If a suite starts committing into a table not
+    listed here, the FK violation surfaces loudly at teardown — extend the
+    order list rather than suppressing it.
+    """
+    from sqlalchemy import delete
+
+    from giljo_mcp.models import AgentTemplate, Product, Project
+    from giljo_mcp.models.agent_identity import AgentExecution, AgentJob
+
+    async with db_manager.get_session_async(tenant_key=tenant_key) as session:
+        for model in (AgentExecution, AgentJob, AgentTemplate, Project, Product):
+            await session.execute(delete(model).where(model.tenant_key == tenant_key))
+        await session.commit()
+
+
 async def wait_for_database_ready(max_attempts: int = 30, delay: float = 1.0) -> bool:
     """
     Wait for PostgreSQL database to be ready.

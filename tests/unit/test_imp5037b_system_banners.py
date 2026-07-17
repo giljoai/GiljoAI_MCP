@@ -298,6 +298,115 @@ class TestSaaSBannerSuppression:
         assert "system.skills_drift" in types
 
 
+class TestContextTuningDueBanner:
+    """FE-9202: the 14-day context-tuning-due reminder emitted via emit_system_banners.
+
+    The compute gate (product age + activity + preference) is unit-tested against
+    context_tuning_banner directly in test_fe9202_context_tuning_banner.py; here we
+    lock the emit/resolve wiring and the banner's distinguishing shape (per-user,
+    NOT admin-only).
+    """
+
+    @staticmethod
+    def _patch_quiet(monkeypatch):
+        """Silence the other banner families so only the tuning banner is under test."""
+        monkeypatch.setattr(background_tasks, "get_pending_migration_info", lambda state: None)
+        monkeypatch.setattr(background_tasks, "_compute_skills_drift", _none_async)
+
+    @pytest.mark.asyncio
+    async def test_upsert_then_resolve(self, monkeypatch, db_manager, db_session, tenant_key, patched_service):
+        user_id = await _make_user(db_session, tenant_key, "admin")
+        await _admins_via_session(db_session, monkeypatch)
+        self._patch_quiet(monkeypatch)
+
+        async def _due(_db_manager, _tenant_key):
+            return {"product_id": "prod-1", "product_name": "Acme", "projects_since_tune": 3}
+
+        monkeypatch.setattr(background_tasks, "compute_context_tuning_due", _due)
+
+        state = _fake_state(db_manager, db_session)
+        await background_tasks.emit_system_banners(state)
+
+        service = NotificationService()
+        rows = await service.list_for_user(tenant_key, user_id, surface="banner")
+        tuning = [r for r in rows if r.type == "system.context_tuning_due"]
+        assert len(tuning) == 1
+        assert tuning[0].role_filter is None  # per-user, NOT admin-gated
+        assert tuning[0].dismissible is True
+        assert tuning[0].cta_route == "Tools"
+        assert tuning[0].dedupe_key == "system.context_tuning_due"
+        assert tuning[0].payload["projects_since_tune"] == 3
+        assert "Acme" in tuning[0].body
+
+        # No longer due -> the open row resolves (auto-clear).
+        async def _not_due(_db_manager, _tenant_key):
+            return None
+
+        monkeypatch.setattr(background_tasks, "compute_context_tuning_due", _not_due)
+        await background_tasks.emit_system_banners(state)
+        rows_after = await service.list_for_user(tenant_key, user_id, surface="banner")
+        assert [r for r in rows_after if r.type == "system.context_tuning_due"] == []
+
+    @pytest.mark.asyncio
+    async def test_visible_to_non_admin(self, monkeypatch, db_manager, db_session, tenant_key, patched_service):
+        # role_filter=None -> a non-admin user sees it (unlike the admin system banners).
+        dev_id = await _make_user(db_session, tenant_key, "developer")
+        await _make_user(db_session, tenant_key, "admin")
+        await _admins_via_session(db_session, monkeypatch)
+        self._patch_quiet(monkeypatch)
+
+        async def _due(_db_manager, _tenant_key):
+            return {"product_id": "prod-1", "product_name": "Acme", "projects_since_tune": 1}
+
+        monkeypatch.setattr(background_tasks, "compute_context_tuning_due", _due)
+
+        await background_tasks.emit_system_banners(_fake_state(db_manager, db_session))
+
+        service = NotificationService()
+        dev_rows = await service.list_for_user(tenant_key, dev_id, surface="banner")
+        assert [r for r in dev_rows if r.type == "system.context_tuning_due"]  # present for the developer
+
+
+class TestPerTenantIsolation:
+    """FE-9202 F1: one tenant raising must not abort the emit for the others."""
+
+    @pytest.mark.asyncio
+    async def test_one_tenant_raises_others_still_emit(
+        self, monkeypatch, db_manager, db_session, tenant_key, patched_service
+    ):
+        # Two tenants: the FIRST one's tuning compute raises; the SECOND must
+        # still receive its skills-drift banner.
+        good_key = tenant_key
+        bad_key = f"{tenant_key}_bad"
+        good_admin = await _make_user(db_session, good_key, "admin")
+
+        # Enumerate both tenants in a stable order, the failing one FIRST.
+        monkeypatch.setattr(background_tasks, "_tenant_keys_with_admins", lambda _dbm: _ordered_keys(bad_key, good_key))
+        monkeypatch.setattr(background_tasks, "get_pending_migration_info", lambda state: None)
+
+        async def _drift(_db_manager, tk):
+            return {"current": "2.0.0", "announced": "1.0.0", "message": "drift"}
+
+        monkeypatch.setattr(background_tasks, "_compute_skills_drift", _drift)
+
+        async def _tuning(_db_manager, tk):
+            if tk == bad_key:
+                raise RuntimeError("simulated per-tenant failure")
+
+        monkeypatch.setattr(background_tasks, "compute_context_tuning_due", _tuning)
+
+        await background_tasks.emit_system_banners(_fake_state(db_manager, db_session))
+
+        service = NotificationService()
+        rows = await service.list_for_user(good_key, good_admin, surface="banner")
+        assert [r for r in rows if r.type == "system.skills_drift"], "good tenant lost its banner to a sibling failure"
+
+
+async def _ordered_keys(*keys):
+    """Deterministic ordered tenant list (failing tenant first) for the isolation test."""
+    return list(keys)
+
+
 class TestSaaSUpdateCheckerSuppression:
     """BE-6031c: start_update_checker is a no-op under saas, before any git/network work."""
 

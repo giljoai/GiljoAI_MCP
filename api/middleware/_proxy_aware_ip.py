@@ -36,6 +36,11 @@ logger = logging.getLogger(__name__)
 
 TRUSTED_PROXIES_ENV = "GILJO_TRUSTED_PROXIES"
 
+# uvicorn's own env var. When it contains "*" uvicorn runs its
+# ProxyHeadersMiddleware with ``always_trust`` and OVERWRITES ``scope["client"]``
+# with the LEFTMOST X-Forwarded-For hop before our code runs (SEC-9217d).
+FORWARDED_ALLOW_IPS_ENV = "FORWARDED_ALLOW_IPS"
+
 _TrustedNetwork = ipaddress.IPv4Network | ipaddress.IPv6Network
 
 
@@ -97,6 +102,19 @@ class ProxyAwareIpResolver:
 
     def __init__(self) -> None:
         self._trusted_proxies = parse_trusted_proxies(os.getenv(TRUSTED_PROXIES_ENV))
+        self._proxy_headers_always_trust = self._read_always_trust()
+
+    @staticmethod
+    def _read_always_trust() -> bool:
+        """True when uvicorn is configured to blanket-trust proxy headers.
+
+        Prod sets ``FORWARDED_ALLOW_IPS=*`` (required so uvicorn honors
+        ``X-Forwarded-Proto`` for OAuth https detection). We read the same env
+        uvicorn does to know whether ``request.client.host`` has been clobbered
+        by its always-trust rewrite (SEC-9217d).
+        """
+        raw = os.getenv(FORWARDED_ALLOW_IPS_ENV, "")
+        return "*" in {entry.strip() for entry in raw.split(",")}
 
     @property
     def trusted_proxy_count(self) -> int:
@@ -133,11 +151,26 @@ class ProxyAwareIpResolver:
         buckets are restored. It is only honored once ``peer_is_trusted_proxy``
         has passed, so an untrusted caller cannot forge it (same threat model
         that already protects XFF here).
+
+        SEC-9217d — the ``FORWARDED_ALLOW_IPS=*`` composition hazard: in that
+        regime ``request.client.host`` is NOT the real TCP peer; uvicorn's
+        always-trust ProxyHeadersMiddleware has already overwritten it with the
+        LEFTMOST (original, attacker-supplied) X-Forwarded-For hop, so the
+        peer-trust gate below can't rely on it. There we reconstruct the client
+        from the raw forwarding headers ourselves — see
+        ``_resolve_behind_always_trust``.
         """
         client = request.client
+        peer_ip = client.host if client is not None else None
+
+        if self._proxy_headers_always_trust:
+            resolved = self._resolve_behind_always_trust(request)
+            if resolved is not None:
+                return resolved
+            return peer_ip or "unknown"
+
         if client is None:
             return "unknown"
-        peer_ip = client.host
 
         if self.peer_is_trusted_proxy(peer_ip):
             cf_ip = request.headers.get("CF-Connecting-IP")
@@ -149,3 +182,37 @@ class ProxyAwareIpResolver:
                 if first_hop:
                     return first_hop
         return peer_ip
+
+    def _resolve_behind_always_trust(self, request: _RequestLike) -> str | None:
+        """Resolve the true client when uvicorn blanket-trusts proxy headers.
+
+        ``FORWARDED_ALLOW_IPS=*`` is the operator asserting the app is ALWAYS
+        reached through its own trusted proxy chain, so uvicorn honors the
+        forwarding headers. uvicorn just picks the WRONG hop — the spoofable
+        LEFTMOST ``X-Forwarded-For`` entry — and also writes it into
+        ``request.client.host``. Acting on the SAME trust assertion, we select
+        the true client instead:
+
+        - ``CF-Connecting-IP`` first — Cloudflare overwrites any client-supplied
+          value at its edge, so it is the authoritative real client.
+        - otherwise walk the raw XFF from the CONNECTION side (rightmost) to the
+          NEAREST UNTRUSTED hop. Our edge proxy appends the real client as the
+          right-most entry; any attacker-injected values sit to its LEFT and are
+          never reached, so rotating them cannot mint fresh rate-limit buckets.
+          Trusted-proxy hops (e.g. an intermediate that appended our own egress
+          IP) are skipped via ``GILJO_TRUSTED_PROXIES``.
+
+        Returns ``None`` only when there is nothing to key on (no CF header and
+        no usable XFF), so the caller falls back to the direct peer IP.
+        """
+        cf_ip = request.headers.get("CF-Connecting-IP")
+        if cf_ip and cf_ip.strip():
+            return cf_ip.strip()
+
+        forwarded = request.headers.get("X-Forwarded-For")
+        if forwarded:
+            for hop in reversed(forwarded.split(",")):
+                candidate = hop.strip()
+                if candidate and not self.peer_is_trusted_proxy(candidate):
+                    return candidate
+        return None
