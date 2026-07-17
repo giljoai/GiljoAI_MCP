@@ -26,6 +26,14 @@ import bcrypt
 # schemas cap at this same limit (BE-9176, api/endpoints/auth_models.py).
 BCRYPT_MAX_PASSWORD_BYTES = 72
 
+# SEC-9217c timing-oracle equalizer: a constant, valid bcrypt hash (cost 12, as
+# async_hash_password) used ONLY as the verify target on login paths that have
+# no stored hash (missing user, or social-only user with password_hash IS NULL),
+# so every login pays one bcrypt cost and the ~250-400ms delta can't leak account
+# existence. Throwaway hash of a non-secret; the compare always fails, result
+# discarded by the caller.
+DUMMY_BCRYPT_HASH = "$2b$12$U9PdoxNs9zNrCo7Rf9red.G0bl3ZSv8BPF/mwaInIqe/H6AJ.AZKO"
+
 
 async def async_hash_password(plaintext: str) -> str:
     """Hash a password / PIN with bcrypt, off the event loop.

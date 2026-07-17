@@ -131,6 +131,9 @@
     "ce_0075_projects_ever_launched_at",
     "ce_0076_watermark_tenant_updated_indexes",
     "ce_0077_sequence_run_reviewed_project_ids",
+    "ce_0078_projects_superseded_status_and_successor",
+    "ce_0079_users_tutorial_reentry_state",
+    "ce_0080_widen_comm_agent_id_columns",
     "baseline_v38"
   ]
 }

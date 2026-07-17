@@ -29,12 +29,14 @@ import logging
 from typing import Any
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.domain.soft_delete import RECOVER_WINDOW_DAYS, recover_window_expired
 from giljo_mcp.exceptions import (
+    AlreadyExistsError,
     BaseGiljoError,
     ContextError,
     GiljoFileNotFoundError,
@@ -185,6 +187,18 @@ class ProductVisionService:
             ) from e
         except ResourceNotFoundError:
             raise
+        except IntegrityError as e:
+            # TSK-9205: two concurrent same-name uploads race past any pre-check
+            # SELECT; the loser hits the uq_vision_doc_product_name partial unique
+            # index on commit. Map that write-race to the already-exists domain
+            # rejection (409) instead of letting it fall into the broad catch and
+            # surface as an unhelpful 500. (The session was rolled back when the
+            # `async with self._get_session()` context exited with the error.)
+            self._logger.info("Duplicate vision document name race for product %s", sanitize(product_id))
+            raise AlreadyExistsError(
+                message=f"A vision document named '{filename}' already exists for this product.",
+                context={"product_id": product_id, "filename": filename, "tenant_key": self.tenant_key},
+            ) from e
         except Exception as e:  # Broad catch: service boundary, wraps in BaseGiljoError
             self._logger.exception("Failed to upload vision document")
             raise BaseGiljoError(

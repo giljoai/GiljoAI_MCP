@@ -3,6 +3,12 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { nextTick } from 'vue'
 
 // ---------- Stub heavy dependencies ----------
+// FE-9204: the connect step was rebuilt into a walk-one-tool-at-a-time controller
+// (SetupStep2Connect) hosting the shared ConnectToolCard. These specs mount the step
+// and exercise the CARD through it (the child is intentionally not stubbed). The
+// pre-rebuild invariants are preserved under the new anatomy: no "OAuth" in copy
+// (FE-6259b), CE never renders sign-in (FE-6242), server lock on SaaS/unknown
+// (FE-6055), and stable data-testid hooks (FE-6247).
 
 // Capture the WebSocket subscription so tests can fire setup:tool_connected.
 let wsHandlers = {}
@@ -46,8 +52,7 @@ vi.mock('@/composables/useToast', () => ({
   useToast: () => ({ showToast: vi.fn() }),
 }))
 
-// useMcpConfig is consumed REAL (not mocked) — the OAuth command generation is
-// part of what we are validating.
+// useMcpConfig is consumed REAL — the command generation is part of what we validate.
 
 const globalStubs = {
   'v-text-field': {
@@ -73,7 +78,7 @@ async function mountStep(selectedTools, giljoMode = 'saas') {
     props: { selectedTools },
     global: { stubs: globalStubs },
   })
-  await flushPromises() // onMounted: checkExistingKey + loadBackendConfig
+  await flushPromises() // onMounted: checkExistingKey + loadBackendConfig (parent + card)
   return wrapper
 }
 
@@ -97,95 +102,93 @@ beforeEach(() => {
 
 // -----------------------------------------------------------------------
 
-describe('SetupStep2Connect — SaaS: Browser sign-in primary path (FE-6159/FE-6259b)', () => {
-  it('shows "Browser sign-in" as the primary, recommended path for an OAuth-capable tool', async () => {
-    const wrapper = await mountStep(['claude_code'], 'saas')
-    const text = wrapper.text()
-    expect(text).toContain('Browser sign-in')
-    expect(text).toContain('Recommended')
-    // Connect-vocabulary parity (FE-6259a/b, locked by P1): never the word "OAuth" in user copy.
-    expect(text).not.toContain('OAuth')
-    expect(text).not.toContain('—') // no em dashes anywhere in user copy
-  })
-
-  it('renders the browser-sign-in command with NO bearer token', async () => {
+describe('SetupStep2Connect — SaaS: sign-in primary path (FE-6259b vocabulary lock)', () => {
+  it('renders the sign-in command with NO bearer token and never the word "OAuth"', async () => {
     const wrapper = await mountStep(['claude_code'], 'saas')
     const pre = wrapper.find('pre.config-code')
     expect(pre.exists()).toBe(true)
-    // OAuth claude command: `claude mcp add --transport http giljo_mcp <url>/mcp --scope user`
     expect(pre.text()).toContain('claude mcp add')
     expect(pre.text()).toContain('/mcp')
     expect(pre.text()).not.toContain('Bearer')
     expect(pre.text()).not.toContain('Authorization')
+    // Connect-vocabulary parity: never the word "OAuth", never an em dash in step-2 copy.
+    expect(wrapper.text()).not.toContain('OAuth')
+    expect(wrapper.text()).not.toContain('—')
   })
 
-  it('keeps bearer behind a quiet "Use an API key instead" fallback (hidden by default)', async () => {
+  it('keeps the API key flow behind a quiet fallback toggle (hidden by default)', async () => {
     const wrapper = await mountStep(['claude_code'], 'saas')
     expect(wrapper.text()).toContain('Use an API key instead')
-    // API-key flow not shown until the fallback is toggled.
     expect(wrapper.text()).not.toContain('Generate API Key')
 
-    const toggle = wrapper.find('.bearer-toggle-link')
-    await toggle.trigger('click')
+    await wrapper.find('[data-testid="fallback-toggle"]').trigger('click')
     await nextTick()
     expect(wrapper.text()).toContain('Generate API Key')
+    // Toggling back returns to sign-in.
+    await wrapper.find('[data-testid="fallback-toggle"]').trigger('click')
+    await nextTick()
+    expect(wrapper.text()).toContain('Use an API key instead')
   })
 
   it('never surfaces the oauth_quirk_note (would leak "OAuth" into user copy)', async () => {
-    // Codex's AUTH_CAPABILITIES.oauth_quirk_note literal is "OAuth auto-detected
-    // on add." — P1 dropped rendering this note from the Split Rail configurator
-    // (FE-6259a); this step drops it too.
     const wrapper = await mountStep(['codex_cli'], 'saas')
-    expect(wrapper.find('.oauth-quirk-note').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('auto-detected')
+    expect(wrapper.text()).not.toContain('OAuth')
   })
 
-  it('treats Antigravity as key-only — no Browser sign-in section, shows the not-supported note', async () => {
+  it('treats Antigravity as key-only — no sign-in command, shows the not-supported note + immediate key flow', async () => {
     const wrapper = await mountStep(['antigravity_cli'], 'saas')
     const text = wrapper.text()
     expect(wrapper.find('[data-testid="oauth-section"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="fallback-toggle"]').exists()).toBe(false)
     expect(text).toContain('Browser sign-in is not supported')
     expect(text).not.toContain('OAuth')
-    // Key-only tool shows the API-key flow immediately (no toggle needed).
     expect(text).toContain('Generate API Key')
+  })
+
+  it('OpenCode (added FE-9204) is sign-in-capable — emits the opencode add+auth command, no bearer', async () => {
+    const wrapper = await mountStep(['opencode'], 'saas')
+    const pre = wrapper.find('pre.config-code')
+    expect(pre.text()).toContain('opencode mcp add giljo_mcp')
+    expect(pre.text()).toContain('opencode mcp auth giljo_mcp')
+    expect(pre.text()).not.toContain('Bearer')
+    expect(wrapper.find('[data-testid="fallback-toggle"]').exists()).toBe(true)
+  })
+
+  it('Generic MCP client (FE-9204) is manual-config — shows the JSON server config, no sign-in command', async () => {
+    const wrapper = await mountStep(['generic'], 'saas')
+    expect(wrapper.find('[data-testid="oauth-section"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="fallback-toggle"]').exists()).toBe(false)
+    // Manual config shows the generate card immediately; the JSON appears once a key exists.
+    expect(wrapper.text()).toContain('Generate API Key')
   })
 })
 
 // -----------------------------------------------------------------------
 
 describe('SetupStep2Connect — CE: API-key-only gating (FE-6242)', () => {
-  it('CE: hides the browser-sign-in section for an OAuth-capable tool', async () => {
+  it('CE: hides the sign-in command + fallback toggle for a sign-in-capable tool', async () => {
     const wrapper = await mountStep(['claude_code'], 'ce')
-    // Browser sign-in section must NOT be shown on CE
-    expect(wrapper.find('.oauth-section').exists()).toBe(false)
-    expect(wrapper.text()).not.toContain('Browser sign-in')
-  })
-
-  it('CE: hides the "Use an API key instead" toggle link', async () => {
-    const wrapper = await mountStep(['claude_code'], 'ce')
-    expect(wrapper.find('.bearer-toggle-link').exists()).toBe(false)
-    expect(wrapper.text()).not.toContain('Use an API key instead')
+    expect(wrapper.find('[data-testid="oauth-section"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="fallback-toggle"]').exists()).toBe(false)
   })
 
   it('CE: shows the API-key flow immediately without toggling', async () => {
     const wrapper = await mountStep(['claude_code'], 'ce')
-    // On CE, bearer flow is shown directly
     expect(wrapper.text()).toContain('Generate API Key')
   })
 
-  it('CE: Antigravity (key-only) still works — key-only note shown', async () => {
+  it('CE: Antigravity (key-only) still works — key-only note + immediate key flow', async () => {
     const wrapper = await mountStep(['antigravity_cli'], 'ce')
     expect(wrapper.text()).toContain('Browser sign-in is not supported')
     expect(wrapper.text()).toContain('Generate API Key')
   })
 
-  it('CE: WS connect checker fires and marks tool connected', async () => {
+  it('CE: WS connect event flips the active tool and clears the can-proceed gate', async () => {
     const wrapper = await mountStep(['claude_code'], 'ce')
     expect(typeof wsHandlers['setup:tool_connected']).toBe('function')
-
     wsHandlers['setup:tool_connected']({ tool_name: 'mcp_connected' })
     await nextTick()
-
     const canProceed = wrapper.emitted('can-proceed')
     expect(canProceed[canProceed.length - 1]).toEqual([true])
   })
@@ -193,123 +196,157 @@ describe('SetupStep2Connect — CE: API-key-only gating (FE-6242)', () => {
 
 // -----------------------------------------------------------------------
 
-describe('SetupStep2Connect — connected-state gate + green-connect light', () => {
-  it('starts not-connected and blocks proceeding', async () => {
+describe('SetupStep2Connect — status hero + generic-event active-only flip (proposal §6)', () => {
+  it('starts waiting and blocks proceeding', async () => {
     const wrapper = await mountStep(['claude_code'], 'saas')
-    expect(wrapper.text()).toContain('Waiting for connection')
+    expect(wrapper.text()).toContain('Waiting for')
     const canProceed = wrapper.emitted('can-proceed')
-    expect(canProceed).toBeTruthy()
     expect(canProceed[canProceed.length - 1]).toEqual([false])
   })
 
-  it('flips to connected + can-proceed=true when setup:tool_connected fires', async () => {
+  it('flips to connected + can-proceed=true when the generic event fires', async () => {
     const wrapper = await mountStep(['claude_code'], 'saas')
-    expect(typeof wsHandlers['setup:tool_connected']).toBe('function')
-
-    // The MCP server emits a generic connect event — marks selected tools connected.
     wsHandlers['setup:tool_connected']({ tool_name: 'mcp_connected' })
     await nextTick()
-
-    expect(wrapper.text()).toContain('Connected')
-    const canProceed = wrapper.emitted('can-proceed')
-    expect(canProceed[canProceed.length - 1]).toEqual([true])
-    // step-data reports the connected tool list for the parent to persist.
+    expect(wrapper.find('[data-testid="hero-check"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('connected.')
     const stepData = wrapper.emitted('step-data')
     expect(stepData[stepData.length - 1][0].connectedTools).toContain('claude_code')
+  })
+
+  it('generic event flips ONLY the active tool, not every selected tool', async () => {
+    const wrapper = await mountStep(['claude_code', 'codex_cli'], 'saas')
+    // Active tool is the first one (claude_code); the event flips it only.
+    wsHandlers['setup:tool_connected']({ tool_name: 'mcp_connected' })
+    await nextTick()
+    const stepData = wrapper.emitted('step-data')
+    const latest = stepData[stepData.length - 1][0].connectedTools
+    expect(latest).toContain('claude_code')
+    expect(latest).not.toContain('codex_cli')
+  })
+
+  it('advance label is "Next tool" mid-walk and "Install agents & skills" on the last tool', async () => {
+    const wrapper = await mountStep(['claude_code', 'codex_cli'], 'saas')
+    // Connect the active (first) tool → hero advance appears with the mid-walk label.
+    wsHandlers['setup:tool_connected']({ tool_name: 'mcp_connected' })
+    await nextTick()
+    expect(wrapper.find('[data-testid="hero-advance"]').text()).toContain('Next tool')
+    // Walk to the last tool, connect it → label becomes the install advance.
+    await wrapper.find('[data-testid="hero-advance"]').trigger('click')
+    await nextTick()
+    expect(wrapper.find('.connect-eyebrow').text()).toContain('TOOL 2 OF 2')
+    wsHandlers['setup:tool_connected']({ tool_name: 'mcp_connected' })
+    await nextTick()
+    expect(wrapper.find('[data-testid="hero-advance"]').text()).toContain('Install agents & skills')
+  })
+
+  it('"I already configured this" marks the ACTIVE tool only (ratified change from marks-all)', async () => {
+    const wrapper = await mountStep(['claude_code', 'codex_cli'], 'saas')
+    await wrapper.find('[data-testid="already-configured"]').trigger('click')
+    await nextTick()
+    const stepData = wrapper.emitted('step-data')
+    const latest = stepData[stepData.length - 1][0].connectedTools
+    expect(latest).toEqual(['claude_code'])
+  })
+
+  it('advancing to the last tool then advancing again emits advance-step (wizard forward)', async () => {
+    const wrapper = await mountStep(['claude_code'], 'saas')
+    wsHandlers['setup:tool_connected']({ tool_name: 'mcp_connected' })
+    await nextTick()
+    await wrapper.find('[data-testid="hero-advance"]').trigger('click')
+    await nextTick()
+    expect(wrapper.emitted('advance-step')).toBeTruthy()
   })
 })
 
 // -----------------------------------------------------------------------
 
-describe('SetupStep2Connect — server URL edition gating', () => {
-  it('is editable (click reveals host/port fields) on CE', async () => {
+describe('SetupStep2Connect — per-tool fallback isolation (walk)', () => {
+  it('toggling the fallback on one tool does not carry to the next tool', async () => {
+    const wrapper = await mountStep(['claude_code', 'codex_cli'], 'saas')
+    // Reveal the key flow on tool 1.
+    await wrapper.find('[data-testid="fallback-toggle"]').trigger('click')
+    await nextTick()
+    expect(wrapper.text()).toContain('Generate API Key')
+    // Connect + walk to tool 2 — it must start on the sign-in path, not the key flow.
+    wsHandlers['setup:tool_connected']({ tool_name: 'mcp_connected' })
+    await nextTick()
+    await wrapper.find('[data-testid="hero-advance"]').trigger('click')
+    await nextTick()
+    expect(wrapper.find('.connect-eyebrow').text()).toContain('TOOL 2 OF 2')
+    expect(wrapper.text()).toContain('Use an API key instead')
+    expect(wrapper.text()).not.toContain('Generate API Key')
+  })
+})
+
+// -----------------------------------------------------------------------
+
+describe('SetupStep2Connect — server URL edition gating (FE-6055)', () => {
+  it('is editable (click reveals host/port fields, pencil icon) on CE', async () => {
     const wrapper = await mountStep(['claude_code'], 'ce')
+    expect(wrapper.find('[data-testid="server-url-pencil"]').exists()).toBe(true)
     expect(wrapper.find('.server-edit-fields').exists()).toBe(false)
-    const field = wrapper.find('input.v-text-field-stub')
-    await field.trigger('click')
+    await wrapper.find('[data-testid="server-url-pencil"]').trigger('click')
     await nextTick()
     expect(wrapper.find('.server-edit-fields').exists()).toBe(true)
   })
 
-  it('is read-only (no edit reveal, lock icon shown) on SaaS', async () => {
+  it('is read-only (lock icon, no edit reveal) on SaaS', async () => {
     const wrapper = await mountStep(['claude_code'], 'saas')
-    expect(wrapper.find('.server-lock-icon').exists()).toBe(true)
-    const field = wrapper.find('input.v-text-field-stub')
-    await field.trigger('click')
-    await nextTick()
-    expect(wrapper.find('.server-edit-fields').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="server-url-lock"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="server-url-pencil"]').exists()).toBe(false)
   })
 })
 
 // -----------------------------------------------------------------------
 
 describe('SetupStep2Connect — HTTPS cert-trust guidance (INF-6241)', () => {
-  it('shows no cert-trust note in OAuth section when ssl_enabled is false', async () => {
+  it('shows no cert-trust note when ssl_enabled is false', async () => {
     const wrapper = await mountStepSsl(['claude_code'], false)
-    expect(wrapper.find('.oauth-cert-note').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="oauth-cert-note"]').exists()).toBe(false)
   })
 
-  it('shows an OAuth-section cert-trust note when ssl_enabled is true (C4 gap closure)', async () => {
+  it('shows a cert-trust note when ssl_enabled is true', async () => {
     const wrapper = await mountStepSsl(['claude_code'], true)
-    expect(wrapper.find('.oauth-cert-note').exists()).toBe(true)
-    const text = wrapper.find('.oauth-cert-note').text()
+    expect(wrapper.find('[data-testid="oauth-cert-note"]').exists()).toBe(true)
+    const text = wrapper.find('[data-testid="oauth-cert-note"]').text()
     expect(text).toContain('HTTPS certificate trust')
-    expect(text).toContain('certificate')
-  })
-
-  it('does not imply GiljoAI issued the cert in the OAuth cert note', async () => {
-    const wrapper = await mountStepSsl(['claude_code'], true)
-    const text = wrapper.find('.oauth-cert-note').text()
+    // Never imply GiljoAI issued the cert.
     expect(text).not.toContain('root CA')
-    expect(text).not.toContain('rootCA')
     expect(text).not.toContain('mkcert')
   })
 })
 
 // -----------------------------------------------------------------------
 
-describe('SetupStep2Connect — data-testid hook presence (FE-6247)', () => {
-  it('root element carries data-testid="step2-connect"', async () => {
+describe('SetupStep2Connect — data-testid hooks preserved under new anatomy (FE-6247)', () => {
+  it('root, server field, and status hero hooks are present', async () => {
     const wrapper = await mountStep(['claude_code'], 'saas')
     expect(wrapper.find('[data-testid="step2-connect"]').exists()).toBe(true)
-  })
-
-  it('server URL field carries data-testid="server-url-field"', async () => {
-    const wrapper = await mountStep(['claude_code'], 'saas')
     expect(wrapper.find('[data-testid="server-url-field"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="status-hero"]').exists()).toBe(true)
   })
 
-  it('SaaS + OAuth tool: data-testid="oauth-section" and data-testid="bearer-toggle" both present', async () => {
+  it('SaaS + sign-in tool: oauth-section + fallback-toggle hooks present', async () => {
     const wrapper = await mountStep(['claude_code'], 'saas')
     expect(wrapper.find('[data-testid="oauth-section"]').exists()).toBe(true)
-    expect(wrapper.find('[data-testid="bearer-toggle"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="fallback-toggle"]').exists()).toBe(true)
   })
 
-  it('CE: data-testid="oauth-section" absent, data-testid="bearer-toggle" absent', async () => {
+  it('CE: oauth-section + fallback-toggle hooks absent', async () => {
     const wrapper = await mountStep(['claude_code'], 'ce')
     expect(wrapper.find('[data-testid="oauth-section"]').exists()).toBe(false)
-    expect(wrapper.find('[data-testid="bearer-toggle"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="fallback-toggle"]').exists()).toBe(false)
   })
 
-  it('key-only tool: data-testid="apikey-only-note" present, data-testid="oauth-section" absent', async () => {
+  it('key-only tool: apikey-only-note present, oauth-section absent', async () => {
     const wrapper = await mountStep(['antigravity_cli'], 'saas')
     expect(wrapper.find('[data-testid="apikey-only-note"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="oauth-section"]').exists()).toBe(false)
   })
 
-  it('multi-tool: each tool tab carries data-testid="tool-tab-{id}"', async () => {
-    const wrapper = await mountStep(['claude_code', 'codex_cli'], 'saas')
-    expect(wrapper.find('[data-testid="tool-tab-claude_code"]').exists()).toBe(true)
-    expect(wrapper.find('[data-testid="tool-tab-codex_cli"]').exists()).toBe(true)
-  })
-
-  it('SaaS + HTTPS: data-testid="oauth-cert-note" renders when ssl_enabled', async () => {
+  it('SaaS + HTTPS: oauth-cert-note renders when ssl_enabled', async () => {
     const wrapper = await mountStepSsl(['claude_code'], true)
     expect(wrapper.find('[data-testid="oauth-cert-note"]').exists()).toBe(true)
-  })
-
-  it('SaaS + non-HTTPS: data-testid="oauth-cert-note" absent', async () => {
-    const wrapper = await mountStepSsl(['claude_code'], false)
-    expect(wrapper.find('[data-testid="oauth-cert-note"]').exists()).toBe(false)
   })
 })

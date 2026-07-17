@@ -16,7 +16,7 @@ but most of those fields were never wired. Only `database_initialized`,
 The 11 columns dropped here are pure define-only -- defaulted in
 state_manager._get_default_state but never persisted by any caller.
 
-Reference: handovers/Reference_docs/ORPHAN_COLUMN_AUDIT_seq127_NB2.md sec 3.a /
+Reference: internal design notes sec 3.a /
 analyzer matrix row 3.
 
 Drops (in order: indexes first, then constraints, then columns):

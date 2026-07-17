@@ -198,6 +198,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useProductStore } from '@/stores/products'
 import { useSettingsStore } from '@/stores/settings'
 import { useToast } from '@/composables/useToast'
@@ -214,6 +215,8 @@ import DeletedProductsRecoveryDialog from '@/components/products/DeletedProducts
 import ProductForm from '@/components/products/ProductForm.vue'
 import ProductCard from '@/components/products/ProductCard.vue'
 
+const route = useRoute()
+const router = useRouter()
 const productStore = useProductStore()
 const settingsStore = useSettingsStore()
 const { showToast } = useToast()
@@ -628,6 +631,15 @@ async function loadProducts() {
 }
 
 onMounted(async () => {
+  // FE-9200: the onboarding tutorial's "I'll fill it in myself" door lands
+  // here with ?create=true — open the classic ProductForm straight away
+  // (same idiom as WelcomeView's openSetup/openGuide query triggers).
+  // Optional chaining: component tests mount this view without a router.
+  if (route?.query?.create === 'true') {
+    openNewProductDialog()
+    router?.replace({ path: route.path })
+  }
+
   await loadProducts()
   // Load field toggle configuration (Handover 0049, 0820)
   try {

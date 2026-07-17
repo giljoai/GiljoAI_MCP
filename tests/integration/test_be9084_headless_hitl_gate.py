@@ -284,7 +284,7 @@ class TestFencePredicate:
 
 
 # ---------------------------------------------------------------------------
-# REAL MCPAuthMiddleware path (EM_46 verification ask): prove the fence keys on
+# REAL MCPAuthMiddleware path: prove the fence keys on
 # the state a REAL Bearer-JWT session gets stamped by MCPAuthMiddleware — so the
 # blocking proof never leans on the in-memory ``request is None`` carve-out.
 # ---------------------------------------------------------------------------

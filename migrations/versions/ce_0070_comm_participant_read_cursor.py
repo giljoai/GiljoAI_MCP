@@ -12,7 +12,7 @@ Create Date: 2026-07-03
 The Agent Message Hub unification ("Hub absorbs the bus", chain step a) needs a
 server-persistent per-(thread, participant) read cursor so that a unified Hub
 read is O(N) drain-equivalent instead of an O(N^2) full-timeline re-read (see
-handovers/INF-6201_PROPOSAL_hub_absorbs_bus.md §1). This adds the two columns
+internal design notes §1). This adds the two columns
 ``get_thread_history``'s new ``unread_only`` / ``mark_read`` params advance:
 
 - ``last_read_at`` — the load-bearing filter. The unread read keys on

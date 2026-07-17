@@ -2,6 +2,134 @@
 
 All notable changes to this project are recorded here. This changelog follows the [Keep a Changelog](https://keepachangelog.com/) convention — entries are grouped by change type (Added / Changed / Fixed / Removed / Security). Versions follow `MAJOR.MINOR.PATCH[.HOTFIX]` and tags live on the public repository (`giljoai/GiljoAI_MCP`).
 
+## [2.0.1.1] — 2026-07-17
+
+### Added
+
+- **Your AI agent can now create your first product for you.** Two new MCP
+  tools let a connected coding agent create a product and write its vision
+  document directly — so during onboarding you can paste one prompt into your
+  CLI and watch the product card fill itself, instead of typing everything
+  into the form. Agent-written vision documents appear in the dashboard
+  exactly like uploaded ones.
+- **The onboarding tutorial now remembers where you left off.** Your progress
+  through the tour and the starting path you picked survive a reload or a
+  later revisit.
+- **Review a completed project straight from its notification.** Closeout
+  notifications now open the project's Implementation tab, where a new
+  "Review project" button next to the "Project Completed and Closed" badge
+  reopens the closeout summary — outcomes, decisions, and commits — with a
+  one-click Close that safely acknowledges an already-completed project.
+- **A new animated welcome tour.** After setup, GiljoAI now walks you through
+  how it works in five short animated steps — your tools, your product, your
+  agent crew, missions, and memory — instead of a wall of text. It ends by
+  asking how you want to start (import an existing codebase, shape a new idea,
+  upload a vision document, or fill the form yourself) and carries you all the
+  way to your first activated product.
+- **Gil now speaks through your banners.** The top-of-screen notices (updates
+  available, skills out of date, and more) now lead with Gil's face, so it's
+  clear when Gil is giving you a heads-up. The home-screen nudges — "activate
+  your product", the Git/Serena connect tip, and the tune-your-agents tip — now
+  live in this same banner instead of as separate pop-in cards: one consistent
+  banner, one voice. If you'd already dismissed those tips, they stay dismissed.
+- **A gentle 14-day context-review reminder.** When your active product hasn't
+  had its context reviewed in two weeks and you've completed work since, a
+  banner suggests tuning it so your agents keep building with an up-to-date
+  picture. You can dismiss it, and it stays off if you've turned the reminder
+  off in your notification settings.
+- **One-click "Add Default Agents" on the agent template page.** Bring back
+  the built-in agent templates at any time — the import only ever adds:
+  templates you edited are kept as-is (the fresh default arrives alongside
+  them as a "-duplicate" copy), and defaults you already have are skipped.
+
+### Changed
+
+- **Agents can now hand over the turn in the same call that asks the question.**
+  Posting to a Message Hub thread accepts a `pass_baton_to` option that moves
+  the thread's turn atomically with the post, and a message sent directly to
+  one participant that requires action now hands them the turn automatically —
+  so the recipient's "is it my turn" check can no longer miss a question that
+  forgot the separate hand-off step.
+- **You can now keep up to 16 agent templates active at once (was 8).** Activate up to 15 of your own agents alongside the reserved Orchestrator, and the "Your Team" badge and Agent Template Manager count both reflect the higher limit.
+- **The "time for a context review" reminder now follows your reminder threshold.**
+  The banner that suggests reviewing a product's context appears once you've
+  completed as many projects as your reminder setting specifies, rather than on a
+  fixed two-week timer. Reviewing your context resets the count, so you won't be
+  reminded again right after you've just tuned it.
+- **A clearer way to connect your coding tools.** The setup wizard now walks you
+  through your tools one at a time, with a live status card that turns green the
+  moment a tool connects — nothing to click. Pick from six tools, including
+  OpenCode and any generic MCP client, and the wizard shows the exact one-command
+  (or one-config) setup for each.
+- **A tidier Tools connect page.** Your connected tools now live in a single
+  directory with live status, and "+ Add a tool" walks you through connecting a
+  new one right there.
+- **The in-app User Guide caught up with the app.** Every chapter was
+  reconciled against the shipped product: new chapters for the Message Hub and
+  the Roadmap, an accurate walkthrough of the redesigned setup wizard and
+  connect directory, chain projects, the animated welcome tour, backups and
+  account security, and a new "Limits at a glance" table with the real numbers
+  (7 custom agents + the orchestrator, 2–5 projects per chain, and more).
+  Outdated content — the retired learning module, old Message Hub tab names,
+  and stale limits — is gone, and the hosted billing chapter now describes the
+  current account-deletion and backup/restore flows.
+- **Release notes now ship with every change, enforced automatically.** Each improvement or fix records its own release-note line as it is built, and an automatic check keeps the set complete — so release notes are always current, with nothing left behind at release time.
+- **Quieter server shutdown logs.** The step-by-step shutdown progress banner no longer floods the log output, so error details around a shutdown stay visible. The full per-step detail is still available at debug log level, and any step that fails or times out is still reported by name.
+
+### Fixed
+
+- **Agent setup downloads always reflect your current agents.** A setup link now
+  refuses to hand back an out-of-date bundle: if your agent templates changed
+  after the link was created, the download reports that it is stale so you can
+  re-run setup for a fresh one — no more installing a snapshot that is missing
+  templates you just added.
+- **Your own agents are never crowded out by the built-in defaults.** Agent
+  exports now prefer the agents you created and include up to 16 enabled agents,
+  so a full set of built-in defaults can no longer push your custom agents out of
+  the download.
+- **Long agent names no longer break the Message Hub or chain runs.**
+  Broadcasting, handing off, or directing a message on a thread that includes a
+  participant with a long agent name now works reliably instead of failing, and
+  chain runs accept a long conductor name for the same reason.
+- **Clear message when a product or project name is too long.** Naming a product
+  or project with more than 255 characters now shows a friendly validation
+  message on the form (with a live character counter) instead of failing with a
+  server error.
+- **Reminders reliably reappear on always-on servers.** The "update available"
+  and "skills out of date" banners are now re-checked periodically, so a
+  dismissed reminder comes back as intended while the condition still applies —
+  previously, on a server left running for a long time, it might not return.
+- **The agent template page's filters now work.** The status filter offers only Active and Inactive (the states templates actually have — the old Archived and Draft options always showed an empty list), the category dropdown now filters by agent role, and the Export Status column is sortable so out-of-date templates are easy to find.
+- **Closing out a project now returns you to the Projects page instantly.**
+  Previously the jobs view lingered for a couple of seconds after Close, and
+  the Review button could be clicked again during that window.
+- **Clearer message when two actions collide.** Uploading a vision document whose
+  name already exists, or importing the default agents twice at the same moment,
+  now returns a clear "already exists" message instead of an unexpected server
+  error. Retrying is safe.
+- **The onboarding tutorial recovers if its draft product disappears mid-setup.**
+  If the product the tutorial created is deleted while you are still on the upload
+  step, the next document upload now starts a fresh product instead of failing
+  against the removed one.
+- **A friendly "page not found" screen.** Visiting a URL that doesn't exist now
+  shows a proper, on-brand 404 page with a clear message and buttons to go Home or
+  go back — instead of an unfinished placeholder.
+
+### Security
+
+- **Force logout now ends connected app sessions too.** When an admin forces a
+  user to log out, any linked application is signed out immediately as well —
+  previously a connected app could keep refreshing its own access after a force
+  logout. The admin panel's "log everyone out" action does the same across all
+  users at once.
+- **Closed a timing gap where a connected app could survive being logged out.**
+  If a session was invalidated (force logout, password change, or account
+  deactivation) at the exact moment a connected app was refreshing its access,
+  the app could previously slip through and keep a working session. Refreshes and
+  invalidations are now serialized so the invalidation always wins.
+- **Login timing no longer reveals whether an account exists.** Login now takes the same amount of time whether or not an account exists, so a failed sign-in no longer reveals which email addresses or usernames are registered.
+- **Rate limits can't be bypassed behind the proxy.** Closed a gap where an attacker behind our proxy could dodge the login and password-reset rate limits by rotating a forged forwarding header. Those protections now always key on the real client address.
+
 ## [2.0.1] — 2026-07-15
 
 ### Security

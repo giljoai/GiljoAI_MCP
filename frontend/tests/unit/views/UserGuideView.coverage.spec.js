@@ -52,7 +52,7 @@ describe('UserGuideView — glossary term coverage', () => {
     'Job',
     'Task',
     'Product',
-    'Chain',
+    'Chain project',
     '360 Memory',
     'Mission',
   ]

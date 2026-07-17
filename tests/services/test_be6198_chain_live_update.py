@@ -9,7 +9,7 @@ The bug: every chain-drive write helper constructed a ``SequenceRunService`` WIT
 ``websocket_manager``, so ``SequenceRunService.update()`` short-circuited at
 ``if self._websocket_manager is None: return`` and never emitted ``sequence:updated``.
 The per-member chain badge stayed stale and the FE advance/return button was inert
-until a manual refresh. (EM_26 fixed this ONCE for the chain-mission window in
+until a manual refresh. (this was fixed ONCE for the chain-mission window in
 conductor_mission_mirror.py but never propagated it to the other writers.)
 
 These tests drive the REAL callers (not the isolated helper — a prior bug shipped

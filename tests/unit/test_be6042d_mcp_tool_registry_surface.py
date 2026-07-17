@@ -54,6 +54,10 @@ from api.endpoints.mcp_sdk_server import TOOL_SCOPES, mcp
 # unchanged). BE-9012b (BE-6225e) merged reactivate_job + dismiss_reactivation into
 # one resolve_reactivation tool -> 47. BE-9012d (bus retirement, phase d)
 # hard-removed send_message / receive_messages / get_messages -> 44. The count is 44.
+# BE-9197 added the pass_baton_to param to post_to_thread (atomic post-with-baton;
+# param addition only, tool set + count unchanged). BE-9201 added create_product +
+# create_vision_document (agent-side product bootstrap for the onboarding tutorial's
+# prompt paths B/D) -> 46.
 EXPECTED_TOOL_SURFACE: dict[str, dict[str, object]] = {
     "create_project": {
         "fn": "create_project",
@@ -178,6 +182,7 @@ EXPECTED_TOOL_SURFACE: dict[str, dict[str, object]] = {
             "from_agent",
             "loop_directive",
             "loop_interval_minutes",
+            "pass_baton_to",
             "requires_action",
             "set_status",
             "thread_id",
@@ -330,6 +335,26 @@ EXPECTED_TOOL_SURFACE: dict[str, dict[str, object]] = {
         ],
         "scope": "mcp:agent",
     },
+    # BE-9201: agent-side product bootstrap (45th/46th tools). create_product
+    # establishes the row (populate stays update_product_context's job);
+    # create_vision_document is the MCP twin of the REST vision upload.
+    "create_product": {
+        "fn": "create_product",
+        "params": [
+            "brand_guidelines",
+            "core_features",
+            "description",
+            "name",
+            "project_path",
+            "target_platforms",
+        ],
+        "scope": "mcp:write",
+    },
+    "create_vision_document": {
+        "fn": "create_vision_document",
+        "params": ["content", "document_name", "product_id"],
+        "scope": "mcp:write",
+    },
     "get_vision_doc": {
         "fn": "get_vision_doc",
         "params": ["chunk", "product_id"],
@@ -412,7 +437,9 @@ def test_registered_tool_set_is_exactly_preserved():
     BE-6221a added start_chain_run (headless chain entry point): 46 -> 47.
     BE-6225b added search_memory (the missing 360-memory search JTBD): 47 -> 48.
     BE-9012b (BE-6225e) merged reactivate_job + dismiss_reactivation into
-    resolve_reactivation: 48 -> 47.
+    resolve_reactivation: 48 -> 47. BE-9012d hard-removed the 3 bus tools:
+    47 -> 44. BE-9201 added create_product + create_vision_document
+    (agent-side product bootstrap): 44 -> 46.
     """
     live_names = {t.name for t in mcp._tool_manager.list_tools()}
     expected_names = set(EXPECTED_TOOL_SURFACE)
@@ -420,7 +447,7 @@ def test_registered_tool_set_is_exactly_preserved():
         f"Tool registry drift. Missing: {sorted(expected_names - live_names)}; "
         f"Unexpected: {sorted(live_names - expected_names)}"
     )
-    assert len(live_names) == 44
+    assert len(live_names) == 46
 
 
 def test_every_tool_fn_params_and_scope_preserved():

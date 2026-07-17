@@ -191,9 +191,12 @@
           <p class="text-body-medium text-muted-a11y mt-1">Connect external tools and services to your GiljoAI workspace</p>
         </div>
 
-        <!-- Connect cards — 5-up on wide (16:9), down to 1 column on mobile -->
+        <!-- AI-tool connect surface — C2 tool directory (FE-9204). Shared connect
+             card with the setup wizard; replaces the old MCP + generic-MCP cards. -->
+        <ToolsConnectDirectory class="mb-5" />
+
+        <!-- Other integrations (non-AI-tool): export, Serena, Git. -->
         <div class="connect-grid mb-5">
-          <McpIntegrationCard />
           <AgentExport />
           <SerenaIntegrationCard
             :enabled="serenaEnabled"
@@ -205,7 +208,6 @@
             :loading="togglingGit"
             @update:enabled="toggleGit"
           />
-          <McpGenericCard />
         </div>
 
         <!-- Credentials (compact section, formerly the "API Keys" peer tab) -->
@@ -229,8 +231,7 @@ import TemplateManager from '@/components/TemplateManager.vue'
 import ApiKeyManager from '@/components/ApiKeyManager.vue'
 import AgentExport from '@/components/AgentExport.vue'
 import ContextPriorityConfig from '@/components/settings/ContextPriorityConfig.vue'
-import McpIntegrationCard from '@/components/settings/integrations/McpIntegrationCard.vue'
-import McpGenericCard from '@/components/settings/integrations/McpGenericCard.vue'
+import ToolsConnectDirectory from '@/components/tools/ToolsConnectDirectory.vue'
 import SerenaIntegrationCard from '@/components/settings/integrations/SerenaIntegrationCard.vue'
 import GitIntegrationCard from '@/components/settings/integrations/GitIntegrationCard.vue'
 import setupService from '@/services/setupService'

@@ -14,81 +14,12 @@
         <div class="setup-wizard-backdrop" />
 
         <!-- ============================================================
-             LEARNING MODE — read-only reference guide.
-             PRESERVED VERBATIM (single-column panel, unchanged from pre-6259b).
-             ============================================================ -->
-        <div v-if="mode === 'learning'" class="setup-wizard-panel smooth-border" tabindex="-1">
-          <div class="setup-wizard-header">
-            <h2 class="setup-wizard-title">
-              <span class="setup-wizard-title-gradient">How to Use GiljoAI MCP</span>
-            </h2>
-            <v-btn
-              icon
-              variant="text"
-              size="small"
-              class="setup-wizard-close-btn"
-              aria-label="Close guide"
-              @click="handleDismiss"
-            >
-              <v-icon>mdi-close</v-icon>
-            </v-btn>
-          </div>
-
-          <div class="setup-wizard-content">
-            <div class="learning-content">
-              <div
-                v-for="section in LEARNING_SECTIONS"
-                :key="section.id"
-                class="learning-section smooth-border"
-              >
-                <button
-                  class="learning-section-header"
-                  :aria-expanded="expandedSections[section.id]"
-                  :aria-controls="`learning-${section.id}`"
-                  @click="toggleSection(section.id)"
-                >
-                  <v-icon size="20" class="section-icon" :style="{ color: expandedSections[section.id] ? 'var(--color-accent-primary)' : 'var(--color-text-secondary)' }">
-                    {{ section.icon }}
-                  </v-icon>
-                  <span class="section-title">{{ section.title }}</span>
-                  <v-icon size="18" :class="['section-chevron', { 'section-chevron--open': expandedSections[section.id] }]">
-                    mdi-chevron-down
-                  </v-icon>
-                </button>
-                <Transition name="section-expand">
-                  <div
-                    v-if="expandedSections[section.id]"
-                    :id="`learning-${section.id}`"
-                    class="learning-section-body"
-                  >
-                    <p v-for="(line, i) in section.content" :key="i" class="learning-line">
-                      {{ line }}
-                    </p>
-                  </div>
-                </Transition>
-              </div>
-              <p class="learning-closing">You can reopen this guide any time from User Settings.</p>
-            </div>
-          </div>
-
-          <div class="setup-wizard-footer setup-wizard-footer--learning">
-            <v-spacer />
-            <v-btn
-              color="primary"
-              variant="flat"
-              class="footer-btn-gotit"
-              @click="handleDismiss"
-            >
-              Got it
-            </v-btn>
-          </div>
-        </div>
-
-        <!-- ============================================================
              SETUP MODE — Gradient Rail (FE-6259b).
              Left: vertical gradient stepper. Right: step content + footer.
+             (Learning mode was replaced by the onboarding tutorial —
+             frontend/src/components/tutorial/TutorialOverlay.vue, FE-9200.)
              ============================================================ -->
-        <div v-else class="wizard-rail-panel smooth-border" tabindex="-1">
+        <div class="wizard-rail-panel smooth-border" tabindex="-1">
           <v-btn
             icon
             variant="text"
@@ -121,35 +52,53 @@
                 <div class="spine">
                   <div class="spine-fill" :style="{ height: spineFillPct + '%' }" />
                 </div>
-                <div
-                  v-for="(step, i) in STEPS"
-                  :key="step.id"
-                  :style="{ '--nodecol': STEP_COLORS[i] }"
-                  :class="[
-                    'rail-node',
-                    {
-                      'rail-node--done': i < currentStep,
-                      'rail-node--active': i === currentStep,
-                      'rail-node--clickable': i < currentStep,
-                    },
-                  ]"
-                  :data-testid="`rail-node-${step.id}`"
-                  role="button"
-                  :tabindex="i < currentStep ? 0 : -1"
-                  :aria-current="i === currentStep ? 'step' : undefined"
-                  @click="goToStep(i)"
-                  @keydown.enter.prevent="goToStep(i)"
-                  @keydown.space.prevent="goToStep(i)"
-                >
-                  <span class="rail-dot">
-                    <v-icon v-if="i < currentStep" size="13">mdi-check</v-icon>
-                    <template v-else>{{ i + 1 }}</template>
-                  </span>
-                  <span class="rail-txt">
-                    <span class="rail-node-label">{{ step.label }}</span>
-                    <span class="rail-node-desc">{{ STEP_DESC[i] }}</span>
-                  </span>
-                </div>
+                <template v-for="(step, i) in STEPS" :key="step.id">
+                  <div
+                    :style="{ '--nodecol': STEP_COLORS[i] }"
+                    :class="[
+                      'rail-node',
+                      {
+                        'rail-node--done': i < currentStep,
+                        'rail-node--active': i === currentStep,
+                        'rail-node--clickable': i < currentStep,
+                      },
+                    ]"
+                    :data-testid="`rail-node-${step.id}`"
+                    role="button"
+                    :tabindex="i < currentStep ? 0 : -1"
+                    :aria-current="i === currentStep ? 'step' : undefined"
+                    @click="goToStep(i)"
+                    @keydown.enter.prevent="goToStep(i)"
+                    @keydown.space.prevent="goToStep(i)"
+                  >
+                    <span class="rail-dot">
+                      <v-icon v-if="i < currentStep" size="13">mdi-check</v-icon>
+                      <template v-else>{{ i + 1 }}</template>
+                    </span>
+                    <span class="rail-txt">
+                      <span class="rail-node-label">{{ step.label }}</span>
+                      <span class="rail-node-desc">{{ STEP_DESC[i] }}</span>
+                    </span>
+                  </div>
+
+                  <!-- Connect stage: per-tool sub-rows (green done / amber pulse current /
+                       blank ahead). State comes from wizard progression, never event attribution. -->
+                  <div
+                    v-if="step.id === 'connect' && currentStep === 1 && connectSubRows.length"
+                    class="rail-subs"
+                  >
+                    <div
+                      v-for="sub in connectSubRows"
+                      :key="sub.id"
+                      class="rail-sub"
+                      :data-testid="`rail-sub-${sub.id}`"
+                    >
+                      <span :class="['rail-sub-dot', `rail-sub-dot--${sub.state}`]" />
+                      <span class="rail-sub-label">{{ sub.name }}</span>
+                      <span class="rail-sub-status">{{ sub.statusText }}</span>
+                    </div>
+                  </div>
+                </template>
               </div>
             </aside>
 
@@ -164,11 +113,11 @@
                   </p>
 
                   <div class="wiz-center">
-                    <div class="tools-grid">
+                    <div class="tools-grid tools-grid--six">
                       <div
-                        v-for="tool in TOOLS"
+                        v-for="tool in SETUP_TOOLS"
                         :key="tool.id"
-                        :class="['tool-card', 'smooth-border', { 'tool-card--sel': isSelected(tool.id) }]"
+                        :class="['tool-card', 'tool-card--row', 'smooth-border', { 'tool-card--sel': isSelected(tool.id) }]"
                         :data-testid="`tool-select-${tool.id}`"
                         role="checkbox"
                         :aria-checked="isSelected(tool.id)"
@@ -178,24 +127,33 @@
                         @keydown.enter.prevent="toggleTool(tool.id)"
                         @keydown.space.prevent="toggleTool(tool.id)"
                       >
-                        <span v-if="isSelected(tool.id)" class="tool-card-tick"><v-icon size="12">mdi-check</v-icon></span>
-                        <img :src="tool.logo" :alt="tool.name" class="tool-card-logo" />
-                        <span class="tool-name">{{ tool.name }}</span>
-                        <span class="tool-provider">{{ tool.provider }}</span>
+                        <span class="tool-card-well">
+                          <img v-if="tool.logo" :src="tool.logo" :alt="tool.name" class="tool-card-logo" />
+                          <v-icon v-else size="22">{{ tool.icon }}</v-icon>
+                        </span>
+                        <span class="tool-card-text">
+                          <span class="tool-name">{{ tool.name }}</span>
+                          <span class="tool-method" :data-testid="`tool-method-${tool.id}`">{{ toolMethodTag(tool.id) }}</span>
+                        </span>
+                        <span v-if="isSelected(tool.id)" class="tool-card-ring tool-card-ring--on"><v-icon size="12">mdi-check-bold</v-icon></span>
+                        <span v-else class="tool-card-ring" />
                       </div>
                     </div>
                     <p class="step-fineprint">
-                      Generic MCP connectivity can be configured later in Settings &gt; Tools &gt; Connect.
+                      The named tools get a one-command setup. Generic MCP client covers anything else that
+                      speaks open MCP. Add more later in Tools &gt; Connect.
                     </p>
                   </div>
                 </div>
 
-                <!-- Step 1: Connect (0855d) -->
+                <!-- Step 1: Connect — walk one tool at a time (FE-9204) -->
                 <SetupStep2Connect
                   v-else-if="currentStep === 1"
                   :selected-tools="localSelectedTools"
                   @can-proceed="step2CanProceed = $event"
                   @step-data="step2Data = $event"
+                  @walk-state="step2WalkState = $event"
+                  @advance-step="handleNext"
                 />
 
                 <!-- Step 2: Install (0855e) -->
@@ -300,80 +258,12 @@
 </template>
 
 <script setup>
-import { ref, computed, reactive, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
+import configService from '@/services/configService'
+import { SETUP_TOOLS, methodTag, toolName } from '@/config/setupTools'
 import SetupStep2Connect from './SetupStep2Connect.vue'
 import SetupStep3Commands from './SetupStep3Commands.vue'
 import SetupStep4Complete from './SetupStep4Complete.vue'
-
-const LEARNING_SECTIONS = [
-  {
-    id: 'how-it-works',
-    icon: 'mdi-connection',
-    title: 'How GiljoAI Works',
-    content: [
-      'GiljoAI MCP is a passive context server. Your AI coding tool does all reasoning and coding using your own subscription. GiljoAI stores product knowledge, generates focused prompts, and serves coordination data so your agents stay aligned.',
-      'Your AI tool connects to GiljoAI as an MCP server over HTTP. Each tool gets its own API key and connection.',
-      'Use Claude Code CLI, Codex CLI, Gemini CLI, or any MCP-compatible tool simultaneously. If it can connect to an MCP server, GiljoAI accepts it.',
-    ],
-  },
-  {
-    id: 'product',
-    icon: 'mdi-package-variant-closed',
-    title: 'Define Your Product',
-    content: [
-      'Create a Product to represent the software you are building. Fill in context fields: description, tech stack, architecture, testing strategy, constraints, and more.',
-      'Enter context manually, or use a pre-generated prompt that lets your AI coding tool suggest what to include based on a vision document or product proposal.',
-      'Context settings let you toggle fields on or off and adjust depth per source. Keep prompts lean for simple tasks or load full detail for complex missions.',
-    ],
-  },
-  {
-    id: 'projects',
-    icon: 'mdi-folder-open',
-    title: 'Projects and Missions',
-    content: [
-      'Create Projects inside a product. Each project is a focused unit of work such as a feature, sprint, or scaffolding effort. Stage a series of projects and activate one at a time.',
-      'Activate a project and GiljoAI generates a bootstrap prompt. Paste it into your CLI tool to kick off the orchestrator, which plans the mission and assigns agents from your templates.',
-      'Context is assembled per session from your product fields, 360 Memory, and optional integrations. Each agent gets exactly what it needs for its role.',
-    ],
-  },
-  {
-    id: 'skills',
-    icon: 'mdi-slash-forward-box',
-    title: 'Skills and Agent Templates',
-    content: [
-      'One skill is installed on your machine during setup: /giljo (Claude Code CLI, Gemini CLI) or $giljo (Codex CLI). It routes both create and read for projects and tasks.',
-      'Use /giljo to capture tasks, create projects, or look up existing projects and tasks mid-session without breaking flow. To install or refresh agent templates, run the giljo_setup tool and choose "Agents only".',
-      'The Agent Template Manager lets you browse, customize, and create agent profiles with roles, expertise, and chain strategies. Templates export automatically for the right platform.',
-    ],
-  },
-  {
-    id: 'memory',
-    icon: 'mdi-brain',
-    title: '360 Memory',
-    content: [
-      'Each completed project writes to 360 Memory automatically: what was built, key decisions, patterns discovered, what worked. This is not a plugin or integration. It is a core product behavior.',
-      'Your next project starts with accumulated context from previous ones. The orchestrator reads past memories alongside your product context and project description to plan each mission.',
-      'You control how many memories back agents read through the context settings. Optionally enrich memory with git commit history for the complete development timeline.',
-    ],
-  },
-  {
-    id: 'dashboard',
-    icon: 'mdi-view-dashboard',
-    title: 'Dashboard and Monitoring',
-    content: [
-      'The Products, Projects, Tasks, and Jobs pages let you manage your work and track technical debt across all products.',
-      'The Jobs page is where staging begins and agents execute. Watch their planning, to-do lists, and messages in real time.',
-      'A message inbox lets you talk directly to the orchestrator or broadcast to the entire agent team. All messages are logged in the MCP message system for auditability.',
-    ],
-  },
-]
-
-const TOOLS = [
-  { id: 'claude_code', name: 'Claude Code CLI', provider: 'by Anthropic', logo: '/claude-color.svg' },
-  { id: 'codex_cli', name: 'Codex CLI', provider: 'by OpenAI', logo: '/icons/codex_mark_white.svg' },
-  { id: 'gemini_cli', name: 'Gemini CLI', provider: 'by Google', logo: '/gemini-icon.svg' },
-  { id: 'antigravity_cli', name: 'Antigravity CLI', provider: 'by Antigravity', logo: '/antigravity-color.svg' },
-]
 
 const STEPS = [
   { id: 'tools', label: 'Choose Tools' },
@@ -422,22 +312,32 @@ const emit = defineEmits([
   'step-complete',
 ])
 
-// Learning mode: collapsible sections (first section expanded by default)
-const expandedSections = reactive(
-  Object.fromEntries(LEARNING_SECTIONS.map((s, i) => [s.id, i === 0])),
-)
-
-function toggleSection(sectionId) {
-  expandedSections[sectionId] = !expandedSections[sectionId]
-}
-
 // Internal state
 const localSelectedTools = ref([...props.selectedTools])
 const step2CanProceed = ref(false)
 const step2Data = ref({})
+const step2WalkState = ref(null)
 const step3CanProceed = ref(false)
 const step3Data = ref({})
 const showRestartConfirm = ref(false)
+
+// Edition drives the choose-grid method tags (CE = every tool API KEY; SaaS = per
+// capability). Positively confirm 'ce'; default to SaaS/unknown on uncertainty.
+const isCe = ref(false)
+async function loadEdition() {
+  try {
+    const cfg = await configService.fetchConfig()
+    // eslint-disable-next-line giljo-internal/no-scattered-mode-checks
+    isCe.value = cfg?.giljo_mode === 'ce'
+  } catch {
+    isCe.value = false
+  }
+}
+onMounted(loadEdition)
+
+function toolMethodTag(toolId) {
+  return methodTag(toolId, isCe.value)
+}
 
 function handleRestartConfirmed() {
   showRestartConfirm.value = false
@@ -456,11 +356,29 @@ watch(
 // Connected tools from Step 2 data, passed to Step 3
 const step2ConnectedTools = computed(() => step2Data.value?.connectedTools || [])
 
+// Connect-stage rail sub-rows: one per selected tool, state from the walk
+// (done = connected, current = tool being walked, ahead = not yet reached).
+const connectSubRows = computed(() => {
+  const w = step2WalkState.value
+  if (!w?.order?.length) return []
+  return w.order.map((id) => {
+    let state = 'ahead'
+    if (w.conn?.[id] === 'connected') state = 'done'
+    else if (id === w.activeId) state = 'current'
+    return {
+      id,
+      name: toolName(id),
+      state,
+      statusText: state === 'done' ? 'CONNECTED' : state === 'current' ? 'WAITING' : '',
+    }
+  })
+})
+
 // Rail: spine fill height tracks progress (0 → 100%, 3 gaps for 4 steps).
 const spineFillPct = computed(() => (Math.min(props.currentStep, 3) / 3) * 100)
 
 // Rail nodes: only completed (done) steps are clickable — mirrors the
-// authoritative pixel spec (internal/design/onboarding-gradient-rail).
+// authoritative pixel spec (see the design-system reference).
 function goToStep(i) {
   if (i < props.currentStep) {
     emit('update:currentStep', i)
@@ -620,170 +538,6 @@ function handleDismiss() {
   position: absolute;
   inset: 0;
   background: rgba($color-background-primary, 0.85);
-}
-
-/* ── Learning mode panel (unchanged single-column) ── */
-.setup-wizard-panel {
-  position: relative;
-  width: 100%;
-  max-width: 810px;
-  max-height: calc(100vh - 48px);
-  overflow: hidden;
-  background: $elevation-raised;
-  border-radius: $border-radius-rounded;
-  display: flex;
-  flex-direction: column;
-}
-
-.setup-wizard-header {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  padding: 20px 24px 12px;
-}
-
-.setup-wizard-title {
-  font-size: 3rem;
-  font-weight: 700;
-  color: $color-text-primary;
-  margin: 0;
-  line-height: 1.2;
-  letter-spacing: 0.5px;
-  text-align: center;
-}
-
-.setup-wizard-title-gradient {
-  background: var(--gradient-brand);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.setup-wizard-close-btn {
-  position: absolute;
-  right: 24px;
-  top: 50%;
-  transform: translateY(-50%);
-}
-
-.setup-wizard-content {
-  flex: 1;
-  padding: 0 24px 16px;
-  min-height: 0;
-  overflow-y: auto;
-}
-
-.setup-wizard-footer {
-  display: flex;
-  align-items: center;
-  padding: 12px 24px 20px;
-}
-
-.footer-btn-gotit {
-  border-radius: $border-radius-default;
-  min-width: 120px;
-  font-weight: 600;
-}
-
-.setup-wizard-footer--learning {
-  justify-content: flex-end;
-}
-
-/* Learning mode sections */
-.learning-content {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.learning-section {
-  background: $elevation-elevated;
-  border-radius: $border-radius-default;
-  overflow: hidden;
-}
-
-.learning-section-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 14px 16px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: $color-text-primary;
-  font-size: 0.9375rem;
-  font-weight: 600;
-  text-align: left;
-  transition: background-color 150ms ease-out;
-}
-
-.learning-section-header:hover {
-  background: rgba($color-brand-yellow, 0.05);
-}
-
-.learning-section-header:focus-visible {
-  outline: 2px solid $color-brand-yellow;
-  outline-offset: -2px;
-}
-
-.section-icon {
-  flex-shrink: 0;
-}
-
-.section-title {
-  flex: 1;
-}
-
-.section-chevron {
-  color: $lightest-blue;
-  transition: transform 250ms ease-out;
-  flex-shrink: 0;
-}
-
-.section-chevron--open {
-  transform: rotate(180deg);
-}
-
-.learning-section-body {
-  padding: 0 16px 14px 46px;
-}
-
-.learning-line {
-  font-size: 0.8125rem;
-  color: $lightest-blue; /* design-token-exempt: closest match, original #b0b8d0 */
-  line-height: 1.6;
-  margin: 0 0 6px;
-}
-
-.learning-line:last-child {
-  margin-bottom: 0;
-}
-
-.learning-closing {
-  font-size: 0.8125rem;
-  color: $lightest-blue;
-  text-align: center;
-  margin-top: 16px;
-}
-
-.section-expand-enter-active {
-  transition: max-height 250ms ease-out, opacity 250ms ease-out;
-  max-height: 300px;
-  overflow: hidden;
-}
-
-.section-expand-leave-active {
-  transition: max-height 200ms ease-in, opacity 200ms ease-in;
-  max-height: 300px;
-  overflow: hidden;
-}
-
-.section-expand-enter-from,
-.section-expand-leave-to {
-  max-height: 0;
-  opacity: 0;
 }
 
 /* ============================================================
@@ -1051,26 +805,26 @@ function handleDismiss() {
   line-height: 1.5;
 }
 
-/* Tools grid: single 4-up row (step 0) */
-.tools-grid {
+/* Tools grid: 2x3 for the six-tool choose step (FE-9204). */
+.tools-grid--six {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: 1fr 1fr;
   gap: 12px;
 }
 
 @media (max-width: 640px) {
-  .tools-grid {
-    grid-template-columns: repeat(2, 1fr);
+  .tools-grid--six {
+    grid-template-columns: 1fr;
   }
 }
 
-.tool-card {
+/* Row card: icon well + name/method + check ring. */
+.tool-card--row {
   position: relative;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 9px;
-  padding: 20px 10px 16px;
+  gap: 13px;
+  padding: 16px 18px;
   border-radius: $border-radius-md;
   background: $elevation-elevated;
   cursor: pointer;
@@ -1078,12 +832,12 @@ function handleDismiss() {
   transition: transform 0.15s, box-shadow 0.15s;
 }
 
-.tool-card:hover {
-  transform: translateY(-2px);
+.tool-card--row:hover {
+  transform: translateY(-1px);
   --smooth-border-color: #{rgba($color-brand-yellow, 0.4)};
 }
 
-.tool-card:focus-visible {
+.tool-card--row:focus-visible {
   outline: 2px solid $color-brand-yellow;
   outline-offset: 2px;
 }
@@ -1094,23 +848,29 @@ function handleDismiss() {
   background: rgba($color-brand-yellow, 0.05);
 }
 
-.tool-card-tick {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
+.tool-card-well {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: $border-radius-default;
+  background: rgba(255, 255, 255, 0.05);
   display: grid;
   place-items: center;
-  background: $color-brand-yellow;
-  color: $color-on-yellow-ink;
+  color: $lightest-blue;
 }
 
 .tool-card-logo {
-  width: 38px;
-  height: 38px;
+  width: 22px;
+  height: 24px;
   object-fit: contain;
+}
+
+.tool-card-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
 .tool-name {
@@ -1118,11 +878,107 @@ function handleDismiss() {
   font-size: 0.9rem;
   font-weight: 600;
   color: $color-text-primary;
-  text-align: center;
 }
 
-.tool-provider {
-  font-size: 0.74rem;
+.tool-method {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.56rem;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.tool-card-ring {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+}
+
+.tool-card-ring--on {
+  background: rgba($color-brand-yellow, 0.16);
+  color: $color-brand-yellow;
+  box-shadow: none;
+  animation: ring-pop 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes ring-pop {
+  0% { transform: scale(0.6); opacity: 0; }
+  60% { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tool-card-ring--on {
+    animation: none;
+  }
+}
+
+/* Connect-stage rail sub-rows */
+.rail-subs {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 0 0 4px 43px;
+}
+
+.rail-sub {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 8px;
+  border-radius: 8px;
+}
+
+.rail-sub-dot {
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.rail-sub-dot--done {
+  background: $color-status-success;
+}
+
+.rail-sub-dot--current {
+  background: $color-indicator-disconnected;
+  animation: rail-sub-wait 1.6s ease infinite;
+}
+
+@keyframes rail-sub-wait {
+  0%, 100% { opacity: 0.35; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rail-sub-dot--current {
+    animation: none;
+  }
+}
+
+.rail-sub-label {
+  flex: 1;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rail-sub-dot--current + .rail-sub-label {
+  color: $lightest-blue;
+}
+
+.rail-sub-status {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.52rem;
+  letter-spacing: 0.06em;
   color: var(--text-muted);
 }
 
@@ -1213,18 +1069,6 @@ function handleDismiss() {
 @media (max-width: 599px) {
   .setup-wizard-overlay {
     padding: 12px;
-  }
-
-  .setup-wizard-header {
-    padding: 16px 16px 8px;
-  }
-
-  .setup-wizard-content {
-    padding: 0 16px 12px;
-  }
-
-  .setup-wizard-footer {
-    padding: 8px 16px 16px;
   }
 
   .wizard-rail {

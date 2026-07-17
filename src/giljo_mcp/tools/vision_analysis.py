@@ -21,17 +21,25 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from giljo_mcp.config_manager import get_config
 from giljo_mcp.database import DatabaseManager
 from giljo_mcp.exceptions import ResourceNotFoundError, ValidationError
 from giljo_mcp.models.context import MCPContextIndex
 from giljo_mcp.models.products import (
     Product,
+    VisionDocument,
 )
 from giljo_mcp.repositories.vision_document_repository import VisionDocumentRepository
 from giljo_mcp.schemas.jsonb_validators import (
     validate_consolidated_vision,
     validate_vision_summaries,
 )
+from giljo_mcp.security.upload_guard import (
+    TEXT_EXTENSIONS,
+    UploadFilenameError,
+    sanitize_upload_filename,
+)
+from giljo_mcp.services._session_helpers import tenant_scoped_session
 from giljo_mcp.services.product_field_map import assemble_update_kwargs
 from giljo_mcp.services.product_vision_service import ProductVisionService
 
@@ -313,6 +321,104 @@ async def get_vision_doc(
             await websocket_manager.broadcast_event_to_tenant(tenant_key=tenant_key, event=event)
 
         return base
+
+
+# BE-9201: default name for an agent-authored vision document (prompt D/B).
+DEFAULT_AGENT_VISION_DOC_NAME = "Agent Vision.md"
+
+
+async def create_vision_document(
+    product_id: str,
+    tenant_key: str,
+    content: str,
+    document_name: str = "",
+    db_manager: DatabaseManager | None = None,
+    _test_session: AsyncSession | None = None,
+) -> dict[str, Any]:
+    """Create a vision document from agent-authored markdown (BE-9201).
+
+    Agent-side twin of the REST upload endpoints: routes through
+    ProductVisionService.upload_vision_document (the owning service both REST
+    endpoints use), so the doc gets the identical ingest — inline storage,
+    auto-chunking, auto-consolidation (refreshing consolidated_vision_hash, the
+    staleness fingerprint in services/vision_hash.py) — and appears in the UI
+    exactly like an uploaded file. Boundary validation mirrors the SEC-0001
+    REST guards (minus the byte-sniff — ``content`` is a typed str): non-empty
+    content, the SAME ``get_config().upload.max_upload_bytes`` cap, filename
+    sanitization + ``.md`` appended when the extension is missing.
+
+    Raises ValidationError (empty/oversize content, bad or duplicate
+    document_name) or ResourceNotFoundError (product not found for tenant).
+    """
+    if not db_manager and _test_session is None:
+        raise ValueError("db_manager is required")
+
+    if not content or not content.strip():
+        raise ValidationError(
+            message="content is required and cannot be empty. Pass the full markdown vision document text.",
+            context={"product_id": product_id},
+        )
+
+    max_bytes = get_config().upload.max_upload_bytes
+    content_bytes = len(content.encode("utf-8"))
+    if content_bytes > max_bytes:
+        raise ValidationError(
+            message=f"content is {content_bytes} bytes; the maximum vision document size is "
+            f"{max_bytes // 1024 // 1024} MB. Trim the document and retry.",
+            context={"product_id": product_id, "max_bytes": max_bytes},
+        )
+
+    raw_name = (document_name or "").strip() or DEFAULT_AGENT_VISION_DOC_NAME
+    try:
+        safe_name = sanitize_upload_filename(raw_name)
+    except UploadFilenameError as exc:
+        raise ValidationError(
+            message=f"Invalid document_name: {exc}. Use a plain filename like 'Product Vision.md'.",
+            context={"product_id": product_id},
+        ) from exc
+    if not any(safe_name.lower().endswith(ext) for ext in TEXT_EXTENSIONS):
+        safe_name = f"{safe_name}.md"
+
+    vision_service = ProductVisionService(db_manager=db_manager, tenant_key=tenant_key, test_session=_test_session)
+
+    # Duplicate-name pre-check mirroring the uq_vision_doc_product_name unique
+    # constraint (covers trashed rows too) so the agent gets an actionable
+    # rejection, not a sanitized constraint 500 (REST maps the same to a 409).
+    async with tenant_scoped_session(db_manager, tenant_key, _test_session) as session:
+        clash = await session.execute(
+            select(VisionDocument.id).where(
+                VisionDocument.tenant_key == tenant_key,
+                VisionDocument.product_id == product_id,
+                VisionDocument.document_name == safe_name,
+            )
+        )
+        if clash.first() is not None:
+            raise ValidationError(
+                message=f"A vision document named '{safe_name}' already exists for this product. "
+                "Pass a different document_name.",
+                context={"product_id": product_id, "document_name": safe_name},
+            )
+
+    result = await vision_service.upload_vision_document(product_id=product_id, content=content, filename=safe_name)
+
+    # Parity with the REST upload (BE-5118): a fresh doc has no summaries, so
+    # the completion flag must drop to FALSE until the agent writes summaries.
+    # tenant_scoped_session (not bare _session_scope): the evaluator's
+    # tenant-predicated select needs service-sourced tenant context.
+    async with tenant_scoped_session(db_manager, tenant_key, _test_session) as session:
+        await vision_service.evaluate_vision_analysis_complete(session, product_id)
+        await session.commit()
+
+    return {
+        "success": True,
+        "document_id": result.document_id,
+        "document_name": result.document_name,
+        "chunks_created": result.chunks_created,
+        "total_tokens": result.total_tokens,
+        "product_id": product_id,
+        "next_step": "The document is ingested and visible in the dashboard. To populate the product card "
+        "from it, call get_vision_doc then update_product_context (including vision_summaries + consolidated_vision).",
+    }
 
 
 def _build_update_kwargs(

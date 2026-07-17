@@ -567,6 +567,8 @@ export const api = {
     preview: (id, data = {}) => apiClient.post(`/api/v1/templates/${id}/preview/`, data),
     reset: (id) => apiClient.post(`/api/v1/templates/${id}/reset/`),
     activeCount: () => apiClient.get('/api/v1/templates/stats/active-count'),
+    // FE-9203: additive import of the seeded default agents (no body)
+    importDefaults: () => apiClient.post('/api/v1/templates/import-defaults'),
   },
 
   // Per-product agent assignments (junction table toggle)
@@ -623,7 +625,7 @@ export const api = {
   },
 
   // Agent Jobs API (Handover 0119 Phase 1 - Migration from /api/v1/agents)
-  // Reference: handovers/0119_api_harmonization_backward_compatibility_cleanup.md
+  // Reference: internal design notes
   // Field mappings: agent_id → job_id, created_at → spawned_at, status → job status
   agentJobs: {
     // Core job management (maps from old agents API)
@@ -671,7 +673,7 @@ export const api = {
   },
 
   // Prompts (Handover 0119 Phase 1 - Standardized to /api/v1/prompts)
-  // Reference: handovers/0119_api_harmonization_backward_compatibility_cleanup.md
+  // Reference: internal design notes
   prompts: {
     staging: (projectId, params) =>
       apiClient.get(`/api/v1/prompts/staging/${projectId}`, { params }),

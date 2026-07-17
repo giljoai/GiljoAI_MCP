@@ -12,7 +12,7 @@ Create Date: 2026-07-03
 The closeout-gate reframe ("Hub absorbs the bus", chain step b) stops re-matching
 keyword regexes against every incomplete TODO at ``complete_job`` time and instead
 reads a durable marker stamped once when the TODO is written (see
-handovers/INF-6201_PROPOSAL_hub_absorbs_bus.md §6 rows 4-6). This adds that column:
+internal design notes §6 rows 4-6). This adds that column:
 
 - ``todo_kind`` — one of ``self_closeout`` / ``closeout_intent`` / ``chain_drive``
   (``domain.todo_kinds``), or NULL for an ordinary work TODO. NULL is the common

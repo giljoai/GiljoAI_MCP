@@ -400,6 +400,22 @@ async def _refresh_grant_after_lookup(
         )
         return dict(cached.response_body)
 
+    # SEC-9217b: serialize this grant against a concurrent session invalidation
+    # (force-logout / password change / deactivation via evict_user_tokens). Those
+    # paths take a user-first SELECT ... FOR UPDATE on the owning User row; take
+    # the SAME lock here, in the SAME order, so the two cannot interleave. The
+    # reuse-detection gate below reads `row.revoked`, which was cached at the
+    # initial UNLOCKED lookup (a TOCTOU window widened by the bcrypt client-secret
+    # verify above) -- re-read it FRESH under the lock so a revoke that committed
+    # in that window is seen. If the invalidation instead lands AFTER this grant,
+    # it blocks on the lock until this commits, then revokes the freshly minted
+    # row and out-epochs the freshly minted access token. Either order is safe.
+    user_result = await db.execute(
+        select(User).where(User.id == row.user_id, User.tenant_key == row.tenant_key).with_for_update()
+    )
+    user = user_result.scalar_one_or_none()
+    await db.refresh(row, attribute_names=["revoked"])
+
     if row.revoked:
         revoked_count = await revoke_family(db, family_id=row.family_id, tenant_key=row.tenant_key)
         # Commit BEFORE raising. The router maps ValueError to an
@@ -425,15 +441,8 @@ async def _refresh_grant_after_lookup(
     # token; without this filter they would rotate it into fresh access+refresh
     # pairs until the row's expiry. Mirrors the dashboard /api/auth/refresh gate
     # (api/endpoints/auth/session.py) and the REST dependency is_active check.
-    user_result = await db.execute(
-        select(User).where(
-            User.id == row.user_id,
-            User.tenant_key == row.tenant_key,
-            User.is_active,
-        )
-    )
-    user = user_result.scalar_one_or_none()
-    if user is None:
+    # (SEC-9217b: evaluated on the User row already locked FOR UPDATE above.)
+    if user is None or not user.is_active:
         raise ValueError("invalid_grant: user no longer active")
 
     # Rotation: revoke the prior token, mint a new pair in the same family.

@@ -226,6 +226,86 @@ async def search_memory(
 
 
 @mcp.tool(
+    name="create_product",
+    description=(
+        "Create a new product for the user (BE-9201 agent-side bootstrap — the MCP twin "
+        "of the dashboard's product-create form). Establishes the product row only, "
+        "INACTIVE; populate tech/architecture/testing afterwards via "
+        "update_product_context, and write a vision document via create_vision_document. "
+        "The user activates the product from the dashboard. Fails if a product with the "
+        "same name already exists. target_platforms must be from: windows, linux, macos, "
+        "android, ios, web, all. project_path is the absolute path of the user's local "
+        "codebase folder you are operating from; OMIT it if you have no filesystem access "
+        "inside the user's repository — never guess."
+    ),
+)
+async def create_product(
+    name: Annotated[str, Field(min_length=1, max_length=MCP_NAME_MAX, description="Product name (required).")],
+    description: Annotated[str, _PRODUCT_PROSE] = "",
+    project_path: Annotated[str, _PRODUCT_PROSE] = "",
+    core_features: Annotated[str, _PRODUCT_PROSE] = "",
+    brand_guidelines: Annotated[str, _PRODUCT_PROSE] = "",
+    target_platforms: Annotated[
+        list[str] | None,
+        Field(description="Subset of: windows, linux, macos, android, ios, web, all."),
+    ] = None,
+    ctx: Context = None,
+) -> dict[str, Any]:
+    # Merge-write style: forward only provided, non-empty optional values so the
+    # service receives None (not "") for anything the agent omitted.
+    kwargs: dict[str, Any] = {"name": name}
+    kwargs.update(
+        {
+            key: value
+            for key, value in (
+                ("description", description),
+                ("project_path", project_path),
+                ("core_features", core_features),
+                ("brand_guidelines", brand_guidelines),
+            )
+            if value
+        }
+    )
+    if target_platforms is not None:
+        kwargs["target_platforms"] = target_platforms
+    return await _call_tool(ctx, "create_product", kwargs)
+
+
+@mcp.tool(
+    name="create_vision_document",
+    description=(
+        "Write an agent-authored markdown vision document onto an EXISTING product "
+        "(BE-9201 — the MCP twin of the dashboard's vision-document upload; the document "
+        "appears in the UI exactly like an uploaded file and feeds the same ingest and "
+        "staleness machinery). Use after create_product, or against a product the user "
+        "already created. Content must be markdown text within the same size cap as the "
+        "UI upload. After creating the document, call get_vision_doc then "
+        "update_product_context (including vision_summaries + consolidated_vision) to "
+        "populate the product card."
+    ),
+)
+async def create_vision_document(
+    product_id: Annotated[str, Field(max_length=MCP_ID_MAX)],
+    content: Annotated[
+        str,
+        Field(min_length=1, description="Full markdown vision document text."),
+    ],
+    document_name: Annotated[
+        str,
+        Field(
+            max_length=MCP_NAME_MAX,
+            description="Optional filename shown in the UI (e.g. 'Product Vision.md'). Defaults to 'Agent Vision.md'.",
+        ),
+    ] = "",
+    ctx: Context = None,
+) -> dict[str, Any]:
+    kwargs: dict[str, Any] = {"product_id": product_id, "content": content}
+    if document_name:
+        kwargs["document_name"] = document_name
+    return await _call_tool(ctx, "create_vision_document", kwargs)
+
+
+@mcp.tool(
     name="get_vision_doc",
     description=(
         "Retrieve a product's vision document with extraction instructions. "

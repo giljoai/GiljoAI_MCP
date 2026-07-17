@@ -67,8 +67,9 @@ from giljo_mcp.utils.log_sanitizer import sanitize
 
 logger = logging.getLogger(__name__)
 
-# Agent limit constants (Handover 0103)
-USER_MANAGED_AGENT_LIMIT = 7  # Reserve one slot for orchestrator
+# Agent limit constant (Handover 0103; BE-9211 raised 7->15). Single source of
+# truth — the REST layer imports it: 15 user-managed + 1 orchestrator = 16 slots.
+USER_MANAGED_AGENT_LIMIT = 15
 
 # Field allowlist for template updates — only these fields may be set via the
 # update path. Replaces a bare hasattr() gate that would have allowed setting any
@@ -335,7 +336,7 @@ class TemplateService:
 
         BE-8000j: owns the FULL update logic the REST endpoint previously ran
         inline — the system-managed guard, the read-only ``system_instructions``
-        guard, archive-on-user_instructions-change, the 8-role active-limit
+        guard, archive-on-user_instructions-change, the 16-slot active-limit
         check, the metadata-only ``updated_at`` preservation, the field-allowlist
         apply, legacy ``tool``/``cli_tool`` mirroring, and role→background-color.
         The endpoint stays thin and translates the raised domain exceptions to
@@ -357,7 +358,7 @@ class TemplateService:
         Raises:
             TemplateNotFoundError: No live template with this id for the tenant (HTTP 404).
             AuthorizationError: System-managed template, or system_instructions write (HTTP 403).
-            ProjectStateError: 8-role active-limit exceeded (HTTP 409).
+            ProjectStateError: active-slot limit exceeded (HTTP 409).
         """
         template = await self.get_template_by_id(session, template_id, tenant_key)
 
@@ -387,7 +388,7 @@ class TemplateService:
                 archived_by=username,
             )
 
-        # Enforce 8-role active limit when toggling is_active for user-managed roles
+        # Enforce the active-slot limit when toggling is_active for user-managed roles
         if "is_active" in update_data and update_data["is_active"] is not None:
             new_is_active = bool(update_data["is_active"])
             if new_is_active != bool(template.is_active) and not self._is_system_managed_role(template.role):
@@ -475,10 +476,9 @@ class TemplateService:
         role: str | None = None,
     ) -> tuple[bool, str]:
         """
-        Validate 8-role active limit before toggling (Handover 0103).
+        Validate the active-slot limit before toggling (Handover 0103; BE-9211).
 
-        Claude Code context budget constraint: Maximum 8 distinct active roles
-        to ensure optimal performance and sufficient tokens for code analysis.
+        Context budget constraint: USER_MANAGED_AGENT_LIMIT (15) user roles + 1 reserved orchestrator = 16 total slots.
 
         Args:
             session: Database session (for transaction context)
@@ -521,7 +521,7 @@ class TemplateService:
         if role in active_roles:
             return True, ""
 
-        # If we have 7 distinct active roles, block new role activation (orchestrator is reserved)
+        # At the user-managed cap, block a new distinct role (orchestrator reserved).
         if len(active_roles) >= USER_MANAGED_AGENT_LIMIT:
             return (
                 False,

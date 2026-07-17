@@ -32,14 +32,20 @@ from uuid import uuid4
 import pytest
 import pytest_asyncio
 from mcp.shared.memory import create_connected_server_and_client_session
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 from sqlalchemy import update as sa_update
 
 from giljo_mcp.database import tenant_session_context
 from giljo_mcp.models.auth import User
 from giljo_mcp.models.organizations import Organization
 from giljo_mcp.models.projects import TaxonomyType
-from giljo_mcp.models.tasks import Message
+from giljo_mcp.models.sequence_runs import SequenceRun
+from giljo_mcp.models.tasks import (
+    Message,
+    MessageAcknowledgment,
+    MessageCompletion,
+    MessageRecipient,
+)
 from giljo_mcp.services.taxonomy_ops import ensure_default_types_seeded
 from giljo_mcp.tenant import TenantManager
 
@@ -593,3 +599,115 @@ async def test_be9037_omitted_from_agent_surfaces_attribution_warning_over_trans
         assert supplied.isError is False, _error_text(supplied)
     assert _payload(omitted)["attribution_warning"]  # non-empty advisory surfaced
     assert _payload(supplied)["attribution_warning"] is None
+
+
+# ---------------------------------------------------------------------------
+# BE-9214 — agent-id column width: the hub validates agent_id up to 64 chars,
+# but the reused legacy message-persistence columns were varchar(36). Once a
+# participant with a >36-char id joined, EVERY broadcast to that thread 500'd on
+# the recipient fan-out INSERT (StringDataRightTruncation). Regression at the
+# @mcp.tool transport (where the bug was observed) + a direct model-layer check
+# that every widened agent-id column in the fan-out family holds the full 64.
+# ---------------------------------------------------------------------------
+
+# The incident id was 45 chars; exercise the full validated 64-char ceiling.
+_BE9214_LONG_ID = ("gil-reviewer-yapper-implementer-pr11-20260717-lane-m2-conductor-0123456789")[:64]
+
+
+async def test_be9214_broadcast_and_directed_post_to_64char_agent(comm_mcp_client):
+    """Live-blocker regression at the @mcp.tool boundary: a 64-char agent id must
+    survive the whole broadcast/baton/directed-post fan-out. Pre-fix this 500'd on
+    the message_recipients (and messages.from_agent_id) INSERT against varchar(36).
+    """
+    assert len(_BE9214_LONG_ID) == 64
+    new_client, _tk, _uid, _base, _mp = comm_mcp_client
+    thread = await _create_thread(new_client, subject="long id", creator_id="orchestrator")
+    tid = thread["thread_id"]
+
+    async with new_client() as s:
+        join = await s.call_tool("join_thread", {"thread_id": tid, "agent_id": _BE9214_LONG_ID})
+        assert join.isError is False, _error_text(join)
+
+        # (a) POST FROM the 64-char agent -> exercises messages.from_agent_id at 64.
+        from_long = await s.call_tool(
+            "post_to_thread", {"thread_id": tid, "content": "from the long id", "from_agent": _BE9214_LONG_ID}
+        )
+        assert from_long.isError is False, _error_text(from_long)
+        assert _payload(from_long)["from_agent_id"] == _BE9214_LONG_ID
+
+        # (b) BROADCAST from the short creator -> the 64-char participant lands in
+        # the message_recipients fan-out (the exact incident).
+        broadcast = await s.call_tool(
+            "post_to_thread", {"thread_id": tid, "content": "hello board", "from_agent": "orchestrator"}
+        )
+        assert broadcast.isError is False, _error_text(broadcast)
+        assert _BE9214_LONG_ID in _payload(broadcast)["recipients"]
+
+        # (c) DIRECTED post to the 64-char agent -> single recipient row at 64.
+        directed = await s.call_tool(
+            "post_to_thread",
+            {
+                "thread_id": tid,
+                "content": "just for you",
+                "from_agent": "orchestrator",
+                "to_participant": _BE9214_LONG_ID,
+            },
+        )
+        assert directed.isError is False, _error_text(directed)
+        assert _payload(directed)["recipients"] == [_BE9214_LONG_ID]
+
+        # (d) pass_baton to the 64-char id -> baton column holds it.
+        handoff = await s.call_tool("pass_baton", {"thread_id": tid, "to": _BE9214_LONG_ID})
+        assert handoff.isError is False, _error_text(handoff)
+        assert _payload(handoff)["next_action_owner"] == _BE9214_LONG_ID
+
+        mine = await s.call_tool("get_my_turn", {"agent_id": _BE9214_LONG_ID})
+        assert mine.isError is False, _error_text(mine)
+    assert tid in {t["thread_id"] for t in _payload(mine)["threads"]}
+
+
+async def test_be9214_all_message_fanout_agent_id_columns_hold_64(db_session):
+    """Class-level regression: every agent-id column in the message-persistence
+    fan-out family (messages.from_agent_id + the recipient/ack/completion
+    junctions) must persist a full 64-char id. Pre-fix these were varchar(36) and
+    a 64-char id raised StringDataRightTruncation on INSERT."""
+    assert len(_BE9214_LONG_ID) == 64
+    tenant_key = TenantManager.generate_tenant_key()
+
+    message = Message(tenant_key=tenant_key, content="fan-out width check", from_agent_id=_BE9214_LONG_ID)
+    db_session.add(message)
+    await db_session.flush()
+    db_session.add(MessageRecipient(message_id=message.id, agent_id=_BE9214_LONG_ID, tenant_key=tenant_key))
+    db_session.add(MessageAcknowledgment(message_id=message.id, agent_id=_BE9214_LONG_ID, tenant_key=tenant_key))
+    db_session.add(MessageCompletion(message_id=message.id, agent_id=_BE9214_LONG_ID, tenant_key=tenant_key))
+    await db_session.flush()
+
+    reloaded = await db_session.get(Message, message.id)
+    assert reloaded.from_agent_id == _BE9214_LONG_ID
+    for model in (MessageRecipient, MessageAcknowledgment, MessageCompletion):
+        rows = (await db_session.execute(select(model).where(model.message_id == message.id))).scalars().all()
+        assert len(rows) == 1
+        assert rows[0].agent_id == _BE9214_LONG_ID
+
+
+async def test_be9214_sequence_run_conductor_agent_id_holds_64(db_session):
+    """Same class at the chain-runtime boundary: a chain conductor self-registers a
+    free-form agent id on ``sequence_runs.conductor_agent_id``, validated to 64 at
+    the chain-start boundary. Pre-fix the column was varchar(36) and a >36-char
+    conductor id raised StringDataRightTruncation. Folded into ce_0080 per the
+    orchestrator ruling on BE-9214."""
+    assert len(_BE9214_LONG_ID) == 64
+    tenant_key = TenantManager.generate_tenant_key()
+
+    run = SequenceRun(
+        tenant_key=tenant_key,
+        project_ids=[],
+        resolved_order=[],
+        execution_mode="multi_terminal",
+        conductor_agent_id=_BE9214_LONG_ID,
+    )
+    db_session.add(run)
+    await db_session.flush()
+
+    reloaded = await db_session.get(SequenceRun, run.id)
+    assert reloaded.conductor_agent_id == _BE9214_LONG_ID

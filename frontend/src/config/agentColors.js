@@ -5,8 +5,6 @@
  * Colors match Handover 0077 specification and correspond to agent templates
  * from Handover 0041 (Agent Template Management).
  *
- * @see handovers/0077_launch_jobs_dual_tab_interface.md
- * @see handovers/0041/ (Agent Template Management)
  */
 
 // Canonical role color map. Keep canonical roles aligned with backend

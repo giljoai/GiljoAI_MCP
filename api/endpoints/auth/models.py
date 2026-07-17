@@ -10,6 +10,8 @@ Field names, validators, and defaults are unchanged — these models define the
 public request/response contract of the /api/auth surface.
 """
 
+from typing import Literal
+
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from api.endpoints.auth_models import BoundedPassword, validate_password_strength
@@ -62,6 +64,8 @@ class UserProfileResponse(BaseModel):
     setup_selected_tools: list[str] | None = None  # Handover 0855a: Selected AI coding agents
     setup_step_completed: int = 0  # Handover 0855a: Last completed wizard step
     learning_complete: bool = False  # How to Use guide completed
+    learning_beat: int | None = None  # BE-9201: tutorial re-entry beat (1-6)
+    router_choice: str | None = None  # BE-9201: tutorial router door (A|B|C|D)
 
 
 # 0371: Removed UserListResponse - was only used by duplicate /users endpoint
@@ -95,6 +99,13 @@ class SetupStateUpdate(BaseModel):
     setup_step_completed: int | None = Field(None, ge=0, le=4)
     setup_complete: bool | None = None
     learning_complete: bool | None = None
+    # BE-9201: onboarding-tutorial re-entry state (companion FE-9200).
+    # learning_beat = last beat reached (the tutorial has 6 rail stops);
+    # router_choice = which router door was picked (drives the bootstrap-card
+    # spotlight). Older frontends simply never send them (Pydantic leaves
+    # absent fields None, and this model ignores unknown extras by default).
+    learning_beat: int | None = Field(None, ge=1, le=6)
+    router_choice: Literal["A", "B", "C", "D"] | None = None
 
 
 class APIKeyCreateResponse(BaseModel):

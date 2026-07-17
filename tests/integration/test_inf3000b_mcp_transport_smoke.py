@@ -110,6 +110,9 @@ EXPECTED_SMOKE_TOOLS: frozenset[str] = frozenset(
         "write_memory_entry",
         "get_vision_doc",
         "update_product_context",
+        # BE-9201: agent-side product bootstrap (44 -> 46).
+        "create_product",
+        "create_vision_document",
         "health_check",
         "get_giljo_guide",
         "giljo_setup",

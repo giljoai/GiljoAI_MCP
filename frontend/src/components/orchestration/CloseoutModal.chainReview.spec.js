@@ -125,6 +125,18 @@ describe('CloseoutModal — chain review skip-archive', () => {
     expect(wrapper.emitted('closeout')).toBeTruthy()
   })
 
+  it('SOLO review of a completed project (FE-9191): Close acknowledges without re-firing the archive write', async () => {
+    const wrapper = mountModal({ projectStatus: 'completed', suppressNavigation: false })
+    await flushPromises()
+
+    await wrapper.find('[data-testid="close-out-btn"]').trigger('click')
+    await flushPromises()
+
+    expect(mockArchive).not.toHaveBeenCalled()
+    expect(wrapper.emitted('closeout')).toBeTruthy()
+    expect(mockShowToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }))
+  })
+
   it('CHAIN review: does not navigate away (suppressNavigation=true)', async () => {
     const wrapper = mountModal({ projectStatus: 'completed', suppressNavigation: true })
     await flushPromises()

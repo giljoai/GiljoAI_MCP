@@ -30,6 +30,7 @@ from giljo_mcp.schemas.service_responses import (
 )
 from giljo_mcp.services.orchestration_service import OrchestrationService
 from giljo_mcp.tenant import TenantManager
+from tests.helpers.test_db_helper import purge_tenant_rows
 
 
 @pytest.fixture
@@ -56,6 +57,12 @@ async def test_product(db_manager: DatabaseManager):
         await session.refresh(product)
 
         yield {"product_id": str(product.id), "tenant_key": tenant_key}
+
+    # Teardown: this suite commits through REAL service-owned sessions (no
+    # test_session), so purge everything committed under this fixture's unique
+    # tenant (all downstream fixtures and service calls in this suite reuse it).
+    # Without this the committed test_tenant_* rows persist across runs (INF-9189).
+    await purge_tenant_rows(db_manager, tenant_key)
 
 
 @pytest.fixture

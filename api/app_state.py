@@ -96,6 +96,7 @@ class APIState:
         # marker; this detail is surfaced on the authenticated /api/system/status.
         self.health_detail: dict[str, str] = {}
         self.update_checker_task: asyncio.Task | None = None
+        self.system_banner_refresh_task: asyncio.Task | None = None  # FE-9202 6-hourly banner refresh
         # INF-3009c: SaaS cache-backend boot mode. "unset" = REDIS_URL not
         # configured, CE in-process backend in use (default, also CE's only value).
         # "connected" = REDIS_URL verified reachable at boot; redis_client holds the

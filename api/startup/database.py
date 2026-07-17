@@ -25,8 +25,9 @@ logger = logging.getLogger(__name__)
 def _worker_count() -> int:
     """Resolve the uvicorn worker count this process is part of.
 
-    uvicorn honors WEB_CONCURRENCY when no explicit --workers flag is given;
-    railway.toml currently passes neither, so prod runs a single worker today.
+    railway.toml's startCommand exports WEB_CONCURRENCY (prod default 4 since
+    2026-07-12) and passes --workers from that same variable (INF-9192), so
+    uvicorn and every reader of this helper see one consistent value.
     A bad value falls back to 1 rather than crashing boot.
     """
     try:

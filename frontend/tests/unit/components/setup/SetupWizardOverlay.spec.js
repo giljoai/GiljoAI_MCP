@@ -73,27 +73,27 @@ describe('SetupWizardOverlay', () => {
       expect(labels[3].text()).toBe('Launch')
     })
 
-    it('renders 4 tool cards on step 0', () => {
+    it('renders 6 tool cards on step 0 (FE-9204: adds OpenCode + generic client)', () => {
       const wrapper = mountOverlay({ currentStep: 0 })
       const toolCards = wrapper.findAll('.tool-card')
 
-      expect(toolCards).toHaveLength(4)
+      expect(toolCards).toHaveLength(6)
     })
 
-    it('displays tool names and providers', () => {
+    it('displays tool names and a method tag per card (providers replaced by method tags)', () => {
       const wrapper = mountOverlay()
       const names = wrapper.findAll('.tool-name')
-      const providers = wrapper.findAll('.tool-provider')
 
-      expect(names[0].text()).toBe('Claude Code CLI')
+      expect(names[0].text()).toBe('Claude Code')
       expect(names[1].text()).toBe('Codex CLI')
       expect(names[2].text()).toBe('Gemini CLI')
       expect(names[3].text()).toBe('Antigravity CLI')
+      expect(names[4].text()).toBe('OpenCode')
+      expect(names[5].text()).toBe('Generic MCP client')
 
-      expect(providers[0].text()).toBe('by Anthropic')
-      expect(providers[1].text()).toBe('by OpenAI')
-      expect(providers[2].text()).toBe('by Google')
-      expect(providers[3].text()).toBe('by Antigravity')
+      // Each card carries a method tag (SaaS default when edition is unresolved).
+      expect(wrapper.find('[data-testid="tool-method-generic"]').text()).toBe('MANUAL CONFIG')
+      expect(wrapper.findAll('.tool-provider')).toHaveLength(0)
     })
   })
 
@@ -391,7 +391,7 @@ describe('SetupWizardOverlay', () => {
   describe('Playwright hooks — Choose-Tools screen (INF-6246)', () => {
     it('each tool card renders data-testid=tool-select-{id}', () => {
       const wrapper = mountOverlay({ currentStep: 0 })
-      const expectedIds = ['claude_code', 'codex_cli', 'gemini_cli', 'antigravity_cli']
+      const expectedIds = ['claude_code', 'codex_cli', 'gemini_cli', 'antigravity_cli', 'opencode', 'generic']
       for (const id of expectedIds) {
         expect(wrapper.find(`[data-testid="tool-select-${id}"]`).exists()).toBe(true)
       }
@@ -400,7 +400,7 @@ describe('SetupWizardOverlay', () => {
     it('tool-select-{id} hooks match the tool card count', () => {
       const wrapper = mountOverlay({ currentStep: 0 })
       const hooks = wrapper.findAll('[data-testid^="tool-select-"]')
-      expect(hooks).toHaveLength(4)
+      expect(hooks).toHaveLength(6)
     })
 
     it('renders data-testid=setup-next-btn on the Next button', () => {
@@ -444,7 +444,7 @@ describe('SetupWizardOverlay', () => {
       const wrapper = mountOverlay()
       const toolCards = wrapper.findAll('.tool-card')
 
-      expect(toolCards[0].attributes('aria-label')).toBe('Claude Code CLI')
+      expect(toolCards[0].attributes('aria-label')).toBe('Claude Code')
       expect(toolCards[1].attributes('aria-label')).toBe('Codex CLI')
       expect(toolCards[2].attributes('aria-label')).toBe('Gemini CLI')
     })
@@ -459,104 +459,17 @@ describe('SetupWizardOverlay', () => {
   })
 
   // -------------------------------------------------------------------
-  // Learning mode (0855g)
+  // Learning mode removal (FE-9200) — the learning module moved to the
+  // onboarding tutorial (components/tutorial/TutorialOverlay.vue). The
+  // wizard renders its setup panel regardless of the legacy mode prop.
   // -------------------------------------------------------------------
-  describe('Learning mode', () => {
-    it('displays "How to Use GiljoAI MCP" title when mode is learning', () => {
+  describe('Learning mode removal (FE-9200)', () => {
+    it('renders no learning panel markup', () => {
       const wrapper = mountOverlay({ mode: 'learning' })
 
-      expect(wrapper.find('.setup-wizard-title').text()).toBe('How to Use GiljoAI MCP')
-    })
-
-    it('does not render the Gradient Rail stepper in learning mode', () => {
-      const wrapper = mountOverlay({ mode: 'learning' })
-
-      expect(wrapper.find('.wizard-rail').exists()).toBe(false)
-    })
-
-    it('does not render step content (tool cards) in learning mode', () => {
-      const wrapper = mountOverlay({ mode: 'learning' })
-
-      expect(wrapper.find('.step-tools').exists()).toBe(false)
-      expect(wrapper.find('.tool-card').exists()).toBe(false)
-    })
-
-    it('renders 6 learning content sections', () => {
-      const wrapper = mountOverlay({ mode: 'learning' })
-      const sections = wrapper.findAll('.learning-section')
-
-      expect(sections).toHaveLength(6)
-    })
-
-    it('renders section titles', () => {
-      const wrapper = mountOverlay({ mode: 'learning' })
-      const titles = wrapper.findAll('.section-title')
-
-      expect(titles[0].text()).toBe('How GiljoAI Works')
-      expect(titles[1].text()).toBe('Define Your Product')
-      expect(titles[2].text()).toBe('Projects and Missions')
-      expect(titles[3].text()).toBe('Skills and Agent Templates')
-      expect(titles[4].text()).toBe('360 Memory')
-      expect(titles[5].text()).toBe('Dashboard and Monitoring')
-    })
-
-    it('first section is expanded by default', () => {
-      const wrapper = mountOverlay({ mode: 'learning' })
-      const headers = wrapper.findAll('.learning-section-header')
-
-      expect(headers[0].attributes('aria-expanded')).toBe('true')
-      expect(headers[1].attributes('aria-expanded')).toBe('false')
-    })
-
-    it('toggles section on click', async () => {
-      const wrapper = mountOverlay({ mode: 'learning' })
-      const headers = wrapper.findAll('.learning-section-header')
-
-      // Collapse the first (open) section
-      await headers[0].trigger('click')
-      expect(headers[0].attributes('aria-expanded')).toBe('false')
-
-      // Expand the second section
-      await headers[1].trigger('click')
-      expect(headers[1].attributes('aria-expanded')).toBe('true')
-    })
-
-    it('shows "Got it" button in learning mode', () => {
-      const wrapper = mountOverlay({ mode: 'learning' })
-      const gotItBtn = wrapper.find('.footer-btn-gotit')
-
-      expect(gotItBtn.exists()).toBe(true)
-      expect(gotItBtn.text()).toBe('Got it')
-    })
-
-    it('does not show Next/Back buttons in learning mode', () => {
-      const wrapper = mountOverlay({ mode: 'learning' })
-
-      // .footer-next-btn is the shared class for both the Next and Finish
-      // button variants (Gradient Rail redesign, FE-6259b).
-      expect(wrapper.find('.footer-next-btn').exists()).toBe(false)
-      expect(wrapper.find('.footer-back').exists()).toBe(false)
-    })
-
-    it('"Got it" emits dismiss and update:modelValue false', async () => {
-      const wrapper = mountOverlay({ mode: 'learning' })
-      const gotItBtn = wrapper.find('.footer-btn-gotit')
-
-      await gotItBtn.trigger('click')
-
-      expect(wrapper.emitted('dismiss')).toBeTruthy()
-      const modelEvents = wrapper.emitted('update:modelValue')
-      expect(modelEvents).toBeTruthy()
-      expect(modelEvents[0][0]).toBe(false)
-    })
-
-    it('"Got it" does not emit step-complete', async () => {
-      const wrapper = mountOverlay({ mode: 'learning' })
-      const gotItBtn = wrapper.find('.footer-btn-gotit')
-
-      await gotItBtn.trigger('click')
-
-      expect(wrapper.emitted('step-complete')).toBeUndefined()
+      expect(wrapper.find('.setup-wizard-panel').exists()).toBe(false)
+      expect(wrapper.find('.learning-section').exists()).toBe(false)
+      expect(wrapper.find('.footer-btn-gotit').exists()).toBe(false)
     })
 
     it('setup mode still shows the Gradient Rail stepper (regression)', () => {
@@ -564,16 +477,6 @@ describe('SetupWizardOverlay', () => {
 
       expect(wrapper.find('.wizard-rail').exists()).toBe(true)
       expect(wrapper.find('.rail-title').text()).toBe('Set up GiljoAI')
-    })
-
-    it('close X button works in learning mode', async () => {
-      const wrapper = mountOverlay({ mode: 'learning' })
-      const closeBtn = wrapper.find('[aria-label="Close guide"]')
-
-      expect(closeBtn.exists()).toBe(true)
-      await closeBtn.trigger('click')
-
-      expect(wrapper.emitted('dismiss')).toBeTruthy()
     })
   })
 })

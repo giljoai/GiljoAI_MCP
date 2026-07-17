@@ -135,7 +135,7 @@ class SetupMiscMixin:
                 if not all_active:
                     raise ValidationError("No active templates found for this tenant")
 
-                selected = select_templates_for_packaging(all_active, max_count=8)
+                selected = select_templates_for_packaging(all_active)
 
                 assembler = AgentTemplateAssembler()
                 response = assembler.assemble(selected, platform)

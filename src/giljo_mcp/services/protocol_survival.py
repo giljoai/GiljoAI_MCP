@@ -379,7 +379,7 @@ def _solo_orchestrator_implementation() -> list[str]:
 # (<= 10 line) plain-prose breadcrumb that tells the agent, the instant its call
 # lands, WHAT the user's dashboard now shows (the WebSocket event) and WHAT to do
 # next. The UI claims are authored from
-# ``handovers/Reference_docs/TOOL_UI_EVENT_MAP.md`` — never invent event names
+# ``internal design notes`` — never invent event names
 # here; that map's pinning test guards the emitter strings.
 #
 # Deliberately NOT emitted on report_progress / set_agent_status: those are

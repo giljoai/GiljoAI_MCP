@@ -34,7 +34,7 @@ vi.mock('@/services/configService', () => ({
 
 // Tools-domain endpoints under test — spies so we can assert call counts.
 const templatesList = vi.fn().mockResolvedValue({ data: [] })
-const templatesActiveCount = vi.fn().mockResolvedValue({ data: { max_slots: 8 } })
+const templatesActiveCount = vi.fn().mockResolvedValue({ data: { max_slots: 16 } })
 vi.mock('@/services/api', () => ({
   default: {
     templates: {

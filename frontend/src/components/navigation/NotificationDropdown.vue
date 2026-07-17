@@ -178,6 +178,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { useNotificationStore } from '@/stores/notifications'
 import { useWebSocketStore } from '@/stores/websocket'
 import { useUserStore } from '@/stores/user'
+import { TYPE_ROUTE_MAP, projectIdOf, projectRouteFor, resolveNotificationRoute } from './notificationRouting'
 
 defineProps({
   compact: {
@@ -208,16 +209,6 @@ const notificationBellClass = computed(() => {
   if (color === 'error') return 'notification-bell--error'
   return 'notification-bell--unread'
 })
-
-/**
- * IMP-5037a: client-side type → named route mapping.
- * Server does NOT provide cta_route in the payload (5037b concern).
- * All navigation is resolved here by notification type.
- */
-const TYPE_ROUTE_MAP = {
-  // api_key.expiring_soon → Tools connect tab (ApiKeyManager lives there)
-  'api_key.expiring_soon': () => ({ name: 'Tools', query: { tab: 'connect' } }),
-}
 
 // Get icon based on notification type
 const getNotificationIcon = (type) => {
@@ -299,16 +290,12 @@ const toggleExpand = (id) => {
   expandedIds.value = next
 }
 
-// The project id a notification points at. Handover 0259 rows carry it in
-// `metadata.project_id`; structured-payload rows (e.g. BE-9085's
-// project.pre_launch_workproduct, TSK-9090) carry it in `payload.project_id`.
-// Read either so both deep-link to the specific project.
-const projectIdOf = (n) => n.metadata?.project_id ?? n.payload?.project_id
-
-// Navigate to the project associated with a notification (Handover 0259)
+// Navigate to the project associated with a notification (Handover 0259).
+// FE-9191: route resolution lives in notificationRouting.js — closeout-family
+// notifications land on the jobs tab, everything else keeps its target.
 const navigateToProject = async (notification) => {
-  const projectId = projectIdOf(notification)
-  if (!projectId) return
+  const route = projectRouteFor(notification)
+  if (!route) return
 
   if (!notification.read) {
     try {
@@ -319,14 +306,15 @@ const navigateToProject = async (notification) => {
   }
 
   menuOpen.value = false
-  router.push({ name: 'ProjectLaunch', params: { projectId } })
+  router.push(route)
 }
 
 /**
  * Handle notification click:
  *  1. Mark as read via REST (DB-backed; IMP-5037a)
- *  2. Resolve navigation target from TYPE_ROUTE_MAP (client-side; no server cta_route)
- *  3. For project-context notifications, navigate to the project
+ *  2. Resolve navigation target via notificationRouting.js (client-side; no
+ *     server cta_route): stay-on-page carve-outs, then the type → route map,
+ *     then the project-context fallback (closeout family → jobs tab, FE-9191)
  */
 const handleNotificationClick = async (notification) => {
   if (!notification.read) {
@@ -337,29 +325,10 @@ const handleNotificationClick = async (notification) => {
     }
   }
 
-  // Handover 0831: context_tuning notifications stay on current page
-  // Handover 0842d: vision_analysis notifications stay on current page
-  if (notification.type === 'context_tuning' || notification.type === 'vision_analysis') {
-    return
-  }
-
-  // IMP-5037a: type-based client-side navigation (server provides no cta_route)
-  const routeFactory = TYPE_ROUTE_MAP[notification.type]
-  if (routeFactory) {
+  const route = resolveNotificationRoute(notification)
+  if (route) {
     menuOpen.value = false
-    router.push(routeFactory(notification))
-    return
-  }
-
-  // Handover 0259 / TSK-9090: fallback — navigate to project if the notification
-  // has project context in either metadata.project_id or payload.project_id.
-  const projectId = projectIdOf(notification)
-  if (projectId) {
-    menuOpen.value = false
-    router.push({
-      name: 'ProjectLaunch',
-      params: { projectId },
-    })
+    router.push(route)
   }
 }
 

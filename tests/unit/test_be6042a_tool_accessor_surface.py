@@ -68,6 +68,10 @@ PUBLIC_TOOL_METHODS = frozenset(
         "get_context",
         "get_vision_doc",
         "update_product_context",
+        # BE-9201: product bootstrap adapters (construct the tenant-scoped
+        # ProductService / inject db_manager into the standalone tool-function)
+        "create_product",
+        "create_vision_document",
         # Setup / misc adapters
         "bootstrap_setup",
         "list_agent_templates",

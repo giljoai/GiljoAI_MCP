@@ -18,19 +18,6 @@
         </p>
       </div>
 
-      <!-- HOME HINTS — onboarding reminders, sized to the subtitle width -->
-      <div v-if="showIntegReminder || showAgentReminder" class="home-hints">
-        <OnboardingReminders
-          :show-integ="showIntegReminder"
-          :show-agent="showAgentReminder"
-          :username="reminderUsername"
-          :git-enabled="gitEnabled"
-          :serena-enabled="serenaEnabled"
-          @dismiss:integration="dismissIntegrationReminder"
-          @dismiss:agent="dismissAgentReminder"
-        />
-      </div>
-
       <!-- QUICK LAUNCH -->
       <div class="section-label">Quick Launch</div>
       <WelcomeQuickGrid
@@ -91,16 +78,23 @@
       @close="showReviewModal = false; reviewProjectId = null; reviewProductId = null"
     />
 
-    <!-- Setup wizard overlay -->
+    <!-- FE-9200: wizard = setup mode; TutorialOverlay = the post-setup tour.
+         Both stay mounted and gate on modelValue (wizard timers unchanged). -->
     <SetupWizardOverlay
-      v-model="showSetupOverlay"
+      :model-value="showSetupOverlay && setupOverlayMode === 'setup'"
       :current-step="setupStep"
       :selected-tools="setupSelectedTools"
       :setup-step-completed="setupStepCompleted"
       :is-rerun="forceSetupMode"
       :mode="setupOverlayMode"
+      @update:model-value="showSetupOverlay = $event"
       @update:current-step="setupStep = $event"
       @step-complete="handleStepComplete"
+      @dismiss="handleDismiss"
+    />
+    <TutorialOverlay
+      :model-value="showSetupOverlay && setupOverlayMode === 'learning'"
+      @update:model-value="showSetupOverlay = $event"
       @dismiss="handleDismiss"
     />
   </div>
@@ -116,14 +110,13 @@ import { getAgentColor } from '@/config/agentColors'
 import api from '@/services/api'
 import GilMascot from '@/components/GilMascot.vue'
 import SetupWizardOverlay from '@/components/setup/SetupWizardOverlay.vue'
+import TutorialOverlay from '@/components/tutorial/TutorialOverlay.vue'
 import CertTrustModal from '@/components/setup/CertTrustModal.vue'
 import RecentProjectsList from '@/components/dashboard/RecentProjectsList.vue'
-import OnboardingReminders from '@/components/dashboard/OnboardingReminders.vue'
 import ProjectReviewModal from '@/components/projects/ProjectReviewModal.vue'
 import configService from '@/services/configService'
 import { PROJECT_TEMPLATES } from '@/composables/projectTemplates'
 import { useToast } from '@/composables/useToast'
-import { useOnboardingReminders } from '@/composables/useOnboardingReminders'
 import { useDeferredHomeData } from '@/composables/useDeferredHomeData'
 import { useWelcomeGreeting } from '@/composables/useWelcomeGreeting'
 import WelcomeQuickGrid from './welcome/WelcomeQuickGrid.vue'
@@ -252,7 +245,9 @@ defineExpose({ shouldShowCertModal, handleCertContinue })
 
 // Template data
 const templates = ref([])
-const totalSlots = ref(8)
+// Pre-load placeholder; overwritten by the active-count API's max_slots (the
+// server-enforced total: 15 user-managed + 1 reserved orchestrator = 16).
+const totalSlots = ref(16)
 
 const activeTemplates = computed(() =>
   templates.value
@@ -459,38 +454,18 @@ const quickCards = computed(() => {
 // Recent projects (from dashboard API)
 const recentProjects = ref([])
 
-// Project status distribution
-const projectStatusDist = ref({})
-
-// Onboarding reminders
-const {
-  showIntegrationReminder: integReminderCheck,
-  showAgentReminder: agentReminderCheck,
-  dismissIntegrationReminder,
-  dismissAgentReminder,
-} = useOnboardingReminders()
-
 function getUserDisplayName() {
   const user = userStore.currentUser
   return user?.first_name || user?.full_name || user?.username || user?.email?.split('@')[0] || 'Friend'
 }
 
-const reminderUsername = computed(() => getUserDisplayName())
-
-const showIntegReminder = computed(() => {
-  const total = Object.values(projectStatusDist.value).reduce((a, b) => a + b, 0)
-  return integReminderCheck.value(total > 0)
-})
-
-const showAgentReminder = computed(() => {
-  return agentReminderCheck.value((projectStatusDist.value.completed || 0) > 0)
-})
-
-// FE-6059: defer Home's Tools-domain reads (agent templates + git/serena status)
-// off the cold first paint — loaded lazily when their section renders.
-const { gitEnabled, serenaEnabled } = useDeferredHomeData({
+// FE-6059: defer Home's Tools-domain reads (agent templates) off the cold first
+// paint — loaded lazily when the team section renders. FE-9202: the onboarding
+// nudges moved into the unified banner strip (SystemStatusBanner), so Home no
+// longer loads git/serena status or evaluates the reminder gates here.
+useDeferredHomeData({
   onboardingComplete,
-  showIntegReminder,
+  showIntegReminder: ref(false),
   templates,
   totalSlots,
 })
@@ -560,7 +535,6 @@ onMounted(async () => {
           .getDashboard(productStore.effectiveProductId)
           .then((response) => {
             recentProjects.value = response.data?.recent_projects || []
-            projectStatusDist.value = response.data?.project_status_dist || {}
           })
           .catch(() => {})
       }
@@ -644,13 +618,6 @@ onMounted(async () => {
 
 .hero-subtitle-dim {
   opacity: 0.7;
-}
-
-/* ═══ HOME HINTS ═══ */
-.home-hints {
-  max-width: 528px;
-  margin: 0 auto 28px;
-  animation: fadeSlideUp 0.45s ease-out 0.18s both;
 }
 
 /* ═══ SECTION LABEL ═══ */

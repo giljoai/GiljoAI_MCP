@@ -103,6 +103,15 @@ class MutationMixin:
                     context={"operation": "create_project", "name": name},
                 )
 
+            # BE-9215: name column is String(255). Cap at the owning-service write
+            # so every transport (REST, create_project_for_mcp) gets a clean 422
+            # instead of a raw StringDataRightTruncation 500 from the DB.
+            if name is not None and len(name) > 255:
+                raise ValidationError(
+                    message=f"Project name exceeds 255 character limit (got {len(name)}).",
+                    context={"operation": "create_project"},
+                )
+
             async with self._get_session(tenant_key) as session:
                 # Validate taxonomy format: series 1-9999, subseries single letter
                 if series_number is not None and (series_number < 1 or series_number > 9999):
@@ -571,6 +580,14 @@ class MutationMixin:
                         message="Successor project not found or access denied.",
                         context={"project_id": project_id, "successor_project_id": successor_id},
                     )
+
+            # BE-9215: name column is String(255). Reject an over-long rename with
+            # a clean 422 at the write boundary rather than a DB truncation 500.
+            if updates.get("name") is not None and len(updates["name"]) > 255:
+                raise ValidationError(
+                    message=f"Project name exceeds 255 character limit (got {len(updates['name'])}).",
+                    context={"project_id": project_id},
+                )
 
             self._apply_project_updates(project, updates)
 

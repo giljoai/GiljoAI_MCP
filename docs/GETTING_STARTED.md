@@ -1,137 +1,122 @@
 # Getting Started
 
-*For users already logged into the GiljoAI MCP dashboard.*
+*For users already signed in to the GiljoAI MCP dashboard. Last updated: 2026-07-17.*
 
-This guide walks through the five steps to run your first project: configure your tools, create a product, create and stage a project, execute the prompt in your AI coding tool, and monitor to completion.
+This guide walks through five steps to run your first project: set up your tools, create your first product, create and stage a project, run it in your AI coding tool, and monitor it to completion.
 
 ---
 
 ## Quick Setup
 
-The Setup Wizard opens automatically on first login. It walks through four steps:
+The **Setup Wizard** opens automatically the first time you sign in (rerun it any time from **Tools → Startup**). It walks through four steps:
 
-| Step | Label | What happens |
-|---|---|---|
-| 0 | Choose Tools | Select your AI coding tool(s): Claude Code CLI, Claude Desktop, Codex CLI, Gemini CLI |
-| 1 | Connect | Generate an API key and copy the MCP configuration snippet into your tool |
-| 2 | Install | Install the `/giljo` command/skill on your machine |
-| 3 | Launch | Confirm setup and receive your first bootstrap prompt |
+| Step | What happens |
+|---|---|
+| **Choose Tools** | Pick one or more AI coding tools: Claude Code, Codex CLI, Gemini CLI, Antigravity CLI, OpenCode, or a generic MCP client. You can add the rest later. |
+| **Connect** | The wizard walks through your chosen tools one at a time, showing a one-command setup for each. The status card flips green by itself the moment a tool connects — there is nothing to click. Already set a tool up? Choose **"I already configured this"** to move on. |
+| **Install** | Ask your tool to run `giljo_setup`. This installs the `/giljo` skill and your agent templates. |
+| **Launch** | You're all set. Three cards let you create your first product, open the dashboard, or read this guide. |
 
-After the Connect step, verify the MCP connection from your CLI tool:
+Each tool's status turns green on its own once it connects. If you'd rather check by hand, run `/mcp` in your CLI tool and confirm `giljo_mcp` is listed as Connected.
 
-```
-/mcp
-# You should see "giljo_mcp" listed as Connected
-```
+To add or reconnect tools later, open **Tools → Connect** — it is a single directory of your connected tools with live status, and **+ Add a tool** starts the same one-at-a-time flow.
 
-The Connect snippet adapts to your deployment automatically — self-hosted installs include the `:7272` port; hosted deployments omit it.
-
-To add tools later or generate additional API keys: click **Tools** in the left nav and open the **Connect** tab — API keys are managed there.
-
-To rerun the wizard at any time: **Tools** > **Startup** tab > Setup Wizard.
-
-> **Installing skills and agents.** The `giljo_setup` MCP tool (run from inside your AI tool) installs the slash-command skills and agent templates. It asks whether to install commands, agents, or both, and asks before overwriting any agent files you have customized.
+> **About `giljo_setup`.** Run it from inside your AI tool, not the dashboard. It installs the `/giljo` skill and, when you have no agent templates yet, your agents too. Later runs refresh your skills and ask before replacing any agent templates you have customized.
 
 ---
 
-## Create a Product
+## Create Your First Product
 
-Navigate to **Products** in the left sidebar. A Product is the context container for everything you build. All projects and agents draw context from it.
+When the wizard finishes, an **animated welcome tour** opens automatically. It is a short, skippable walkthrough that remembers where you left off, and it ends by asking how you want to create your first product. You get four ways to start:
 
-Click **+ New Product** and fill in the tabs:
+- **Point an agent at an existing codebase** — the fastest path, with no typing: one prompt, and your connected agent reads the repository, writes the vision document, and fills in the product card for you.
+- **Shape a new idea in a guided interview** — your agent asks a few questions and turns your answers into a product.
+- **Upload a vision document** — drop in a `.md` or `.txt` file describing your architecture, API design, or spec.
+- **Fill in the form yourself** — the classic product form, for when you would rather type it all in.
+
+You can also create a product any time from **Products → New Product** in the left sidebar, and a connected agent can create one for you from a single prompt without the form ever opening.
+
+### The product form
+
+A Product is the context container for everything you build — all projects and agents draw context from it. The form has these tabs:
 
 | Tab | Fields |
 |---|---|
-| **Product Setup** | Product name (required); upload vision documents (.md, .txt) |
+| **Product Setup** | Product name (required); upload vision documents (`.md`, `.txt`) |
 | **Product Info** | Codebase folder path, description, core features, brand guidelines |
-| **Tech Stack** | Programming languages, frontend frameworks, backend frameworks, databases, infrastructure, target platforms |
+| **Tech Stack** | Programming languages, frontend and backend frameworks, databases, infrastructure, target platforms |
 | **Architecture** | Primary pattern, design patterns, API style, architecture notes, coding conventions |
 | **Testing** | Quality standards, testing strategy, coverage target, testing frameworks |
 
-You do not need to fill every field before saving. Start with the name and description; add more context over time.
+**Vision analysis is the default path.** When you add a vision document, your AI coding tool analyzes it and populates the product fields for you — the Setup tab walks you through **Stage analysis → Analyzing… → Next**, and the remaining tabs unlock once analysis completes. Analysis also fills in the **Codebase Folder** automatically when it can determine your project path, with a visible way to skip that field. Prefer to type everything yourself? Tick **Skip** to bypass analysis and fill the form by hand.
 
-**Vision Documents:** Upload `.md` or `.txt` files describing your architecture, API design, or product spec. When you attach a document, your AI coding tool analyzes it and populates the product fields automatically — the Setup tab walks you through **Stage analysis → Analyzing… → Next**, and the remaining tabs unlock once analysis completes. If you prefer to fill in fields by hand, tick **Skip** to bypass analysis.
-
-Only one product can be active at a time. Activating a new product shows a confirmation dialog and returns you to the Home page.
+You do not need to fill every field before saving — start with the name and add context over time. Only one product can be active at a time; activating a product returns you to the Home page.
 
 ---
 
 ## Create and Stage a Project
 
-Navigate to **Projects** in the left sidebar. A Project represents a unit of work: a feature, a refactor, a bugfix.
+Open **Projects** in the left sidebar and create a project:
 
-1. Click **+ New Project**
-2. Write a **Name** and **Description** in plain language: what you want built, requirements, constraints
-3. Set the **Project Type** for the taxonomy badge (e.g. BE, FE, API). The Series number auto-fills with the next available value for that type.
-4. Save the project
+1. Click **New project**.
+2. Give it a **Name** and **Description** in plain language — what you want built, the requirements, the constraints.
+3. Set the **Project Type** for its taxonomy badge (for example BE, FE, API). The series number fills in the next available value for that type.
+4. Save.
 
-Then navigate to **Jobs** in the left sidebar and choose your **Execution Mode**:
+Open the project to reach its two tabs, **Staging** and **Implementation**. On the **Staging** tab, choose an **Execution Mode** (a read-only chip shows the coding tool the wizard detected for you):
 
-- **Multi-Terminal:** Each agent gets its own prompt. Run agents in separate terminal sessions.
-- **Subagent mode:** One main agent spawns subagents within a single session. Works with Claude Code CLI, Codex CLI, Gemini CLI, or any MCP-enabled tool.
+- **Multi-Terminal** — each agent gets its own prompt, run in separate terminal sessions.
+- **Subagent** — one main agent spawns its subagents within a single session.
 
-Click **Stage Project**. GiljoAI MCP assembles a structured prompt from your product context, 360 Memory entries, project description, and agent templates. The prompt is copied to your clipboard.
+Click **Stage Project**. GiljoAI assembles a structured prompt from your product context, 360 Memory, project description, and agent templates, and copies it to your clipboard.
 
 ---
 
-## Paste and Execute
+## Run It in Your Tool
 
-1. Open your AI coding tool in a terminal
-2. Paste the staged prompt
-3. Your agent connects to GiljoAI MCP and generates the mission plan
-4. Switch to the **Implementation** tab on the Jobs page
-5. Copy the implementation prompt and paste it back into your terminal
-6. Execution begins. Agents read their assigned jobs, create todo lists, and coordinate through MCP message queues
+1. Open your AI coding tool and paste the staged prompt.
+2. Your agent connects to GiljoAI and plans the mission.
+3. Back in the dashboard, switch to the project's **Implementation** tab.
+4. Copy the implementation prompt from there and paste it into your tool.
+5. Work begins: agents read their assigned jobs, build todo lists, and coordinate through the Message Hub.
 
-GiljoAI MCP does not call any AI model. It assembles context and protocol. Your AI coding tool does the thinking.
+GiljoAI never calls an AI model itself — it assembles context and protocol; your AI coding tool does the thinking.
 
 ---
 
 ## Monitor and Close Out
 
-The **Jobs** page shows real-time agent activity for the running project:
+The project's **Implementation** tab shows live agent activity:
 
-- Agent status (waiting, working, blocked, sleeping, complete; see the User Guide for the full status list)
-- Step progress (e.g. 6/6, 8/8)
-- Duration per agent (ticks live for active agents)
-- Messages waiting count
+- Agent status (waiting, working, blocked, sleeping, complete — the User Guide has the full list)
+- Step progress (for example 6/6)
+- Duration per agent (ticks live while an agent is active)
+- A **Messages Waiting** count for each agent
 
-You can send messages to agents via **Broadcast** (all agents) or direct message (individual agent). Messages are delivered through the MCP message queue.
+Talk to your agents from the message composer — **Broadcast** to all or **Direct** to one — or open the full conversation in the **Message Hub**.
 
-If an agent needs a decision from you mid-run, an approval banner appears at the top of the page — click it, choose an option, then nudge the orchestrator to proceed (see "Agent Approvals" in the User Guide).
+If an agent needs a decision from you mid-run, a **Decision Required** banner appears. Check in with the orchestrator, then click the banner to open the decision dialog and pick an option — that is the only place approvals are decided.
 
-When work is complete, click **Close Out Project**. The system:
+When every agent has finished, a **Review project** button appears (the banner shows **"Saving project memory…"** while the 360 Memory entry is written). Click **Review project** to see the closeout summary, then **Close** — you return to the Projects page. You can reopen the summary any time from the **"Project Completed and Closed"** badge.
 
-- Captures the orchestrator's summary
-- Records git commits (if git integration is enabled in Tools > Connect)
-- Writes a **360 Memory** entry: what was built, key decisions, patterns, outcomes
-
-Your next project starts with this accumulated context automatically.
+Your next project starts with this accumulated 360 Memory automatically.
 
 ---
 
 ## What's Next
 
-**Tune product context.** If context fields drift from the actual codebase, use the Tune button on a product card. Select sections to retune, generate a prompt, and paste it into your AI coding tool. The agent scans the codebase and updates the fields directly. See the User Guide for details.
+**Tune your product context.** If the context drifts from the real codebase, use the **Tune Context** button on a product card. Pick the sections to refresh, generate a prompt, and paste it into your AI coding tool; the agent researches the drift and, with your approval, applies the changes.
 
-**Customize agent templates.** Go to **Tools > Agents**. Edit role instructions or add specializations. Install or refresh templates by running the `giljo_setup` tool and choosing "Agents only".
+**Customize your agents.** Go to **Tools → Agents**. Edit each agent's **Role & Expertise**, or use **Add Default Agents** to re-add the starter set (your edits are kept). Sync your templates to your tool by running `giljo_setup` and choosing "Agents only". You have 16 active slots — 15 custom agents plus the reserved orchestrator.
 
-**Capture tasks.** Use the **Tasks** page to log ideas and technical debt. Create tasks from the CLI:
+**Plan with the Roadmap.** Open **Roadmap** to see your product's projects and tasks ranked for risk and effort by your agent. Click **Refresh Roadmap** to copy a prompt into your agent, then drag items to reorder.
+
+**Capture tasks, create projects, and look things up from your tool** using the `/giljo` skill:
 
 ```
 /giljo a task for the last three things we discussed, mark them high priority
-```
-
-**Create projects from the CLI:**
-
-```
 /giljo a project for the authentication gaps, mark it as backend work
-```
-
-**Look up projects and tasks from the CLI:**
-
-```
-/giljo what's BE-5040 about?
+/giljo what's the BE-0042 project about?
 /giljo show me open FE tasks
 ```
 
@@ -139,28 +124,30 @@ Your next project starts with this accumulated context automatically.
 
 ## Troubleshooting
 
-**"Connection refused" when the AI tool tries to reach MCP:**
-- Verify GiljoAI MCP is running (`python startup.py`)
-- Check the API key is correct in your tool's MCP configuration
-- Confirm port 7272 is not blocked by your firewall
+**A "Skills out of date" banner appears:**
+- Run `giljo_setup` in your AI coding tool to refresh your skills and agent templates. If a setup download reports itself stale, re-run `giljo_setup` for a fresh copy.
 
-**Setup Wizard won't launch:**
-- Run `python startup.py --setup` to force the wizard
-- Run `python startup.py --verbose` to see startup logs in a live viewer window
-- Check that port 7272 is available
+**An agent shows "Silent" status:**
+- Turn on **Auto Check-In** on the project's Implementation tab to send periodic check-in nudges; pick an interval (5–60 minutes) that matches your pace.
+
+**The Implementation tab is not updating:**
+- Check the connection indicator in the navigation. A red icon means the live connection dropped — click it and use **Force Reconnect**.
+
+> [!CE]
+> The remaining items apply to self-hosted Community Edition. On hosted GiljoAI, your server, database, and updates are managed for you.
+
+**"Connection refused" when your AI tool tries to reach MCP:**
+- Confirm GiljoAI MCP is running (`python startup.py`).
+- Check the API key in your tool's MCP configuration.
+- Confirm port 7272 is not blocked by your firewall.
+
+**The Setup Wizard won't open:**
+- Run `python startup.py --setup` to force it, or `python startup.py --verbose` to watch startup logs live.
 
 **Database connection errors:**
-- Verify PostgreSQL is running: `pg_isready`
-- Check credentials in your `.env` file (generated during installation)
+- Confirm PostgreSQL is running (`pg_isready`) and the credentials in your `.env` file are correct.
 
-**Agent shows "Silent" status:**
-- The Auto Check-In slider on the Jobs page sends periodic check-in messages to sleeping agents. Set it to an interval (5-60 minutes) that matches your workflow.
-- The silence threshold itself is configurable in Tools > Notifications (Community Edition).
+**After a Community Edition update:**
+- Run `git pull` and restart the server so your build, skills, and agents are current (migrations apply automatically on restart).
 
-**A "Skills out of date" banner appears:**
-- Run `/giljo_setup` in your AI coding tool to refresh the slash-command skills. On Community Edition, also `git pull` and restart the server for the latest build (migrations apply automatically on restart).
-
-**Jobs page is not updating:**
-- Check the WebSocket status indicator in the top navigation. A red icon means the connection was lost. Click it and use the Force Reconnect button.
-
-**Need help?** Email: support@giljo.ai
+**Need help?** Email support@giljo.ai.

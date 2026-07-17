@@ -1,0 +1,50 @@
+/**
+ * setupTools.js — canonical tool registry for the setup-experience surfaces
+ * (FE-9204). Single source of truth for the six connectable tools shared by the
+ * wizard choose-grid (step 0), the shared connect card (ConnectToolCard), and the
+ * /tools connect directory. Replaces the per-file TOOL_META copies that had drifted
+ * across SetupStep2Connect / SetupStep3Commands.
+ *
+ * Each tool carries EITHER `logo` (an <img> asset path) OR `icon` (an mdi glyph name)
+ * for the icon well. OpenCode ships no brand asset in this repo yet, so it renders an
+ * mdi glyph until a real SVG lands.
+ */
+import { getAuthCapabilities } from '@/composables/useMcpConfig'
+
+// Ordered list — drives the choose grid and the "+ Add a tool" picker.
+export const SETUP_TOOLS = [
+  { id: 'claude_code', name: 'Claude Code', logo: '/claude-color.svg' },
+  { id: 'codex_cli', name: 'Codex CLI', logo: '/icons/codex_mark_white.svg' },
+  { id: 'gemini_cli', name: 'Gemini CLI', logo: '/gemini-icon.svg' },
+  { id: 'antigravity_cli', name: 'Antigravity CLI', logo: '/antigravity-color.svg' },
+  { id: 'opencode', name: 'OpenCode', icon: 'mdi-console' },
+  { id: 'generic', name: 'Generic MCP client', logo: '/logo-mcp.svg' },
+]
+
+// Keyed lookup for the connect card / directory.
+export const TOOL_META = Object.fromEntries(SETUP_TOOLS.map((t) => [t.id, t]))
+
+/**
+ * Display name for a tool id (falls back to a neutral label for unknown ids).
+ * @param {string} toolId
+ * @returns {string}
+ */
+export function toolName(toolId) {
+  return TOOL_META[toolId]?.name || 'your tool'
+}
+
+/**
+ * Method tag shown on the choose grid card, per edition.
+ *   - Generic MCP client: always MANUAL CONFIG (pasted JSON, no CLI command).
+ *   - CE: every tool is API KEY (self-hosted, no browser sign-in — FE-6242).
+ *   - SaaS: sign-in-capable tools read SIGN-IN OR KEY; key-only tools API KEY ONLY.
+ * @param {string} toolId
+ * @param {boolean} isCe
+ * @returns {string}
+ */
+export function methodTag(toolId, isCe) {
+  if (toolId === 'generic') return 'MANUAL CONFIG'
+  if (isCe) return 'API KEY'
+  const caps = getAuthCapabilities(toolId)
+  return caps?.supports_oauth ? 'SIGN-IN OR KEY' : 'API KEY ONLY'
+}

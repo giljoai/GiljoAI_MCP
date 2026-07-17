@@ -37,11 +37,14 @@ vi.mock('@/services/api', () => {
       delete: vi.fn(() => Promise.resolve({ data: { success: true } })),
       preview: vi.fn(() => Promise.resolve({ data: { preview: 'Mock preview content' } })),
       activeCount: vi.fn(() =>
-        Promise.resolve({ data: { active_count: 2, limit: 7, available: 5 } })
+        Promise.resolve({ data: { active_count: 2, limit: 15, available: 13 } })
       ),
       history: vi.fn(() => Promise.resolve({ data: [] })),
       restore: vi.fn(() => Promise.resolve({ data: { success: true } })),
       reset: vi.fn(() => Promise.resolve({ data: { success: true } })),
+      importDefaults: vi.fn(() =>
+        Promise.resolve({ data: { added: [], added_as_duplicate: [], skipped_identical: [] } })
+      ),
     },
     settings: {
       getGeneral: vi.fn(() =>
@@ -213,7 +216,7 @@ describe('TemplateManager — header chip', () => {
     vi.clearAllMocks()
     mockShowToast = vi.fn()
     api.templates.activeCount.mockResolvedValue({
-      data: { active_count: 3, limit: 7 },
+      data: { active_count: 3, limit: 15 },
     })
     wrapper = mountTemplateManager()
     await flushPromises()
@@ -224,11 +227,11 @@ describe('TemplateManager — header chip', () => {
   })
 
   it('renders a chip showing totalActiveAgents / totalCapacity when loaded', async () => {
-    // After loadActiveCount: totalActive = 3+1=4, totalCapacity = 7+1=8
+    // After loadActiveCount: totalActive = 3+1=4, totalCapacity = 15+1=16
     const chip = wrapper.find('.v-chip')
     expect(chip.exists()).toBe(true)
     expect(chip.text()).toContain('4')
-    expect(chip.text()).toContain('8')
+    expect(chip.text()).toContain('16')
   })
 })
 
@@ -768,5 +771,181 @@ describe('TemplateManager — duplicateTemplate()', () => {
     const tpl = makeTemplate()
     wrapper.vm.duplicateTemplate(tpl)
     expect(wrapper.vm.editDialog).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Group 15 — FE-9203: filter options locked to the model's real values
+// ---------------------------------------------------------------------------
+// The AgentTemplate model has exactly one lifecycle field: is_active (bool).
+// There is no `status` column and no archived/draft state. This lock exists
+// because the page once offered Active/Archived/Draft bound to a nonexistent
+// `t.status` field — every option, including "Active", filtered to an empty
+// table and no test caught it.
+
+describe('TemplateManager — FE-9203 filter option lock', () => {
+  let wrapper
+
+  beforeEach(async () => {
+    mockShowToast = vi.fn()
+    const api = (await import('@/services/api')).default
+    vi.clearAllMocks()
+    mockShowToast = vi.fn()
+    api.templates.list.mockResolvedValue({
+      data: [
+        makeTemplate({ id: 1, name: 'analyzer', role: 'analyzer', is_active: true }),
+        makeTemplate({ id: 2, name: 'reviewer', role: 'reviewer', is_active: false }),
+      ],
+    })
+    wrapper = mountTemplateManager()
+    await flushPromises()
+  })
+
+  it('status options are EXACTLY active/inactive — the only states the model has', () => {
+    expect(wrapper.vm.statusOptions).toEqual([
+      { title: 'Active', value: 'active' },
+      { title: 'Inactive', value: 'inactive' },
+    ])
+  })
+
+  it('phantom status values (archived/draft) must not return', () => {
+    const values = wrapper.vm.statusOptions.map((o) => o.value)
+    expect(values).not.toContain('archived')
+    expect(values).not.toContain('draft')
+  })
+
+  it('role filter options come from the loaded data, not a hardcoded category list', () => {
+    expect(wrapper.vm.availableRoles).toEqual(['analyzer', 'reviewer'])
+    expect(wrapper.vm.availableRoles).not.toContain('project_type')
+    expect(wrapper.vm.availableRoles).not.toContain('custom')
+  })
+
+  it('selecting "active" status actually returns the active templates (original bug: empty)', async () => {
+    wrapper.vm.filterStatus = 'active'
+    await flushPromises()
+    const ids = wrapper.vm.filteredTemplates.map((t) => t.id)
+    expect(ids).toEqual([1])
+  })
+
+  it('selecting "inactive" status returns the inactive templates', async () => {
+    wrapper.vm.filterStatus = 'inactive'
+    await flushPromises()
+    const ids = wrapper.vm.filteredTemplates.map((t) => t.id)
+    expect(ids).toEqual([2])
+  })
+
+  it('selecting a role filters by the real role field', async () => {
+    wrapper.vm.filterRole = 'reviewer'
+    await flushPromises()
+    const ids = wrapper.vm.filteredTemplates.map((t) => t.id)
+    expect(ids).toEqual([2])
+  })
+
+  it('Export Status column is sortable via the real export signals', () => {
+    const header = wrapper.vm.headers.find((h) => h.key === 'export_status')
+    expect(header.sortable).not.toBe(false)
+    expect(typeof header.sortRaw).toBe('function')
+    // needs-export (stale) sorts before exported; system row sorts last
+    const stale = makeTemplate({ may_be_stale: true, last_exported_at: null })
+    const exported = makeTemplate({ may_be_stale: false, last_exported_at: '2026-01-01T00:00:00Z' })
+    const system = { _system: true }
+    expect(header.sortRaw(stale, exported)).toBeLessThan(0)
+    expect(header.sortRaw(system, exported)).toBeGreaterThan(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Group 16 — FE-9203 Part 2: "Add default agents" button
+// ---------------------------------------------------------------------------
+// Additive import of the seeded defaults. The server owns the semantics
+// (skip-identical, never overwrite, -duplicate collision copies); the component
+// contract is: button present, calls the endpoint, reports the summary, and
+// disables while in flight.
+
+describe('TemplateManager — FE-9203 Add default agents button', () => {
+  let wrapper
+  let api
+
+  beforeEach(async () => {
+    mockShowToast = vi.fn()
+    api = (await import('@/services/api')).default
+    vi.clearAllMocks()
+    mockShowToast = vi.fn()
+    wrapper = mountTemplateManager()
+    await flushPromises()
+  })
+
+  it('renders the Add Default Agents button in the toolbar', () => {
+    const btn = wrapper.findAll('button').find((b) => b.text().includes('Add Default Agents'))
+    expect(btn).toBeTruthy()
+  })
+
+  it('calls the import endpoint and refreshes templates + active count', async () => {
+    api.templates.importDefaults.mockResolvedValueOnce({
+      data: { added: ['implementer'], added_as_duplicate: [], skipped_identical: [] },
+    })
+    api.templates.list.mockClear()
+    api.templates.activeCount.mockClear()
+    await wrapper.vm.importDefaultAgents()
+    expect(api.templates.importDefaults).toHaveBeenCalledTimes(1)
+    expect(api.templates.list).toHaveBeenCalled()
+    expect(api.templates.activeCount).toHaveBeenCalled()
+  })
+
+  it('shows a success summary when agents were added (incl. duplicates)', async () => {
+    api.templates.importDefaults.mockResolvedValueOnce({
+      data: {
+        added: ['tester'],
+        added_as_duplicate: ['implementer-duplicate'],
+        skipped_identical: ['analyzer', 'reviewer', 'documenter'],
+      },
+    })
+    await wrapper.vm.importDefaultAgents()
+    expect(mockShowToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'success',
+        message: expect.stringContaining('1 added, 1 added as duplicate, 3 already present'),
+      })
+    )
+  })
+
+  it('shows an info summary when everything is already present (repeat click)', async () => {
+    api.templates.importDefaults.mockResolvedValueOnce({
+      data: {
+        added: [],
+        added_as_duplicate: [],
+        skipped_identical: ['implementer', 'tester', 'analyzer', 'reviewer', 'documenter'],
+      },
+    })
+    await wrapper.vm.importDefaultAgents()
+    expect(mockShowToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'info',
+        message: expect.stringContaining('5 already present'),
+      })
+    )
+  })
+
+  it('shows an error toast on failure', async () => {
+    api.templates.importDefaults.mockRejectedValueOnce({
+      response: { status: 500, data: { detail: 'boom' } },
+    })
+    await wrapper.vm.importDefaultAgents()
+    expect(mockShowToast).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'error', message: 'boom' })
+    )
+  })
+
+  it('disables the trigger while the import is in flight', async () => {
+    let resolveImport
+    api.templates.importDefaults.mockImplementationOnce(
+      () => new Promise((resolve) => (resolveImport = resolve))
+    )
+    const pending = wrapper.vm.importDefaultAgents()
+    await flushPromises()
+    expect(wrapper.vm.importingDefaults).toBe(true)
+    resolveImport({ data: { added: [], added_as_duplicate: [], skipped_identical: [] } })
+    await pending
+    expect(wrapper.vm.importingDefaults).toBe(false)
   })
 })

@@ -16,22 +16,26 @@ The order you want the projects to run in is the order they carry in the table. 
 
 ### Launching a Chain
 
-Once you have linked 2 to 5 projects, an action bar appears at the top of the project list with a launch button (labeled **"Run sequential"**, with a count such as 3/5). Click it to start the chain. From that point the **conductor** takes over: it stages and launches the first project, waits for it to finish, then advances to the next, until every linked project is complete.
+Once you have linked 2 to 5 projects, an action bar appears at the top of the project list with a launch button labeled **"Run sequential (N/5)"**, where N is how many projects you currently have linked.
+
+Clicking it does not run the chain by itself — the dashboard cannot spawn agents. It queues the linked projects as a pending run. From there, an agent connected through your AI coding tool picks up that pending run and becomes the **conductor**, which does the actual work: staging the first project, then launching, watching, and advancing through the rest in order.
+
+After the conductor stages the first project, it pauses and waits for your explicit go-ahead before starting implementation — the same human-in-the-loop checkpoint a solo project has, just at the head of the chain. Between projects, each finished project gets its own Review step: its tab shows a **REVIEW** badge, and the conductor waits for you to review and close it out before moving on to the next one.
 
 ### The Conductor
 
-The **conductor** — also called the chain orchestrator or master orchestrator — is the coordinator that drives the chain. It is a dedicated agent that owns no project of its own; its only job is to run the chain in order: launch each project, watch for completion, and advance to the next. During staging you see it as the **Chain Conductor** card, showing its identity and current status (Waiting, Running, Done).
+The **conductor** — also called the chain orchestrator or master orchestrator — is the coordinator that drives the chain. It is a dedicated agent that owns no project of its own; its only job is to run the chain in order: launch each project, watch for completion, and advance to the next. During staging you see it as the **Chain Conductor** card, showing its identity and current status — Waiting, Running, Done, Error, or Stopped.
 
 ### The Chain Mission
 
-The **chain mission** is the overarching goal for the whole chain — the single objective that all the linked projects serve together. It is distinct from each project's own per-project mission. During staging, the chain mission appears in its own window above the project tabs so the goal of the entire run stays visible while individual projects execute.
+The **chain mission** is the overarching goal for the whole chain — the single objective that all the linked projects serve together. It is distinct from each project's own per-project mission. During staging, it appears in its own window above the project tabs, labeled **"Multi project mission"** and tagged **"Conductor Generated"** once the conductor has written it.
 
 ### Monitoring a Chain
 
-While a chain runs, the **Jobs** page shows a **Multi project mode** indicator and an **N/M counter** — the number of projects completed out of the total in the chain. The counter advances as each project closes out. You monitor the currently running project exactly as you would a solo project: agent status, step progress, and messages all work the same way.
+While a chain runs, the **Jobs** page shows a **Multi project mode** indicator and an **N/M counter** — the number of projects completed out of the total in the chain. Below it, a tab strip lists every project in the chain; the active one is highlighted, and each tab carries a status badge — **WAITING**, **WORKING**, **REVIEW**, or **COMPLETED** — so you can see the whole chain's progress without switching projects. The conductor's own status card stays visible alongside it. You monitor the currently running project exactly as you would a solo project: agent status, step progress, and messages all work the same way.
 
 ### Stopping a Chain
 
-To stop a chain and return its projects to their prior state, use **Deactivate Chain** on the Projects page. This rewinds all linked projects out of the run; you can re-link and relaunch when you are ready. Completed projects keep their results and 360 Memory entries.
+To stop a chain and return its projects to their prior state, use **Deactivate Chain** from a project's action menu on the Projects page. This rewinds all linked projects out of the run; you can re-link and relaunch when you are ready. Completed projects keep their results and 360 Memory entries.
 
 For guidance on *whether* a chain is the right choice versus a single project, see **When to Use What**.

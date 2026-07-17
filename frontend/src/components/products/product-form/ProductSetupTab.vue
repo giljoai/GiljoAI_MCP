@@ -39,6 +39,8 @@
       variant="outlined"
       density="comfortable"
       required
+      maxlength="255"
+      counter="255"
       class="mb-4 mt-2"
     ></v-text-field>
 

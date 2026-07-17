@@ -7,7 +7,12 @@
 
 Handles graceful shutdown of all services and connections.
 Each step has a timeout to prevent hanging on unresponsive services.
-Visual progress is printed to the console for developer feedback.
+
+Log diet (TSK-9194, incident 2026-07-16): the per-step progress banner burst
+past Railway's 500 logs/sec replica cap when 4 uvicorn workers shut down at
+once, dropping the diagnostic tail. Shutdown now emits at most 3 lines per
+process at INFO (opening line + one summary line); per-step detail lives at
+DEBUG, and a failed or timed-out step is still named at WARNING+.
 """
 
 import asyncio
@@ -37,25 +42,22 @@ async def _run_with_timeout(coro, step_name: str, timeout: float = STEP_TIMEOUT)
         return False
 
 
-def _print_step(step: int, total: int, label: str, status: str = "...") -> None:
-    """Print a shutdown progress line to the console."""
-    bar_filled = step
-    bar_empty = total - step
-    bar = "=" * bar_filled + "-" * bar_empty
-    print(f"\r  [{bar}] ({step}/{total}) {label}: {status}", end="", flush=True)
-
-
-def _print_step_done(step: int, total: int, label: str, ok: bool, elapsed: float) -> None:
-    """Print a completed shutdown step."""
-    marker = "OK" if ok else "TIMEOUT"
-    bar_filled = step
-    bar_empty = total - step
-    bar = "=" * bar_filled + "-" * bar_empty
-    print(f"\r  [{bar}] ({step}/{total}) {label}: {marker} ({elapsed:.1f}s)")
+def _finish_step(step: int, total: int, label: str, ok: bool, elapsed: float, failed: list[str]) -> None:
+    """Record a completed shutdown step: detail at DEBUG, failures accumulated."""
+    logger.debug(
+        "Shutdown step (%d/%d) %s: %s (%.1fs)",
+        step,
+        total,
+        label,
+        "OK" if ok else "FAILED",
+        elapsed,
+    )
+    if not ok:
+        failed.append(label)
 
 
 async def shutdown(state: APIState) -> None:
-    """Gracefully shutdown all services with timeouts and progress display.
+    """Gracefully shutdown all services with timeouts and per-step detail at DEBUG.
 
     Each step has a 5-second timeout. If a step hangs, it is skipped
     and shutdown continues. Total worst-case shutdown time: ~30 seconds.
@@ -64,18 +66,30 @@ async def shutdown(state: APIState) -> None:
         state: APIState instance with active services and connections
     """
     total_steps = 6
-    print()  # Blank line before shutdown block
-    logger.info("Shutting down GiljoAI MCP API...")
-    print(f"  Shutting down ({total_steps} steps, {STEP_TIMEOUT}s timeout each):")
+    failed: list[str] = []
+    t_start = time.monotonic()
+    logger.info(
+        "Shutting down GiljoAI MCP API (%d steps, %ds timeout each)...",
+        total_steps,
+        STEP_TIMEOUT,
+    )
 
     # Step 1: Cancel background tasks
     step = 1
     label = "Background tasks"
-    _print_step(step, total_steps, label)
+    logger.debug("Shutdown step (%d/%d) %s...", step, total_steps, label)
     t0 = time.monotonic()
     try:
         tasks_to_cancel = []
-        for task_attr in ("heartbeat_task", "cleanup_task", "metrics_sync_task"):
+        for task_attr in (
+            "heartbeat_task",
+            "cleanup_task",
+            "metrics_sync_task",
+            # FE-9202 F3: cancel the 6-hourly banner refresh on shutdown; the
+            # update-checker task had the same missing-cancel gap on this line.
+            "system_banner_refresh_task",
+            "update_checker_task",
+        ):
             task = getattr(state, task_attr, None)
             if task:
                 task.cancel()
@@ -88,35 +102,36 @@ async def shutdown(state: APIState) -> None:
         else:
             done = True
     except (RuntimeError, OSError, ConnectionError, ValueError):  # Shutdown resilience
+        logger.exception("Error in shutdown step '%s'", label)
         done = False
-    _print_step_done(step, total_steps, label, done, time.monotonic() - t0)
+    _finish_step(step, total_steps, label, done, time.monotonic() - t0, failed)
 
     # Step 2: Stop health monitor
     step = 2
     label = "Health monitor"
-    _print_step(step, total_steps, label)
+    logger.debug("Shutdown step (%d/%d) %s...", step, total_steps, label)
     t0 = time.monotonic()
     if state.health_monitor:
         done = await _run_with_timeout(state.health_monitor.stop(), label)
     else:
         done = True
-    _print_step_done(step, total_steps, label, done, time.monotonic() - t0)
+    _finish_step(step, total_steps, label, done, time.monotonic() - t0, failed)
 
     # Step 3: Stop silence detector
     step = 3
     label = "Silence detector"
-    _print_step(step, total_steps, label)
+    logger.debug("Shutdown step (%d/%d) %s...", step, total_steps, label)
     t0 = time.monotonic()
     if getattr(state, "silence_detector", None):
         done = await _run_with_timeout(state.silence_detector.stop(), label)
     else:
         done = True
-    _print_step_done(step, total_steps, label, done, time.monotonic() - t0)
+    _finish_step(step, total_steps, label, done, time.monotonic() - t0, failed)
 
     # Step 4: Close WebSocket connections
     step = 4
     label = "WebSocket connections"
-    _print_step(step, total_steps, label)
+    logger.debug("Shutdown step (%d/%d) %s...", step, total_steps, label)
     t0 = time.monotonic()
     ws_count = len(state.connections)
 
@@ -129,29 +144,38 @@ async def shutdown(state: APIState) -> None:
         done = await _run_with_timeout(close_all_ws(), label)
     else:
         done = True
-    _print_step_done(step, total_steps, f"{label} ({ws_count})", done, time.monotonic() - t0)
+    _finish_step(step, total_steps, f"{label} ({ws_count})", done, time.monotonic() - t0, failed)
 
     # Step 5: Stop WebSocket broker
     step = 5
     label = "WebSocket broker"
-    _print_step(step, total_steps, label)
+    logger.debug("Shutdown step (%d/%d) %s...", step, total_steps, label)
     t0 = time.monotonic()
     if getattr(state, "websocket_broker", None):
         done = await _run_with_timeout(state.websocket_broker.stop(), label)
     else:
         done = True
-    _print_step_done(step, total_steps, label, done, time.monotonic() - t0)
+    _finish_step(step, total_steps, label, done, time.monotonic() - t0, failed)
 
     # Step 6: Close database
     step = 6
     label = "Database"
-    _print_step(step, total_steps, label)
+    logger.debug("Shutdown step (%d/%d) %s...", step, total_steps, label)
     t0 = time.monotonic()
     if state.db_manager:
         done = await _run_with_timeout(state.db_manager.close_async(), label)
     else:
         done = True
-    _print_step_done(step, total_steps, label, done, time.monotonic() - t0)
+    _finish_step(step, total_steps, label, done, time.monotonic() - t0, failed)
 
-    print(f"  [{'=' * total_steps}] Shutdown complete")
-    logger.info("API shutdown complete")
+    elapsed_total = time.monotonic() - t_start
+    if failed:
+        logger.warning(
+            "Shutdown: %d/%d steps OK in %.1fs (failed: %s)",
+            total_steps - len(failed),
+            total_steps,
+            elapsed_total,
+            ", ".join(failed),
+        )
+    else:
+        logger.info("Shutdown: %d/%d steps OK in %.1fs", total_steps, total_steps, elapsed_total)

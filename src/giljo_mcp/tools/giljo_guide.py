@@ -190,9 +190,14 @@ Eight tools:
   broadcast posts reach you (collision-safe; re-joining is a no-op).
 - **Post:** `post_to_thread(thread_id, content, from_agent=...)` broadcasts to all
   participants; add `to_participant=<id>` to direct-message one. Posts are append-only.
-  Pass `set_status="resolved"|"closed"` when the conversation is done.
+  Pass `set_status="resolved"|"closed"` when the conversation is done. Add
+  `pass_baton_to=<agent_id|user_id|'all'|'none'>` to hand the turn atomically with the
+  post -- no separate `pass_baton` call needed.
 - **The baton (`next_action_owner`):** `get_my_turn(agent_id)` lists the chats awaiting
   YOU; `pass_baton(thread_id, to=<agent_id|user_id|'all'|'none'>)` hands the turn on.
+  AUTO-PASS: a directed action-request (`requires_action=true` + `to_participant`) hands
+  the baton to that participant automatically unless you pass `pass_baton_to='none'`;
+  broadcasts never move the baton unless `pass_baton_to` says so.
 - **List / catch up:** `list_threads(...)` filters by status/owner/product/project;
   `get_thread_history(thread_id)` reads the full timeline (read-only -- it does NOT
   acknowledge anything).

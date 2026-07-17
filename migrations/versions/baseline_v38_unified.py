@@ -605,7 +605,7 @@ def upgrade() -> None:
             "message_acknowledgments",
             sa.Column("id", sa.String(length=36), server_default=sa.text("(gen_random_uuid())::text"), nullable=False),
             sa.Column("message_id", sa.String(length=36), nullable=False),
-            sa.Column("agent_id", sa.String(length=36), nullable=False),
+            sa.Column("agent_id", sa.String(length=64), nullable=False),  # BE-9214
             sa.Column("tenant_key", sa.String(length=255), nullable=False),
             sa.Column("acknowledged_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=True),
             sa.PrimaryKeyConstraint("id", name="message_acknowledgments_pkey"),
@@ -617,7 +617,7 @@ def upgrade() -> None:
             "message_completions",
             sa.Column("id", sa.String(length=36), server_default=sa.text("(gen_random_uuid())::text"), nullable=False),
             sa.Column("message_id", sa.String(length=36), nullable=False),
-            sa.Column("agent_id", sa.String(length=36), nullable=False),
+            sa.Column("agent_id", sa.String(length=64), nullable=False),  # BE-9214
             sa.Column("tenant_key", sa.String(length=255), nullable=False),
             sa.Column("completed_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=True),
             sa.PrimaryKeyConstraint("id", name="message_completions_pkey"),
@@ -629,7 +629,7 @@ def upgrade() -> None:
             "message_recipients",
             sa.Column("id", sa.String(length=36), server_default=sa.text("(gen_random_uuid())::text"), nullable=False),
             sa.Column("message_id", sa.String(length=36), nullable=False),
-            sa.Column("agent_id", sa.String(length=36), nullable=False),
+            sa.Column("agent_id", sa.String(length=64), nullable=False),  # BE-9214
             sa.Column("tenant_key", sa.String(length=255), nullable=False),
             sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=True),
             sa.PrimaryKeyConstraint("id", name="message_recipients_pkey"),
@@ -651,7 +651,7 @@ def upgrade() -> None:
             sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=True),
             sa.Column("acknowledged_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True),
-            sa.Column("from_agent_id", sa.String(length=36), nullable=True),
+            sa.Column("from_agent_id", sa.String(length=64), nullable=True),  # BE-9214
             sa.Column("from_display_name", sa.String(length=255), nullable=True),
             sa.Column("auto_generated", sa.Boolean(), server_default=sa.text("false"), nullable=False),
             sa.Column(
@@ -1314,7 +1314,7 @@ def upgrade() -> None:
             ),
             sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=True),
             sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=True),
-            sa.Column("conductor_agent_id", sa.String(length=36), nullable=True),
+            sa.Column("conductor_agent_id", sa.String(length=64), nullable=True),  # BE-9214
             sa.Column("conductor_project_id", sa.String(length=36), nullable=True),
             sa.Column("conductor_label", sa.String(length=80), nullable=True),
             sa.Column("locked", sa.Boolean(), server_default=sa.text("false"), nullable=False),
@@ -1643,6 +1643,21 @@ def upgrade() -> None:
             ),
             sa.Column("registration_ip", sa.String(length=45), nullable=True),
             sa.Column("token_revocation_epoch", sa.Integer(), server_default=sa.text("0"), nullable=False),
+            # BE-9201 parity pair with ce_0079 (which APPENDS these two columns on
+            # existing DBs) — they must stay LAST here so fresh-install and
+            # chain-replay column order converge (INF-5060 parity invariant).
+            sa.Column(
+                "learning_beat",
+                sa.Integer(),
+                nullable=True,
+                comment="BE-9201: last onboarding-tutorial beat reached (1-6); NULL until the tutorial persists it",
+            ),
+            sa.Column(
+                "router_choice",
+                sa.String(length=8),
+                nullable=True,
+                comment="BE-9201: tutorial router door picked (A|B|C|D); drives the bootstrap-card spotlight",
+            ),
             sa.CheckConstraint("((failed_pin_attempts >= 0))", name="ck_user_pin_attempts_positive"),
             sa.CheckConstraint("role IN ('admin', 'developer', 'viewer')", name="ck_user_role"),
             sa.PrimaryKeyConstraint("id", name="users_pkey"),

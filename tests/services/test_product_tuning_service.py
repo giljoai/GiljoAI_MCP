@@ -980,6 +980,105 @@ class TestCheckTuningStaleness:
 
 
 # ============================================================================
+# TEST CLASS 5c: BE-9218 banner cadence — manual-refresh reset + legacy tolerance
+# ============================================================================
+
+
+class TestBE9218BannerCadence:
+    """The count-based banner cadence Patrik ratified (BE-9218).
+
+    The banner now fires on tuning_reminder_threshold (count-based staleness), and
+    a manual tune resets the countdown via the EXISTING last_tuned_at_sequence
+    stamp — no new anchor. These cover the reset and the legacy-anchor tolerance at
+    the service layer that check_tuning_staleness / apply_tuning_updates own.
+    """
+
+    @pytest.mark.asyncio
+    async def test_manual_refresh_resets_the_reminder_countdown(
+        self, mock_db_manager, mock_websocket_manager, sample_product
+    ):
+        """A product stale by the threshold becomes not-stale after a manual tune:
+        apply_tuning_updates stamps last_tuned_at_sequence to the current sequence,
+        so projects_since_tune drops to 0 and the reminder is postponed. Proves the
+        reset flows through the existing tuning_state write, not a parallel anchor.
+        """
+        from giljo_mcp.services.product_tuning_service import ProductTuningService
+
+        db_manager, session = mock_db_manager
+        sample_product.tuning_state = {"last_tuned_at_sequence": 0}  # stale baseline
+        service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
+
+        user = Mock()
+        user.id = USER_ID
+        user.tenant_key = TENANT_KEY
+        user.notification_preferences = {"context_tuning_reminder": True, "tuning_reminder_threshold": 3}
+
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product)))
+        session.commit = AsyncMock()
+
+        with (
+            patch.object(service._user_repo, "get_user_by_id", new_callable=AsyncMock, return_value=user),
+            patch(
+                "giljo_mcp.repositories.product_memory_repository.ProductMemoryRepository.get_next_sequence",
+                new_callable=AsyncMock,
+                return_value=6,
+            ),
+        ):
+            # current_sequence = 6 - 1 = 5; projects_since = 5 - 0 = 5 >= threshold 3.
+            before = await service.check_tuning_staleness(product_id=PRODUCT_ID, user_id=USER_ID)
+            assert before["is_stale"] is True
+            assert before["projects_since_tune"] == 5
+
+            # Manual refresh — a no-drift submission still stamps the anchor.
+            await service.apply_tuning_updates(
+                product_id=PRODUCT_ID,
+                proposals=[{"section": "description", "drift_detected": False, "proposed_value": None}],
+            )
+            # Anchor reset to the current sequence (5) via the existing stamp.
+            assert sample_product.tuning_state.get("last_tuned_at_sequence") == 5
+
+            # Re-check: projects_since = 5 - 5 = 0 < threshold -> reminder postponed.
+            after = await service.check_tuning_staleness(product_id=PRODUCT_ID, user_id=USER_ID)
+            assert after["is_stale"] is False
+            assert after["projects_since_tune"] == 0
+
+    @pytest.mark.asyncio
+    async def test_legacy_anchor_without_sequence_is_tolerated(
+        self, mock_db_manager, mock_websocket_manager, sample_product
+    ):
+        """Data-facing DoD: an old-shape tuning_state (last_tuned_at present,
+        last_tuned_at_sequence absent) must not error — it reads as sequence 0 and
+        counts from creation.
+        """
+        from giljo_mcp.services.product_tuning_service import ProductTuningService
+
+        db_manager, session = mock_db_manager
+        sample_product.tuning_state = {"last_tuned_at": "2026-01-01T00:00:00+00:00"}  # no sequence key
+        service = ProductTuningService(db_manager, TENANT_KEY, websocket_manager=mock_websocket_manager)
+
+        user = Mock()
+        user.id = USER_ID
+        user.tenant_key = TENANT_KEY
+        user.notification_preferences = {"context_tuning_reminder": True, "tuning_reminder_threshold": 3}
+
+        session.execute = AsyncMock(return_value=Mock(scalar_one_or_none=Mock(return_value=sample_product)))
+
+        with (
+            patch.object(service._user_repo, "get_user_by_id", new_callable=AsyncMock, return_value=user),
+            patch(
+                "giljo_mcp.repositories.product_memory_repository.ProductMemoryRepository.get_next_sequence",
+                new_callable=AsyncMock,
+                return_value=6,
+            ),
+        ):
+            # last_tuned_at_sequence absent -> 0; projects_since = 5 - 0 = 5 >= 3.
+            result = await service.check_tuning_staleness(product_id=PRODUCT_ID, user_id=USER_ID)
+
+        assert result["projects_since_tune"] == 5
+        assert result["is_stale"] is True
+
+
+# ============================================================================
 # TEST CLASS 6: Tenant Isolation
 # ============================================================================
 

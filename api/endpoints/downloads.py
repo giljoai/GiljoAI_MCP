@@ -291,7 +291,7 @@ async def download_agent_templates(
     from giljo_mcp.template_renderer import select_templates_for_packaging
     from giljo_mcp.tools.agent_template_assembler import AgentTemplateAssembler
 
-    selected = select_templates_for_packaging(templates, max_count=8)
+    selected = select_templates_for_packaging(templates)
 
     assembler = AgentTemplateAssembler()
     export_data = assembler.assemble(selected, platform)
@@ -344,7 +344,7 @@ async def download_agent_templates(
         )
 
     user_info = f"user: {sanitize(current_user.username)}" if current_user else "public/unauthenticated"
-    logger.info("Agent templates ZIP generated (%s): %d files (max 8), %d bytes", user_info, len(files), len(zip_bytes))
+    logger.info("Agent templates ZIP generated (%s): %d files, %d bytes", user_info, len(files), len(zip_bytes))
 
     if current_user:
         # IMP-0023: per-user skills-version stamping removed; system_settings drives drift state.
@@ -749,7 +749,7 @@ async def download_temp_file(
 
     try:
         from giljo_mcp.downloads.token_manager import TokenManager
-        from giljo_mcp.file_staging import FileStaging
+        from giljo_mcp.file_staging import FileStaging, staged_agent_zip_is_stale
 
         # Validate filename for security
         if not FileStaging.validate_filename(filename):
@@ -785,6 +785,11 @@ async def download_temp_file(
 
         # All validations passed
         tenant_key = token_info["tenant_key"]
+
+        # BE-9208 D1: refuse a template-bearing ZIP staged before the tenant's latest template write (stale link -> 410, not a pre-change snapshot). Logic lives in file_staging (owning domain).
+        if await staged_agent_zip_is_stale(db, tenant_key, filename):
+            raise HTTPException(status.HTTP_410_GONE, "Download link is stale: re-run giljo_setup for a fresh link.")
+
         safe_token = token_info["token"]  # Use token from DB to avoid path tampering
         # Compute path from token components
         file_path = Path.cwd() / "temp" / tenant_key / safe_token / filename

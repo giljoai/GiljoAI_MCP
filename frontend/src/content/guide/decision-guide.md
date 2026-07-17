@@ -25,7 +25,7 @@ You can create either from your AI coding tool with `/giljo` — for example, `/
 When you stage a project, you choose how its agents run.
 
 - **Multi-Terminal.** Each agent gets its own prompt, and you run each one in a separate terminal window. You are in control of launching and watching each agent. This suits workflows where you want to supervise agents individually or run them on different machines.
-- **Subagent.** One main agent connects, then spawns its subagents inside a single session. You launch once and the orchestrator manages the rest. This works with Claude Code CLI, Codex CLI, Gemini CLI, and any MCP-enabled tool that supports subagents.
+- **Subagent.** One main agent connects, then spawns its subagents inside a single session. You launch once and the orchestrator manages the rest. This works with Claude Code, Codex CLI, Gemini CLI, and any MCP-enabled tool that supports subagents.
 
 | | Multi-Terminal | Subagent |
 |---|---|---|
@@ -34,7 +34,7 @@ When you stage a project, you choose how its agents run.
 | Auto Check-In slider | Available | Not shown (orchestrator handles it) |
 | Best for | Hands-on supervision, agents across machines | A single guided session |
 
-In multi-terminal mode, phases run one after another and the agents within a phase run in parallel. In subagent mode, the orchestrator spawns its agents together and coordinates them directly. The **Auto Check-In** slider (Jobs page) only appears in multi-terminal mode, where it nudges sleeping agents on a cadence you set.
+In multi-terminal mode, phases run one after another and the agents within a phase run in parallel. In subagent mode, the orchestrator spawns its agents together and coordinates them directly; once your tool connects, a read-only **"detected: {tool}"** chip confirms which harness GiljoAI recognized. The **Auto Check-In** slider (Jobs page) only appears in multi-terminal mode, where it nudges sleeping agents on a cadence you set.
 
 ### One Project or a Chain?
 
@@ -44,3 +44,12 @@ Most work is a single project. Reach for a **chain** when several related projec
 - **A chain** when the work spans multiple projects with a natural order, and you want one coordinator to run them one after another without you launching each project by hand.
 
 A chain links 2 to 5 projects and runs them under a dedicated coordinator called the **conductor**. See the **Chain Projects** chapter for how to link projects, launch a chain, and monitor it.
+
+### Roadmap or Projects List?
+
+Both surfaces work with your product's projects, but for different jobs.
+
+- The **Roadmap** is a ranked queue your AI agent maintains for you: it scores your inactive projects and pending tasks by risk and complexity so you know what to tackle next. Reach for it when you want your agent's opinion on what comes first.
+- The **Projects list** is where you manage everything directly: create, edit, activate a project, link projects into a chain, or close one out. Reach for it when you already know what you want to do.
+
+Activating a project from either place takes you to the same project workspace.

@@ -54,6 +54,17 @@ A project-management and agent-coordination platform driven over MCP.
 """
 
 
+# Shared closing note for every platform branch. Defined ONCE (this file's
+# never-copy-paste-per-platform rule) so the 410 recovery hint stays in sync.
+# BE-9208: a stale link returns HTTP 410 — tell the agent the recovery path so
+# the self-describing fix (re-run giljo_setup) reaches whoever hits the 410.
+_DOWNLOAD_LINK_NOTE = (
+    "Note: Download link expires in 15 minutes. If the download returns HTTP 410 "
+    "(Gone), the link is stale — your agent templates changed after it was created; "
+    "re-run giljo_setup for a fresh link."
+)
+
+
 def _primer_persist_step(home_dir: str, config_filename: str) -> str:
     """Ask-once consent + managed-block persist step, shared by every platform branch.
 
@@ -162,7 +173,7 @@ def build_setup_instructions(platform: str, download_url: str) -> str:
             "- /giljo — create, read, and update projects and tasks (it loads the GiljoAI guide, then acts)\n\n"
             "Restart Claude Code after installing commands or agents.\n\n"
             f"{_primer_persist_step('~/.claude', 'CLAUDE.md')}"
-            "Note: Download link expires in 15 minutes."
+            f"{_DOWNLOAD_LINK_NOTE}"
         )
     if platform == EXPORT_GEMINI_CLI:
         return (
@@ -221,7 +232,7 @@ def build_setup_instructions(platform: str, download_url: str) -> str:
             "- /giljo — create, read, and update projects and tasks (it loads the GiljoAI guide, then acts)\n\n"
             "Restart Gemini CLI after installing commands or agents.\n\n"
             f"{_primer_persist_step('~/.gemini', 'GEMINI.md')}"
-            "Note: Download link expires in 15 minutes."
+            f"{_DOWNLOAD_LINK_NOTE}"
         )
     if platform == EXPORT_ANTIGRAVITY_CLI:
         return (
@@ -256,7 +267,7 @@ def build_setup_instructions(platform: str, download_url: str) -> str:
             "are now available. To refresh agent templates later, re-run giljo_setup and\n"
             "choose the Agents only scope.\n\n"
             f"{_primer_persist_step('~/.gemini', 'GEMINI.md')}"
-            "Note: Download link expires in 15 minutes."
+            f"{_DOWNLOAD_LINK_NOTE}"
         )
     if platform == EXPORT_GENERIC:
         return (
@@ -271,7 +282,7 @@ def build_setup_instructions(platform: str, download_url: str) -> str:
             "For platform-specific setup, visit your GiljoAI server's web interface\n"
             "at Tools -> Connect.\n\n"
             f"{_primer_persist_step_generic()}"
-            "Note: Download link expires in 15 minutes."
+            f"{_DOWNLOAD_LINK_NOTE}"
         )
     # Fall-through default: EXPORT_CODEX_CLI ("codex_cli").
     return (
@@ -360,5 +371,5 @@ def build_setup_instructions(platform: str, download_url: str) -> str:
         "Restart Codex CLI. Re-run giljo_setup with the Agents only scope for agent-only refreshes; "
         "run giljo_setup again when GiljoAI skills need updating.\n\n"
         f"{_primer_persist_step('~/.codex', 'AGENTS.md')}"
-        "Note: Download link expires in 15 minutes."
+        f"{_DOWNLOAD_LINK_NOTE}"
     )

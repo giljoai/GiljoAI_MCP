@@ -24,7 +24,7 @@ from giljo_mcp.schemas.responses.project import ProjectBase
 class ProjectCreate(BaseModel):
     """Request model for project creation."""
 
-    name: str = Field(..., description="Project name")
+    name: str = Field(..., max_length=255, description="Project name")
     description: str = Field(..., description="User-written project description (what you want to accomplish)")
     mission: str = Field(
         default="", description="AI-generated mission statement (initially empty, filled by orchestrator)"
@@ -66,7 +66,7 @@ class ProjectCreate(BaseModel):
 class ProjectUpdate(BaseModel):
     """Request model for project updates."""
 
-    name: str | None = None
+    name: str | None = Field(None, max_length=255)
     description: str | None = None
     mission: str | None = None
     status: str | None = None

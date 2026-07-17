@@ -134,8 +134,9 @@ async def test_apply_context_tuning_in_live_tool_surface():
     # BE-9012b (BE-6225e) merged reactivate_job + dismiss_reactivation into one
     # resolve_reactivation tool, so the whole surface was 47 (was 48). BE-9012d
     # (bus retirement, phase d) hard-removed send_message / receive_messages /
-    # get_messages, so the whole surface is 44.
-    assert len(live) == 44
+    # get_messages (-> 44). BE-9201 added create_product + create_vision_document
+    # (agent-side product bootstrap), so the whole surface is 46.
+    assert len(live) == 46
 
 
 @pytest.mark.asyncio

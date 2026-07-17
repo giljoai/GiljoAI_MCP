@@ -1,10 +1,10 @@
 # GiljoAI MCP: Tools Reference
 
-*Last updated: 2026-07-08*
+*Last updated: 2026-07-16*
 
 ## Overview
 
-GiljoAI MCP exposes **44 tools** to connected AI coding tools. Every tool requires a
+GiljoAI MCP exposes **46 tools** to connected AI coding tools. Every tool requires a
 valid API key passed as a Bearer token. Tenant isolation is enforced server-side;
 agents cannot cross tenant boundaries.
 
@@ -22,9 +22,9 @@ Every tool carries one of three permission scopes:
 | Scope | Meaning | Count |
 |-------|---------|-------|
 | `mcp:read` | Read-only — fetches data, never mutates state. | 13 |
-| `mcp:write` | Mutating writes performed by a human/dashboard-driven flow. | 8 |
+| `mcp:write` | Mutating writes performed by a human/dashboard-driven flow. | 10 |
 | `mcp:agent` | Agent-lifecycle operations used by orchestrators and specialist agents. | 23 |
-| **Total** | | **44** |
+| **Total** | | **46** |
 
 Tools are organized by functional category below; each entry lists its scope.
 
@@ -658,6 +658,43 @@ to the product's `sequential_history`.
 
 ## Vision & Product Context
 
+### create_product `mcp:write`
+
+**Purpose:** Create a new product (BE-9201 agent-side bootstrap — the MCP twin of the
+dashboard's product-create form). Establishes the product row only, INACTIVE; populate
+tech/architecture/testing afterwards via `update_product_context`, and write a vision
+document via `create_vision_document`. The user activates the product from the
+dashboard. Fails if a product with the same name already exists.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| name | str | Yes | Product name (unique per tenant). |
+| description | str | No | Product description. |
+| project_path | str | No | Absolute path of the user's local codebase folder the agent is operating from. Omit if the agent has no filesystem access inside the repository. |
+| core_features | str | No | Key product features. |
+| brand_guidelines | str | No | Brand & design guidelines for frontend agents. |
+| target_platforms | list[str] | No | Subset of: `windows`, `linux`, `macos`, `android`, `ios`, `web`, `all`. Defaults to `all`. |
+
+---
+
+### create_vision_document `mcp:write`
+
+**Purpose:** Write an agent-authored markdown vision document onto an EXISTING product
+(BE-9201 — the MCP twin of the dashboard's vision-document upload). The document gets
+the identical ingest as a UI upload (inline storage, auto-chunking, auto-consolidation)
+and appears in the dashboard exactly like an uploaded file. Content is size-capped at
+the same limit as the UI upload. After creating the document, call `get_vision_doc`
+then `update_product_context` (including `vision_summaries` + `consolidated_vision`)
+to populate the product card.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| product_id | str | Yes | ID of the product to attach the document to. |
+| content | str | Yes | Full markdown vision document text. |
+| document_name | str | No | Filename shown in the UI (e.g. `Product Vision.md`). Defaults to `Agent Vision.md`; `.md` is appended when the extension is missing. |
+
+---
+
 ### get_vision_doc `mcp:read`
 
 **Purpose:** Retrieve a product's vision document with extraction instructions. Call
@@ -744,6 +781,6 @@ bundled `SKILLS_VERSION`. Run once after connecting.
 | Agent Jobs & Lifecycle | 11× agent | spawn_job, get_job_mission, update_job_mission, report_progress, complete_job, close_job, resolve_reactivation, set_agent_status, get_agent_result, get_workflow_status, request_approval |
 | Agent Message Hub | 4 agent · 4 read | create_thread, join_thread, post_to_thread, pass_baton, get_my_turn, list_threads, get_thread_history, search_threads |
 | Context & Memory | 2 read · 1 agent | get_context, search_memory, write_memory_entry |
-| Vision & Product Context | 1 read · 2 write | get_vision_doc, update_product_context, apply_context_tuning |
+| Vision & Product Context | 1 read · 4 write | create_product, create_vision_document, get_vision_doc, update_product_context, apply_context_tuning |
 | Setup | 1 write | giljo_setup |
-| **Total** | **13 read · 8 write · 23 agent** | **44** |
+| **Total** | **13 read · 10 write · 23 agent** | **46** |
